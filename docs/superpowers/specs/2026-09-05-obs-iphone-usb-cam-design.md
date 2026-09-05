@@ -85,7 +85,8 @@ Typen:
   Decoder-Session neu und wartet dann auf den naechsten Keyframe.
 - `0x11 VIDEO` (App -> Mac): pts in Mikrosekunden (u64), dann ausschliesslich VCL-NAL-Einheiten
   mit 4-Byte-Laengenpraefix (HVCC-Stil, kein Annex-B). **Keine Parametersaetze in-band**;
-  der Empfaenger reicht die Nutzlast unveraendert an `VTDecompressionSessionDecodeFrame`.
+  der Empfaenger reicht den Rest der Nutzlast nach dem pts-Feld unveraendert an
+  `VTDecompressionSessionDecodeFrame`.
   Einheiten: Protokoll-pts Mikrosekunden, `obs_source_frame.timestamp` Nanosekunden
   (Faktor 1000 im Plugin).
 
@@ -101,7 +102,7 @@ Matrix). Die App setzt das am Capture-Output und am Encoder, das Plugin setzt
   3 FORMAT_UNSUPPORTED, 4 ENCODER_FAILED, 5 VERSION_UNSUPPORTED.
 
 Versionsregel: HELLO traegt die Protokollversion; der Mac lehnt unbekannte Major-Version
-mit ERROR 5 ab und schliesst. Prototyp ist Version 1.
+mit ERROR 5 ab und schliesst (u16: High-Byte Major, Low-Byte Minor; nur Major zaehlt). Prototyp ist Version 1.
 
 Totlink beidseitig: Der Mac sendet PING alle 2 s (3 fehlende PONG = neu verbinden). Die
 App verwirft eine Verbindung ohne PING seit 6 s und gibt den Listener frei, damit ein
@@ -120,7 +121,7 @@ neuer Empfaenger nicht dauerhaft BUSY bekommt.
   `MaxKeyFrameInterval=fps` (ein Keyframe pro Sekunde), `AverageBitRate` aus START,
   Standard 12 Mbit/s bei 1080p30.
 - Ein `UsbServer`: NWListener auf Port 7878, nimmt genau eine Verbindung an, parst
-  START/STOP/PING, sendet HELLO/CONFIG/VIDEO/PONG/ERROR. Zweite Verbindung: ERROR BUSY,
+  START/STOP/PING/ERROR, sendet HELLO/CONFIG/VIDEO/PONG/ERROR. Zweite Verbindung: ERROR BUSY,
   schliessen.
 - UI: Vorschau, Kamera-Wahl, Statuszeile (verbunden / streamt / fps / Bitrate),
   Schalter "Bildschirm an lassen" (Standard an). Querformat-Lock. Kein Login, keine
@@ -222,7 +223,7 @@ neuer Empfaenger nicht dauerhaft BUSY bekommt.
 - Eingehender `NWListener` unter iOS 26.6: vor Welle 2 einmal pruefen, ob ein
   Local-Network-Prompt erscheint; falls ja, `NSLocalNetworkUsageDescription` ergaenzen.
 - Lizenz: OBS-Plugin (`obs-plugin/`) GPL-2.0-or-later, wie die Vorlage und libobs.
-  iOS-App, Protokoll und Werkzeuge MIT. Zwei LICENSE-Dateien, im README erklaert.
+  iOS-App, Protokoll, `shared/` und Werkzeuge MIT. Zwei LICENSE-Dateien, im README erklaert.
 
 ## 12. Bauabfolge
 
