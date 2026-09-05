@@ -46,9 +46,14 @@ iPhone (Swift)                          Mac
   Multiplexer tunnelt USB-Verbindungen zu Geraeteports).
 - Der Mac verbindet sich ueber den usbmuxd-Unix-Socket mit dem Plist-Protokoll:
   `ListDevices` / `Listen` fuer Geraete-Erkennung, `Connect` (DeviceID, Port 7878 in
-  Netzwerk-Byte-Order) fuer den Tunnel. Danach ist der Socket ein roher Byte-Strom zur
-  App. Voraussetzung: das iPhone ist mit dem Mac vertraut (Finder-Trust), was bei jedem
-  Entwickler-iPhone ohnehin gilt. Keine libimobiledevice-Abhaengigkeit.
+  Netzwerk-Byte-Order) fuer den Tunnel. Nach erfolgreichem `Connect` ist dieser Socket ein
+  roher Byte-Strom zur App und fuer weitere Plist-Nachrichten verbraucht; `Listen` belegt
+  seine Verbindung dauerhaft. Deshalb haelt das Plugin **zwei Socket-Verbindungen**: eine
+  Ereignis-Verbindung (`Listen`, Attach/Detach) und pro aktivem Geraet eine
+  Tunnel-Verbindung. `ListDevices`/Attach-Ereignisse werden auf
+  `ConnectionType == "USB"` gefiltert; WLAN-Sync-Geraete werden ignoriert. Ein Pairing
+  (Finder-Trust) ist fuer den App-Port-Tunnel nicht noetig. Keine
+  libimobiledevice-Abhaengigkeit.
 - Ein Empfaenger pro Geraet. Verbindet sich ein zweiter Empfaenger, lehnt die App ab
   (Antwort `BUSY`).
 
@@ -71,10 +76,22 @@ Typen:
 - `0x02 START` (Mac -> App): Kamera-ID, Breite, Hoehe, fps, Bitrate kbit/s.
 - `0x03 STOP` (Mac -> App).
 - `0x10 CONFIG` (App -> Mac): tatsaechlich aktives Format nach START (Breite, Hoehe, fps),
-  plus HEVC-Parametersaetze (VPS/SPS/PPS) als `hvcC`-Record.
-- `0x11 VIDEO` (App -> Mac): pts in Mikrosekunden (u64), dann HEVC-NAL-Einheiten mit
-  4-Byte-Laengenpraefix (AVCC/HVCC-Stil, kein Annex-B). Keyframes tragen die
-  Parametersaetze zusaetzlich in-band.
+  plus HEVC-Parametersaetze (VPS/SPS/PPS) als `hvcC`-Record. Die App liest die
+  Parametersaetze explizit aus der `CMFormatDescription` des ersten Keyframes
+  (`CMVideoFormatDescriptionGetHEVCParameterSetAtIndex`) und sendet CONFIG erneut, sobald
+  sich die Format-Description aendert. Der Empfaenger baut aus jedem CONFIG die
+  Decoder-Session neu und wartet dann auf den naechsten Keyframe.
+- `0x11 VIDEO` (App -> Mac): pts in Mikrosekunden (u64), dann ausschliesslich VCL-NAL-Einheiten
+  mit 4-Byte-Laengenpraefix (HVCC-Stil, kein Annex-B). **Keine Parametersaetze in-band**;
+  der Empfaenger reicht die Nutzlast unveraendert an `VTDecompressionSessionDecodeFrame`.
+  Einheiten: Protokoll-pts Mikrosekunden, `obs_source_frame.timestamp` Nanosekunden
+  (Faktor 1000 im Plugin).
+
+Farbkonvention (fix, nicht verhandelbar in Version 1): Pixelformat NV12 Video-Range
+(`kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange`), Farbraum BT.709 (Primaries, Transfer,
+Matrix). Die App setzt das am Capture-Output und am Encoder, das Plugin setzt
+`video_format_get_parameters(VIDEO_CS_709, VIDEO_RANGE_PARTIAL, ...)` und
+`full_range = false`.
 - `0x20 PING` / `0x21 PONG`: Mac sendet alle 2 s PING mit u64-Zeitstempel, App antwortet
   PONG mit demselben Wert. Dient Latenzmessung und Totlink-Erkennung (3 fehlende PONG =
   Verbindung schliessen und neu verbinden).
@@ -87,7 +104,8 @@ mit ERROR ab. Prototyp ist Version 1.
 ## 5. iOS-App (`ios-app/`)
 
 - Swift 6, SwiftUI, iOS 17 Minimum (deckt alle Geraete mit HEVC-Hardware-Encoder ab).
-- Ein `CaptureEngine`-Actor: AVCaptureSession mit `AVCaptureVideoDataOutput` (NV12),
+- Ein `CaptureEngine`-Actor: AVCaptureSession mit `AVCaptureVideoDataOutput` (NV12
+  Video-Range, BT.709, siehe Farbkonvention in Abschnitt 4),
   Formatwahl nach START-Wunsch, naechstliegendes unterstuetztes Format.
 - Ein `HevcEncoder`: VTCompressionSession, `kVTProfileLevel_HEVC_Main_AutoLevel`,
   `RealTime=true`, `AllowFrameReordering=false` (keine B-Frames, niedrige Latenz),
@@ -116,7 +134,10 @@ mit ERROR ab. Prototyp ist Version 1.
   - `hevc_decoder.mm/.h`: VTDecompressionSession aus dem `hvcC`-Record, Ausgabe NV12
     CVPixelBuffer, Reset bei neuem CONFIG.
   - `iphone_source.mm`: `obs_source_info` (Typ `OBS_SOURCE_VIDEO | OBS_SOURCE_ASYNC`),
-    Eigenschaften: Geraet (Liste aus usbmux), Kamera, Aufloesung, fps, Bitrate. Ein
+    Eigenschaften: Geraet (Liste aus usbmux, nur USB), Kamera, Aufloesung, fps, Bitrate.
+    Die Kameraliste wird aus dem letzten HELLO des gewaehlten Geraets gefuellt (im
+    Quellen-Settings-Objekt gecacht); vor dem ersten HELLO steht eine statische Liste
+    (Rueck-Weitwinkel, Rueck-Ultraweit, Rueck-Tele, Front). Ein
     Empfangs-Thread pro Quelle: verbinden, HELLO lesen, START senden, Frames dekodieren,
     `obs_source_output_video` mit `VIDEO_FORMAT_NV12` und pts aus dem Frame.
   - Wiederverbindung: bei Detach oder Totlink Quelle auf Schwarz, alle 1 s neuer Versuch,
@@ -158,8 +179,10 @@ mit ERROR ab. Prototyp ist Version 1.
   echten Socket.
 - App: Swift-Tests fuer den Protokoll-Codec (Spiegelbild des C-Parsers) und den
   Zustandsautomaten des Servers (HELLO vor START, BUSY bei zweiter Verbindung).
-- Integration: `usbcam-sim` -> `usbcam-recv --tcp` im CI (macOS-Runner), prueft fps und
-  Bildinhalt (Zeitstempel im Bild vs. pts).
+- Integration: `usbcam-sim` -> `usbcam-recv --tcp` als lokal reproduzierbares Skript
+  `tools/integration.sh`, prueft fps und Bildinhalt (Zeitstempel im Bild vs. pts). Es gibt
+  in der Estate keinen macOS-Runner; CI laeuft im Prototyp nur fuer die reinen C-Tests
+  (frame_parser, usbmux-Fixtures) auf Linux. macOS-CI ist ausser Scope.
 - Manuell: Telefon am Kabel in OBS, Latenzmessung per Stoppuhr im Bild, Kabel ziehen und
   neu anstecken.
 
@@ -168,7 +191,7 @@ mit ERROR ab. Prototyp ist Version 1.
 1. Rueckkamera 1080p30 per USB-Kabel in OBS sichtbar, 10 Minuten stabil.
 2. Glas-zu-Glas-Latenz unter 100 ms (Stoppuhr-Methode).
 3. Kabel ziehen und neu anstecken: Bild kommt ohne Zutun binnen 5 s zurueck.
-4. Simulator-Integrationstest gruen im CI.
+4. Simulator-Integrationstest `tools/integration.sh` lokal gruen; C-Tests gruen im CI.
 5. README mit Installationsweg fuer Mac-Plugin und Selbstbau der iOS-App.
 
 ## 11. Risiken
@@ -179,15 +202,26 @@ mit ERROR ab. Prototyp ist Version 1.
   im Hintergrund pausiert iOS den Listener nach kurzer Zeit. Deshalb bleibt die App im
   Vordergrund und der Bildschirm an. Hintergrundbetrieb ist ausser Scope.
 - obs-plugintemplate laedt vorgebaute Abhaengigkeiten aus GitHub; Netz noetig beim ersten
-  Build.
-- Lizenz: MIT fuer unseren Code; obs-plugintemplate ist ebenfalls MIT-lizenziert, libobs
-  GPL-2.0 (Plugin-Verlinkung gegen libobs ist ueblich und vom OBS-Projekt gewollt).
+  Build. Stand der Vorlage (2026-09-05): OBS-Quellen 31.1.1, obs-deps 2025-07-11,
+  Xcode-Generator, macOS 12+, universelles Binary, Signierung ueber `CODESIGN_IDENT` und
+  `CODESIGN_TEAM`.
+- Eingehender `NWListener` unter iOS 26.6: vor Welle 2 einmal pruefen, ob ein
+  Local-Network-Prompt erscheint; falls ja, `NSLocalNetworkUsageDescription` ergaenzen.
+- Lizenz: OBS-Plugin (`obs-plugin/`) GPL-2.0-or-later, wie die Vorlage und libobs.
+  iOS-App, Protokoll und Werkzeuge MIT. Zwei LICENSE-Dateien, im README erklaert.
 
-## 12. Repo-Layout
+## 12. Bauabfolge
+
+Drei Schnitte, jeder ohne den naechsten testbar:
+1. Protokoll, `frame_parser`, `usbcam-sim`, `usbcam-recv --tcp` (kein Telefon, kein usbmuxd).
+2. iOS-App gegen `usbcam-recv` ueber usbmuxd (Telefon noetig, kein OBS).
+3. OBS-Plugin gegen Simulator (Debug-TCP) und dann gegen Telefon.
+
+## 13. Repo-Layout
 
 ```
 obs-iphone-usb-cam/
-  README.md  LICENSE (MIT)  CLAUDE.md
+  README.md  LICENSE (MIT)  obs-plugin/LICENSE (GPL-2.0-or-later)  CLAUDE.md
   protocol/PROTOCOL.md
   ios-app/            Xcode-Projekt (SwiftUI)
   obs-plugin/         obs-plugintemplate-basiert (CMake)
