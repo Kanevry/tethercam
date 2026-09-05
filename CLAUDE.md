@@ -67,3 +67,17 @@ erst beim naechsten Start. **Nie einen laufenden OBS-Prozess beenden.**
 - **agents-per-wave:** 3
 - **vcs:** gitlab
 - **test-command:** bash tools/integration.sh
+
+## Dispatcher Autonomy
+
+> **Parity-exempt section.** This H2 is intentionally placed outside the `## Session Config` block so that the `claude-md-drift-check` Check-6 parity scanner (which extracts only column-0 keys inside the `## Session Config` block) does not flag repos that have not yet adopted this feature. Issue #679 / #681.
+
+Opt-in configuration for the cross-repo free-repo dispatcher autonomy gate (Epic #673). The default is `off` — fail-closed. The effective `autonomy` resolves with host-local precedence `SO_DISPATCHER_AUTONOMY` env > `owner.yaml` `dispatcher.autonomy` > committed > `off` (#653 pattern).
+
+```yaml
+dispatcher-autonomy:
+  autonomy: off            # off | advisory | autonomous-gated — default off (fail-closed)
+  confidence-floor: 0.5    # float 0.0..1.0
+```
+
+Read by: `scripts/lib/config/dispatcher-autonomy.mjs` (parser + resolver), `skills/dispatcher/SKILL.md` (cross-repo dispatch flow). Issue: #681.
