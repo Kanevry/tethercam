@@ -83,7 +83,10 @@ final class AppModel: ObservableObject {
         selectedCameraId = id
         server.selectCamera(id)
         // While nothing streams the state machine only remembers the choice, so
-        // the preview has to follow on its own. No-op during a take.
+        // the preview has to follow on its own. During a take the server swaps
+        // the lens itself; racing it with a preview reconfigure here is how a
+        // 720p CONFIG leaked to the receiver (#4).
+        guard !stats.streaming, !capture.isEncoding else { return }
         capture.startPreview(cameraId: id)
     }
 
@@ -281,7 +284,7 @@ struct SettingsSheet: View {
                             preferredCameraId = Int(c.id)
                         } label: {
                             HStack {
-                                Text(c.name).foregroundStyle(.primary)
+                                Text(c.displayName).foregroundStyle(.primary)
                                 Spacer()
                                 if model.selectedCameraId == c.id {
                                     Image(systemName: "checkmark").foregroundStyle(.tint)

@@ -94,7 +94,7 @@ public final class UsbServer {
     }
 
     /// Lens choice from the phone's settings sheet. Applied immediately when a
-    /// stream is running (stop + start with the same format), remembered for
+    /// stream is running (input swap, same format, encoder kept), remembered for
     /// every later START otherwise.
     public func selectCamera(_ id: UInt8) {
         queue.async { [self] in
@@ -186,9 +186,49 @@ public final class UsbServer {
             case .stopCapture:
                 capture.stop()
                 encoder.stop()
+            case let .switchCamera(p):
+                switchCamera(p)
             }
         }
         refreshStats()
+    }
+
+    /// Lens swap under a running take. The session never leaves the negotiated
+    /// format, so no preview-sized buffer can reach the encoder; the encoder is
+    /// only rebuilt when the new lens really negotiates other dimensions. If the
+    /// device cannot honour the format, the old stop/start sequence is the
+    /// fallback — a black frame beats a stuck stream.
+    private func switchCamera(_ p: StartParams) {
+        let before = capture.activeFormat
+        capture.switchCamera(to: p.cameraId) { [weak self] result in
+            guard let self else { return }
+            self.queue.async {
+                switch result {
+                case .success:
+                    let f = self.capture.activeFormat ?? (p.width, p.height, p.fps)
+                    let unchanged = before.map {
+                        $0.width == f.width && $0.height == f.height && $0.fps == f.fps
+                    } ?? false
+                    NSLog("[usbcam] switch cam=%d %dx%d@%d encoder=%@",
+                          Int(p.cameraId), Int(f.width), Int(f.height), Int(f.fps),
+                          unchanged ? "kept" : "restarted")
+                    guard !unchanged else { return }
+                    do {
+                        try self.encoder.start(width: f.width, height: f.height,
+                                               fps: f.fps, bitrateKbps: p.bitrateKbps)
+                    } catch {
+                        self.apply(self.machine.handle(
+                            .captureFailed(.encoderFailed, text: "\(error)")))
+                    }
+                case let .failure(err):
+                    NSLog("[usbcam] switch cam=%d failed (%@) - falling back to stop/start",
+                          Int(p.cameraId), "\(err)" as NSString)
+                    self.capture.stop()
+                    self.encoder.stop()
+                    self.startCapture(p)
+                }
+            }
+        }
     }
 
     private func startCapture(_ p: StartParams) {
@@ -295,7 +335,7 @@ extension CaptureEngine.CaptureError: Equatable {
     public static func == (a: CaptureEngine.CaptureError, b: CaptureEngine.CaptureError) -> Bool {
         switch (a, b) {
         case (.denied, .denied), (.cannotAddInput, .cannotAddInput),
-             (.cannotAddOutput, .cannotAddOutput): return true
+             (.cannotAddOutput, .cannotAddOutput), (.notStreaming, .notStreaming): return true
         case let (.noSuchCamera(x), .noSuchCamera(y)): return x == y
         default: return false
         }

@@ -22,6 +22,8 @@ public final class CaptureEngine: NSObject {
         case noSuchCamera(UInt8)
         case cannotAddInput
         case cannotAddOutput
+        /// `switchCamera` was asked to keep a format nobody negotiated.
+        case notStreaming
     }
 
     public let cameras: [Camera]
@@ -146,6 +148,8 @@ public final class CaptureEngine: NSObject {
     private static func discover() -> [Camera] {
         // Fixed probe order → stable ids 0..n. Devices absent on the hardware
         // are simply skipped, so an iPhone without a tele lens yields 0,1,2.
+        // Names are wire literals shown verbatim in OBS; the app UI localizes
+        // them via CameraDescriptor.displayName (CameraDisplayName.swift).
         let wanted: [(AVCaptureDevice.DeviceType, AVCaptureDevice.Position, String)] = [
             (.builtInWideAngleCamera, .back, "Back Wide"),
             (.builtInUltraWideCamera, .back, "Back Ultra Wide"),
@@ -268,6 +272,65 @@ public final class CaptureEngine: NSObject {
                     rotationObservation = nil
                     rotationCoordinator = nil
                 }
+            }
+        }
+    }
+
+    /// Swaps the lens under a running take, keeping the negotiated format.
+    /// One configuration transaction: input out, input in, device format
+    /// re-applied from `lastParams`. Never touches `configurePreview`, so the
+    /// encoder never sees a 720p preview buffer in between (the CONFIG leak
+    /// behind obs-iphone-usb-cam#4). Completion runs on `sessionQueue`.
+    public func switchCamera(to cameraId: UInt8,
+                             completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let cam = cameras.first(where: { $0.id == cameraId }) else {
+            completion(.failure(CaptureError.noSuchCamera(cameraId)))
+            return
+        }
+        guard let params = lastParams, isEncoding else {
+            // Nothing negotiated: there is no format to keep. The caller falls
+            // back to a plain start.
+            completion(.failure(CaptureError.notStreaming))
+            return
+        }
+        var next = params
+        next.cameraId = cam.id
+        lastParams = next
+        previewCameraId = cam.id
+        sessionQueue.async { [self] in
+            guard currentInput?.device !== cam.device else {
+                completion(.success(()))
+                return
+            }
+            let previous = currentInput
+            session.beginConfiguration()
+            do {
+                if let old = previous { session.removeInput(old) }
+                let input = try AVCaptureDeviceInput(device: cam.device)
+                guard session.canAddInput(input) else { throw CaptureError.cannotAddInput }
+                session.addInput(input)
+                currentInput = input
+                resetLeveling()
+                let chosen = try configureDevice(cam.device, next)
+                sourceFormat = chosen
+                activeFormat = levelingActive
+                    ? (next.width, next.height, chosen.2)
+                    : chosen
+                if let c = videoOutput.connection(with: .video) {
+                    c.isVideoMirrored = false
+                }
+                session.commitConfiguration()
+                currentDevice = cam.device
+                DispatchQueue.main.async { [self] in rebuildRotationCoordinator() }
+                completion(.success(()))
+            } catch {
+                // Put the old lens back so the fallback stop/start has a sane
+                // session to work from.
+                if let input = currentInput, input !== previous { session.removeInput(input) }
+                if let old = previous, session.canAddInput(old) { session.addInput(old) }
+                currentInput = previous
+                session.commitConfiguration()
+                completion(.failure(error))
             }
         }
     }

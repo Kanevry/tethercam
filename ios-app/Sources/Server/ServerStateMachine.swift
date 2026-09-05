@@ -28,6 +28,10 @@ public struct ServerStateMachine: Equatable {
         case close(id: UInt64)
         case startCapture(StartParams)
         case stopCapture
+        /// Swap the lens under a running take without leaving the negotiated
+        /// format. Never a stop/start pair: that detour parks the session on the
+        /// 720p preview and a preview buffer leaks a 720p CONFIG to the receiver.
+        case switchCamera(StartParams)
     }
 
     /// No PING for this long means the receiver is gone (spec section 4).
@@ -136,12 +140,13 @@ public struct ServerStateMachine: Equatable {
             guard cameras.contains(where: { $0.id == id }) else { return [] }
             preferredCameraId = id
             guard case let .streaming(current) = phase, current.cameraId != id else { return [] }
-            // Same width/height/fps/bitrate, new lens: the restart rebuilds the
-            // encoder, so a fresh CONFIG reaches the receiver.
+            // Same width/height/fps/bitrate, new lens. The capture side swaps
+            // the input in place; the encoder keeps running unless the new lens
+            // really negotiates other dimensions.
             var next = current
             next.cameraId = id
             phase = .streaming(next)
-            return [.stopCapture, .startCapture(next)]
+            return [.switchCamera(next)]
         }
     }
 

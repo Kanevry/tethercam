@@ -34,3 +34,10 @@
 "diag.residual" = "Residual";
 "diag.yes" = "yes";
 "diag.no" = "no";
+
+/* Camera display names. The wire name in CameraDescriptor stays the English
+   literal (protocol/PROTOCOL.md); these keys are UI only, see CameraDisplayName.swift. */
+"camera.backWide" = "Back Wide";
+"camera.backUltraWide" = "Back Ultra Wide";
+"camera.backTelephoto" = "Back Telephoto";
+"camera.front" = "Front";

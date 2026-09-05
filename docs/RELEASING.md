@@ -231,6 +231,45 @@ Finally, publish: the GitHub release is created as a **draft** so you can read t
 notes before anyone else does. Edit if needed, publish, then enable/announce the
 TestFlight public link.
 
+### 5. Erstlauf-Hinweis verifizieren
+
+Das Plugin schreibt beim ersten OBS-Start ohne TetherCam-Quelle genau eine Hinweiszeile
+ins OBS-Log (`obs-plugin/src/tools_menu.c`, `hint_if_no_source`, ausgeloest von
+`OBS_FRONTEND_EVENT_FINISHED_LOADING`) und merkt sich das pro Szenensammlung in
+`first-run.json` unter `obs_module_config_path`. Der Hinweis erscheint also nur, wenn die
+aktive Szenensammlung keine TetherCam-Quelle enthaelt. Eine Entwicklermaschine, auf der
+immer eine Quelle liegt, sieht ihn nie. So wird er belegt:
+
+```bash
+CFG="$HOME/Library/Application Support/obs-studio/plugin_config/obs-iphone-usb-cam"
+LOGS="$HOME/Library/Application Support/obs-studio/logs"
+
+# 1. Flag zuruecksetzen (OBS vorher beenden).
+mv "$CFG/first-run.json" "$CFG/first-run.json.bak" 2>/dev/null || true
+
+# 2. OBS mit einer Szenensammlung OHNE TetherCam-Quelle starten
+#    (Szenensammlung -> Neu, z. B. "leer"), dann OBS wieder beenden.
+
+# 3. Die Zeile muss im neuesten Log stehen, genau einmal.
+grep -h "no TetherCam source" "$LOGS/$(ls -t "$LOGS" | head -1)"
+#   erwartet: <Zeit>: [obs-iphone-usb-cam] [iphone-cam] no TetherCam source in scene collection 'leer'. Use Tools -> ...
+
+# 4. Das Flag ist gesetzt.
+cat "$CFG/first-run.json"
+#   erwartet: {"leer":true}
+
+# 5. OBS mit derselben Sammlung ein zweites Mal starten und beenden:
+#    das neueste Log darf die Zeile NICHT mehr enthalten.
+grep -c "no TetherCam source" "$LOGS/$(ls -t "$LOGS" | head -1)"
+#   erwartet: 0
+```
+
+Stand 2026-09-05: nicht live belegt. Das installierte Plugin enthaelt den Hinweis-String
+(`strings .../obs-iphone-usb-cam | grep -c "no TetherCam source"` liefert 2), aber kein
+Log unter `logs/` enthaelt die Zeile und `plugin_config/obs-iphone-usb-cam/` existiert
+nicht, weil jede bisherige Sammlung eine TetherCam-Quelle hatte. Das Rezept oben ist vor
+dem naechsten Release einmal durchzulaufen.
+
 ---
 
 ## Rolling back

@@ -118,7 +118,10 @@ To confirm it loaded, open the newest log under `~/Library/Application Support/o
 
 ## Install the iPhone app
 
-Apple does not allow free distribution of iOS apps outside the App Store and TestFlight. There is no `.ipa` to download here and there cannot be one. You build and install the app yourself, which is free with any Apple ID, and the resulting build expires after 7 days unless you have a paid developer account.
+<a id="testflight-link"></a>
+**Easiest way: join the free public TestFlight beta** at [https://testflight.apple.com/join/wmT74Ry8](https://testflight.apple.com/join/wmT74Ry8). Install TestFlight from the App Store first if you do not have it. Build 0.1.0 (2) was submitted to Beta App Review on 2026-09-05; until Apple approves it the link says the beta is not accepting testers, so try again a little later. TestFlight is the only way to get a prebuilt app.
+
+Apple does not allow free distribution of iOS apps outside the App Store and TestFlight, so there is no `.ipa` to download here and there cannot be one. If you would rather not use TestFlight, or want to change the code, build and install the app yourself. That is free with any Apple ID, and the resulting build expires after 7 days unless you have a paid developer account.
 
 ```sh
 brew install xcodegen

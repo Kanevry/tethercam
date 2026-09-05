@@ -170,7 +170,10 @@ final class ServerStateMachineTests: XCTestCase {
         XCTAssertEqual(m.handle(.message(.start(next), nowUs: 1)), [.startCapture(next)])
     }
 
-    func testSelectCameraWhileStreamingRestartsWithSameFormat() {
+    /// obs-iphone-usb-cam#4: a stop/start pair parks the session on the 720p
+    /// preview between the two, and that preview buffer leaks a 720p CONFIG to
+    /// the receiver. The lens swap must be its own action with the format kept.
+    func testSelectCameraWhileStreamingSwitchesLensAndKeepsFormat() {
         var m = makeMachine()
         _ = m.handle(.connectionAccepted(id: 1, nowUs: 0))
         _ = m.handle(.message(.start(start), nowUs: 0))
@@ -178,8 +181,15 @@ final class ServerStateMachineTests: XCTestCase {
         let a = m.handle(.selectCamera(1))
         let switched = StartParams(cameraId: 1, width: start.width, height: start.height,
                                    fps: start.fps, bitrateKbps: start.bitrateKbps)
-        XCTAssertEqual(a, [.stopCapture, .startCapture(switched)],
-                       "encoder must be rebuilt so a fresh CONFIG goes out")
+        XCTAssertEqual(a, [.switchCamera(switched)],
+                       "no stopCapture: the session must never drop to preview mid-take")
+        XCTAssertFalse(a.contains(.stopCapture))
+        guard case let .switchCamera(p)? = a.first else { return XCTFail("\(a)") }
+        XCTAssertEqual(p.cameraId, 1)
+        XCTAssertEqual(p.width, start.width)
+        XCTAssertEqual(p.height, start.height)
+        XCTAssertEqual(p.fps, start.fps)
+        XCTAssertEqual(p.bitrateKbps, start.bitrateKbps)
         XCTAssertEqual(m.phase, .streaming(switched))
 
         // Picking the lens that is already live is a no-op — no stream hiccup.
