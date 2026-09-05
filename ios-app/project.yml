@@ -4,6 +4,15 @@ options:
   deploymentTarget:
     iOS: "17.0"
   createIntermediateGroups: true
+  # xcodegen 2.46 / XcodeProj always writes objectVersion = 77 (its
+  # preferredProjectObjectVersion); `options.objectVersion` and
+  # `options.compatibilityVersion` are silently ignored — verified by generating with
+  # both set and grepping the result. Format 77 was introduced by Xcode 16.0, so the
+  # "future Xcode project file format (77)" failure on the CI runner was an Xcode-15
+  # runner (macos-14 / SDK 14.5), not a spec defect. The workflows therefore run on
+  # macos-15 and select an Xcode 16.x or newer. xcodeVersion below only pins
+  # LastUpgradeCheck (verified: 1430 -> 1600) and documents that intent in the project.
+  xcodeVersion: "1600"
 
 targets:
   UsbCam:

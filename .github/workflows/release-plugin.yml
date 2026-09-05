@@ -27,12 +27,29 @@ env:
 
 jobs:
   build:
-    # macos-14 is the Apple-silicon runner image, free for public repositories.
-    runs-on: macos-14
+    # macos-15 is the Apple-silicon runner image, free for public repositories.
+    # macos-14 ships the 14.5 SDK, which OBS refuses to build against.
+    runs-on: macos-15
     timeout-minutes: 60
 
     steps:
       - uses: actions/checkout@v4
+
+      # OBS requires the macOS 15.0 SDK (Xcode 16.0+); macos-14 ships SDK 14.5 and
+      # fails with "Your macOS SDK version (14.5) is too low". Xcode 16 also introduced
+      # the pbxproj objectVersion 77 that xcodegen emits, so this same select fixes the
+      # "future Xcode project file format (77)" error. Newest is picked at run time
+      # rather than pinned, so a runner-image refresh cannot break the job.
+      - name: Select the newest Xcode (16.0 or newer)
+        run: |
+          set -euo pipefail
+          find /Applications -maxdepth 1 -name 'Xcode*.app'
+          newest="$(find /Applications -maxdepth 1 -name 'Xcode_*.app' | sort -V | tail -1)"
+          if [ -n "$newest" ]; then
+            sudo xcode-select -s "$newest"
+          fi
+          xcodebuild -version
+          xcrun --show-sdk-version
 
       - name: Resolve version
         id: version
@@ -143,8 +160,8 @@ jobs:
           # obs-deps here (~50 s cold). The key is the buildspec hash, so a dependency
           # bump invalidates the cache automatically.
           path: obs-plugin/.deps
-          key: obs-deps-macos-14-${{ hashFiles('obs-plugin/buildspec.json') }}
-          restore-keys: obs-deps-macos-14-
+          key: obs-deps-macos-15-${{ hashFiles('obs-plugin/buildspec.json') }}
+          restore-keys: obs-deps-macos-15-
 
       - name: Configure
         working-directory: obs-plugin

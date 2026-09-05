@@ -39,22 +39,27 @@ env:
 
 jobs:
   testflight:
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 60
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select Xcode 16 or newer
+      # Xcode 16 introduced the pbxproj objectVersion 77 that xcodegen 2.46 emits, so
+      # an Xcode-15 runner fails with "future Xcode project file format (77)".
+      # method=app-store-connect + destination=upload in ExportOptions.plist also need
+      # Xcode 15.3+. Newest is picked at run time
+      # rather than pinned, so a runner-image refresh cannot break the job.
+      - name: Select the newest Xcode (16.0 or newer)
         run: |
           set -euo pipefail
-          ls -d /Applications/Xcode*.app 2>/dev/null || true
-          # method=app-store-connect and destination=upload in ExportOptions.plist
-          # need Xcode 15.3+; pin to 16 so the behaviour is not image-dependent.
-          if [ -d /Applications/Xcode_16.app ]; then
-            sudo xcode-select -s /Applications/Xcode_16.app
+          find /Applications -maxdepth 1 -name 'Xcode*.app'
+          newest="$(find /Applications -maxdepth 1 -name 'Xcode_*.app' | sort -V | tail -1)"
+          if [ -n "$newest" ]; then
+            sudo xcode-select -s "$newest"
           fi
           xcodebuild -version
+          xcrun --show-sdk-version
 
       - name: Resolve version
         id: version

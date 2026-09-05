@@ -27,6 +27,7 @@ enum {
     IUCM_MSG_HELLO  = 0x01,
     IUCM_MSG_START  = 0x02,
     IUCM_MSG_STOP   = 0x03,
+    IUCM_MSG_STATS  = 0x12,
     IUCM_MSG_CONFIG = 0x10,
     IUCM_MSG_VIDEO  = 0x11,
     IUCM_MSG_PING   = 0x20,
@@ -126,6 +127,27 @@ struct iucm_config {
     const uint8_t *hvcc; /* points into the payload */
 };
 
+/* STATS payload, PROTOCOL.md 4.8. Fixed-point on the wire; the _x10 / _x1000
+ * fields are divided by the consumer, never here, so this stays integer-only. */
+struct iucm_stats {
+    int16_t  continuous_angle_x10;
+    uint16_t sector;
+    int16_t  residual_x10;
+    uint16_t gravity_m_x1000;
+    uint16_t leveler_ms_x10;
+    uint16_t dropped_frames;
+    uint16_t source_width, source_height;
+    uint16_t output_width, output_height;
+    uint8_t  flags;
+    uint8_t  camera_id;
+};
+
+#define IUCM_STATS_PAYLOAD_SIZE   22
+#define IUCM_STATS_FLAG_AUTO      0x01
+#define IUCM_STATS_FLAG_LEVEL     0x02
+#define IUCM_STATS_FLAG_OVERSAMP  0x04
+#define IUCM_STATS_FLAG_FLAT_HOLD 0x08
+
 struct iucm_error {
     uint16_t code;
     uint16_t text_len; /* bytes on the wire, may exceed the copied text */
@@ -154,6 +176,7 @@ int iucm_parse_hello(const uint8_t *payload, uint32_t len, struct iucm_hello *ou
 int iucm_parse_start(const uint8_t *payload, uint32_t len, struct iucm_start *out);
 int iucm_parse_config(const uint8_t *payload, uint32_t len, struct iucm_config *out);
 int iucm_parse_error(const uint8_t *payload, uint32_t len, struct iucm_error *out);
+int iucm_parse_stats(const uint8_t *payload, uint32_t len, struct iucm_stats *out);
 /* PING and PONG share this. */
 int iucm_parse_timestamp(const uint8_t *payload, uint32_t len, uint64_t *out_us);
 

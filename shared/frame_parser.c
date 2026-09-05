@@ -464,6 +464,32 @@ int iucm_parse_timestamp(const uint8_t *payload, uint32_t len, uint64_t *out_us)
     return cur_u64(&c, out_us);
 }
 
+int iucm_parse_stats(const uint8_t *payload, uint32_t len, struct iucm_stats *out) {
+    struct cur c;
+    uint16_t v;
+    int rc;
+    if (!payload || !out) return IUCM_ERR_BADARG;
+    if (len < IUCM_STATS_PAYLOAD_SIZE) return IUCM_ERR_TRUNCATED;
+    c.p = payload; c.len = len; c.off = 0;
+    /* Signed fields travel as two's-complement u16; convert once, here. */
+    if ((rc = cur_u16(&c, &v)) != IUCM_OK) return rc;
+    out->continuous_angle_x10 = (int16_t)v;
+    if ((rc = cur_u16(&c, &out->sector)) != IUCM_OK) return rc;
+    if ((rc = cur_u16(&c, &v)) != IUCM_OK) return rc;
+    out->residual_x10 = (int16_t)v;
+    if ((rc = cur_u16(&c, &out->gravity_m_x1000)) != IUCM_OK) return rc;
+    if ((rc = cur_u16(&c, &out->leveler_ms_x10)) != IUCM_OK) return rc;
+    if ((rc = cur_u16(&c, &out->dropped_frames)) != IUCM_OK) return rc;
+    if ((rc = cur_u16(&c, &out->source_width)) != IUCM_OK) return rc;
+    if ((rc = cur_u16(&c, &out->source_height)) != IUCM_OK) return rc;
+    if ((rc = cur_u16(&c, &out->output_width)) != IUCM_OK) return rc;
+    if ((rc = cur_u16(&c, &out->output_height)) != IUCM_OK) return rc;
+    if ((rc = cur_u8(&c, &out->flags)) != IUCM_OK) return rc;
+    if ((rc = cur_u8(&c, &out->camera_id)) != IUCM_OK) return rc;
+    /* Trailing bytes are tolerated on purpose: a future 1.x may append fields. */
+    return IUCM_OK;
+}
+
 int iucm_video_iter_init(struct iucm_video_iter *it, const uint8_t *payload, uint32_t len) {
     if (!it || !payload) return IUCM_ERR_BADARG;
     if (len < 8) return IUCM_ERR_TRUNCATED;

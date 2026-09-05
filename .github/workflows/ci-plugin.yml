@@ -39,19 +39,35 @@ jobs:
           ctest --test-dir shared/build-asan --output-on-failure
 
   macos:
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 45
     env:
       PLUGIN_NAME: obs-iphone-usb-cam
     steps:
       - uses: actions/checkout@v4
 
+      # OBS requires the macOS 15.0 SDK (Xcode 16.0+); macos-14 ships SDK 14.5 and
+      # fails with "Your macOS SDK version (14.5) is too low". Xcode 16 also introduced
+      # the pbxproj objectVersion 77 that xcodegen emits, so this same select fixes the
+      # "future Xcode project file format (77)" error. Newest is picked at run time
+      # rather than pinned, so a runner-image refresh cannot break the job.
+      - name: Select the newest Xcode (16.0 or newer)
+        run: |
+          set -euo pipefail
+          find /Applications -maxdepth 1 -name 'Xcode*.app'
+          newest="$(find /Applications -maxdepth 1 -name 'Xcode_*.app' | sort -V | tail -1)"
+          if [ -n "$newest" ]; then
+            sudo xcode-select -s "$newest"
+          fi
+          xcodebuild -version
+          xcrun --show-sdk-version
+
       - name: Cache obs-deps
         uses: actions/cache@v4
         with:
           path: obs-plugin/.deps
-          key: obs-deps-macos-14-${{ hashFiles('obs-plugin/buildspec.json') }}
-          restore-keys: obs-deps-macos-14-
+          key: obs-deps-macos-15-${{ hashFiles('obs-plugin/buildspec.json') }}
+          restore-keys: obs-deps-macos-15-
 
       - name: Build the plugin (ad-hoc signed)
         working-directory: obs-plugin
@@ -106,10 +122,26 @@ jobs:
         run: bash tools/integration.sh
 
   ios:
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+
+      # xcodegen 2.46 emits pbxproj objectVersion 77, which only Xcode 16.0+ can read;
+      # the macos-14 image (Xcode 15.x) failed with "the project 'UsbCam' cannot be
+      # opened because it is in a future Xcode project file format (77)". Newest is
+      # picked at run time rather than pinned, so an image refresh cannot break it.
+      - name: Select the newest Xcode (16.0 or newer)
+        run: |
+          set -euo pipefail
+          find /Applications -maxdepth 1 -name 'Xcode*.app'
+          newest="$(find /Applications -maxdepth 1 -name 'Xcode_*.app' | sort -V | tail -1)"
+          if [ -n "$newest" ]; then
+            sudo xcode-select -s "$newest"
+          fi
+          xcodebuild -version
+          xcrun --show-sdk-version
+
       - name: Install xcodegen
         run: brew install xcodegen
       - name: Generate the Xcode project
@@ -118,13 +150,24 @@ jobs:
       - name: Unit tests on the simulator
         working-directory: ios-app
         # Simulator tests need no signing; CODE_SIGNING_ALLOWED=NO keeps the job free
-        # of provisioning-profile requirements so forks can run it. The simulator name
-        # is not pinned to a model: runner images retire device names between updates,
-        # and 'platform=iOS Simulator' alone lets xcodebuild pick an available one.
+        # of provisioning-profile requirements so forks can run it. The device name is
+        # resolved at run time from the runner's own list instead of being pinned:
+        # runner images retire model names between updates ('iPhone 15' is gone from
+        # some macos-15 images), and a stale name fails the job with an unhelpful
+        # "Unable to find a device matching the provided destination specifier".
         run: |
           set -euo pipefail
+          xcrun simctl list devices available
+          # Every device line is "  <name> (<UDID>) (<state>)"; take the name only.
+          # Prefer an iPhone, fall back to whatever the image actually has.
+          names="$(xcrun simctl list devices available \
+            | sed -n 's/^[[:space:]]*\(.*\) ([0-9A-F-]\{36\}) (.*/\1/p')"
+          device="$(printf '%s\n' "$names" | grep -m1 '^iPhone' || true)"
+          [ -n "$device" ] || device="$(printf '%s\n' "$names" | head -1)"
+          test -n "$device" || { echo "no available iOS simulator" >&2; exit 1; }
+          echo "Using simulator: $device"
           xcodebuild test \
             -project UsbCam.xcodeproj \
             -scheme UsbCam \
-            -destination 'platform=iOS Simulator,OS=latest,name=iPhone 15' \
+            -destination "platform=iOS Simulator,name=$device" \
             CODE_SIGNING_ALLOWED=NO

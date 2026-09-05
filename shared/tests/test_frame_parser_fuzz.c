@@ -19,6 +19,8 @@
 #include "test_util.h"
 
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 
 #define FUZZ_ITERATIONS 2000u
 #define FUZZ_MAX_STREAM (64u * 1024u)
@@ -206,15 +208,61 @@ static void test_resync_on_repeated_magic_prefix(void) {
     f.buf_hi = pbuf + sizeof(pbuf);
     CHECK_EQ_INT(iucm_parser_init(&p, pbuf, sizeof(pbuf)), IUCM_OK);
     for (i = 0; i < sizeof(noise); i++) noise[i] = IUCM_MAGIC0;
-    for (i = 0; i < sizeof(noise); i += 7)
-        CHECK_EQ_INT(iucm_parser_feed(&p, noise + i, 7, fuzz_cb, &f), IUCM_OK);
+    /* 8192 is not a multiple of 7, so the last chunk is short. Clamping is the
+     * harness's job: iucm_parser_feed() reads exactly the n bytes it is promised. */
+    for (i = 0; i < sizeof(noise); i += 7) {
+        size_t chunk = sizeof(noise) - i < 7 ? sizeof(noise) - i : 7;
+        CHECK_EQ_INT(iucm_parser_feed(&p, noise + i, chunk, fuzz_cb, &f), IUCM_OK);
+    }
     CHECK_EQ_INT(f.messages, 0);
     CHECK_EQ_INT(f.bad_length, 0);
     CHECK(p.len <= 3); /* only a possible partial magic may be retained */
 }
 
+/* Same adversarial stream, but the input lives in an exactly-sized heap block so
+ * that a read of even one byte past the chunk end lands on a guard page.
+ *
+ * Regression guard for the first CI ASan finding (Kanevry/tethercam run
+ * 33969653856): the harness above claimed 7 bytes for a 2-byte tail, and ASan
+ * charged the resulting overread to the memcpy inside iucm_parser_feed(). The
+ * parser was innocent; the caller lied about n. This test pins the contract from
+ * the outside — feed a ragged chunking whose tail is short, and make every chunk
+ * end exactly at the end of a heap allocation for the final feed.
+ *
+ * Reproduce the pre-fix crash locally (macOS, ASan runtime unusable here):
+ *   DYLD_INSERT_LIBRARIES=/usr/lib/libgmalloc.dylib MALLOC_STRICT_SIZE=1 \
+ *     ./test_frame_parser_fuzz
+ * On Linux CI the ASan build covers it. */
+static void test_feed_never_reads_past_chunk_end(void) {
+    static const size_t chunk_sizes[] = {7, 1, 13, 3, 64, 2, 5};
+    static uint8_t      pbuf[PARSER_CAP];
+    struct iucm_parser  p;
+    struct fuzz_ctx     f;
+    size_t              n = 8192, off = 0, k = 0;
+    uint8_t            *noise = (uint8_t *)malloc(n); /* exact size: no slack after */
+
+    CHECK(noise != NULL);
+    memset(noise, IUCM_MAGIC0, n);
+    memset(&f, 0, sizeof(f));
+    f.buf_lo = pbuf;
+    f.buf_hi = pbuf + sizeof(pbuf);
+    CHECK_EQ_INT(iucm_parser_init(&p, pbuf, sizeof(pbuf)), IUCM_OK);
+
+    while (off < n) {
+        size_t want  = chunk_sizes[k++ % (sizeof(chunk_sizes) / sizeof(chunk_sizes[0]))];
+        size_t chunk = n - off < want ? n - off : want;
+        CHECK_EQ_INT(iucm_parser_feed(&p, noise + off, chunk, fuzz_cb, &f), IUCM_OK);
+        off += chunk;
+    }
+    CHECK_EQ_INT(f.messages, 0);
+    CHECK_EQ_INT(f.bad_length, 0);
+    CHECK(p.len <= 3); /* partial magic is carried in the parser's own buffer */
+    free(noise);
+}
+
 int main(void) {
     RUN(test_parser_survives_random_streams);
     RUN(test_resync_on_repeated_magic_prefix);
+    RUN(test_feed_never_reads_past_chunk_end);
     return T_SUMMARY();
 }

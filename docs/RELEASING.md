@@ -182,3 +182,40 @@ There is no unpublish. If a release is broken:
    TestFlight → the build → Expire. Testers stop being able to install it.
 3. Ship `0.1.1` rather than re-tagging `0.1.0`. A moved tag desynchronises the two
    remotes and invalidates any checksum a user already recorded.
+
+## CI-Umgebung: warum ASan nur auf Linux laeuft
+
+Der `shared-tests`-Job in `.github/workflows/ci-plugin.yml` baut den C-Kern zweimal:
+einmal normal und einmal mit `-DIUCM_SANITIZE=ON` (Default-Liste `address,undefined`).
+Beide laufen auf `ubuntu-latest`, und der Sanitizer-Lauf ist ein **hartes Gate** — kein
+`continue-on-error`. Das ist kein Zufall: dieser Lauf hat beim allerersten CI-Durchgang
+(Kanevry/tethercam, Run 33969653856) einen Overread gefunden, den die Mac-Suite nicht
+sehen konnte.
+
+Lokal auf macOS ist ASan derzeit nicht benutzbar. Die Apple-clang-17-ASan-Runtime
+verklemmt sich auf macOS 26 (Darwin 25.x) waehrend ihrer eigenen Initialisierung: das
+Shadow-Memory-Setup re-entriert `libsystem_malloc` und dreht in
+`StaticSpinMutex::LockSlow`, noch vor `main()`. Jedes `-fsanitize=address`-Binary haengt
+dort. Deshalb wird lokal nur UBSan gebaut:
+
+```bash
+cmake -S shared -B shared/build-ubsan -DIUCM_SANITIZE=ON -DIUCM_SANITIZE_LIST=undefined
+cmake --build shared/build-ubsan && ctest --test-dir shared/build-ubsan --output-on-failure
+```
+
+Fuer Speicherfehler ist auf dem Mac Guard Malloc der Ersatz. Es legt jede
+`malloc`-Allokation an eine Guard-Page, ein Byte darueber hinaus faultet sofort:
+
+```bash
+DYLD_INSERT_LIBRARIES=/usr/lib/libgmalloc.dylib MALLOC_STRICT_SIZE=1 \
+  ./shared/build-plain/test_frame_parser_fuzz
+```
+
+Damit das greift, muessen Testeingaben auf dem Heap und exakt bemessen liegen — ein
+`static uint8_t noise[8192]` hat keine Guard-Page dahinter.
+`test_feed_never_reads_past_chunk_end` in `shared/tests/test_frame_parser_fuzz.c` ist
+genau dafuer gebaut.
+
+**Konsequenz fuer Releases:** ein roter `shared-tests`-Job blockiert. Nicht mergen und
+nicht taggen, solange er rot ist, auch wenn die macOS-Jobs gruen sind — die koennen
+diese Fehlerklasse hier nicht sehen.
