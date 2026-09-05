@@ -268,6 +268,103 @@ static void test_reader_rejects_garbage(void) {
     CHECK(strlen(usbmux_strerror(USBMUX_ERR_TIMEOUT)) > 0);
 }
 
+
+/* ---- fuzz: mutated fixtures -------------------------------------------- */
+/* The reader walks a caller-supplied (xml, len) slice that is NOT required to be
+ * NUL-terminated, so every mutated case is copied into an exact-size heap block:
+ * under ASan a single byte read past `len` aborts the run. Mutations are bit
+ * flips, byte splices and truncation — the three ways a framed plist actually
+ * arrives damaged over a socket. Deterministic seed, 2000 iterations. */
+
+#define PLIST_FUZZ_ITERATIONS 2000u
+
+static uint64_t pf_state = 0xDEADBEEFCAFEBABEull;
+
+static uint64_t pf_rnd(void) {
+    uint64_t x = pf_state;
+    x ^= x >> 12;
+    x ^= x << 25;
+    x ^= x >> 27;
+    pf_state = x;
+    return x * 0x2545F4914F6CDD1Dull;
+}
+static size_t pf_below(size_t n) { return n ? (size_t)(pf_rnd() % n) : 0u; }
+
+static const char *const PF_FIXTURES[] = {
+    "listdevices-resp.plist", "listen-resp-1-2.plist", "listen-resp-1-3.plist",
+    "connect-7878-resp.plist", "badversion-2-resp.plist", "listdevices-req.plist"};
+
+static void test_plist_reader_fuzz_mutated_fixtures(void) {
+    unsigned char *fixtures[sizeof(PF_FIXTURES) / sizeof(PF_FIXTURES[0])];
+    size_t         fixture_lens[sizeof(PF_FIXTURES) / sizeof(PF_FIXTURES[0])];
+    const size_t   nfix = sizeof(PF_FIXTURES) / sizeof(PF_FIXTURES[0]);
+    size_t         i;
+    unsigned       iter, ok_results = 0, ok_types = 0;
+
+    for (i = 0; i < nfix; i++) fixtures[i] = t_read_file(PF_FIXTURES[i], &fixture_lens[i]);
+
+    for (iter = 0; iter < PLIST_FUZZ_ITERATIONS; iter++) {
+        size_t         pick = pf_below(nfix);
+        size_t         len  = fixture_lens[pick];
+        unsigned char *copy;
+        unsigned       mutations;
+
+        if (len == 0) continue;
+        /* truncation, including the empty slice */
+        if ((pf_rnd() & 3u) == 0u) len = pf_below(len + 1);
+
+        copy = (unsigned char *)malloc(len ? len : 1u); /* exact size on purpose */
+        CHECK(copy != NULL);
+        if (!copy) break;
+        memcpy(copy, fixtures[pick], len);
+
+        mutations = (unsigned)pf_below(9);
+        for (i = 0; i < mutations && len > 0; i++) {
+            size_t at = pf_below(len);
+            if (pf_rnd() & 1u)
+                copy[at] ^= (unsigned char)(1u << (pf_rnd() % 8u)); /* bit flip */
+            else
+                copy[at] = (unsigned char)(pf_rnd() & 0xFFu); /* byte splice */
+        }
+
+        {
+            char                 type[64];
+            uint32_t             number = 0;
+            struct usbmux_device devs[8];
+            size_t               count = 0xAAAA;
+            struct usbmux_event  ev;
+            int                  rc;
+
+            /* Only "does not crash / does not read out of bounds" is asserted:
+             * a mutated document may legitimately parse, fail or be filtered. */
+            rc = usbmux_plist_message_type((const char *)copy, len, type, sizeof(type));
+            if (rc == USBMUX_OK) ok_types++;
+
+            rc = usbmux_plist_decode_result((const char *)copy, len, &number);
+            if (rc == USBMUX_OK) ok_results++;
+
+            rc = usbmux_plist_decode_devicelist((const char *)copy, len, devs,
+                                                sizeof(devs) / sizeof(devs[0]), &count);
+            if (rc == USBMUX_OK) CHECK(count <= sizeof(devs) / sizeof(devs[0]));
+
+            memset(&ev, 0, sizeof(ev));
+            rc = usbmux_plist_decode_event((const char *)copy, len, &ev);
+            if (rc == USBMUX_OK)
+                CHECK(ev.type == USBMUX_EVENT_NONE || ev.type == USBMUX_EVENT_ATTACHED ||
+                      ev.type == USBMUX_EVENT_DETACHED);
+        }
+        free(copy);
+    }
+
+    printf("  plist fuzz: %u iterations, %u parsed as Result, %u yielded a MessageType\n",
+           (unsigned)PLIST_FUZZ_ITERATIONS, ok_results, ok_types);
+    /* Unmutated documents must still survive the same code path, otherwise the
+     * loop above could be passing because nothing ever parses. */
+    CHECK(ok_types > 0);
+
+    for (i = 0; i < nfix; i++) free(fixtures[i]);
+}
+
 int main(void) {
     RUN(test_header_layout);
     RUN(test_listen_events_carry_tag_zero);
@@ -282,5 +379,6 @@ int main(void) {
     RUN(test_decode_synthetic_detached);
     RUN(test_reader_tolerances);
     RUN(test_reader_rejects_garbage);
+    RUN(test_plist_reader_fuzz_mutated_fixtures);
     return T_SUMMARY();
 }

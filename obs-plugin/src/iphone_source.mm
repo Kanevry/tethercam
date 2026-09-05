@@ -37,6 +37,7 @@ extern "C" {
 #include <poll.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 #include <atomic>
@@ -71,6 +72,14 @@ struct iphone_source {
 	std::thread worker;
 	std::atomic<bool> running{false};
 	std::atomic<bool> restart{false};
+
+	/* Self-pipe. Created in create() before the worker starts, closed in
+	 * destroy() after the join. update()/destroy() set their flag and write one
+	 * byte here; the worker has the read end in its poll() set and wakes up at
+	 * once. Only the worker ever closes the data fd (fd, below), so the UI
+	 * thread can never touch an fd number the worker has already recycled. */
+	int wake_r = -1;
+	int wake_w = -1;
 
 	/* settings snapshot, guarded by cfg_mutex */
 	std::mutex cfg_mutex;
@@ -115,20 +124,41 @@ uint64_t now_us(void)
 		.count();
 }
 
-bool send_all(int fd, const uint8_t *buf, size_t len)
+/* Worker thread only. The socket carries SO_SNDTIMEO (see worker_main), so a
+ * stalled peer surfaces as EAGAIN instead of blocking forever — that is what
+ * lets us drop the old shutdown()-from-the-UI-thread wakeup. */
+bool send_all(iphone_source *s, const uint8_t *buf, size_t len)
 {
 	size_t off = 0;
 	while (off < len) {
-		ssize_t n = send(fd, buf + off, len - off, 0);
+		ssize_t n = send(s->fd, buf + off, len - off, 0);
 		if (n > 0) {
 			off += (size_t) n;
 			continue;
 		}
-		if (n < 0 && (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK))
+		if (n < 0 && (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK)) {
+			if (!s->running.load() || s->restart.load())
+				return false;
 			continue;
+		}
 		return false;
 	}
 	return true;
+}
+
+/* Callable from any thread. Writing to a full pipe is not possible in practice
+ * (the worker drains it) and would only mean "already woken", so EAGAIN on the
+ * non-blocking write end is ignored. */
+void wake_worker(iphone_source *s)
+{
+	if (s->wake_w < 0)
+		return;
+	const uint8_t b = 1;
+	ssize_t n;
+	do {
+		n = write(s->wake_w, &b, 1);
+	} while (n < 0 && errno == EINTR);
+	(void) n;
 }
 
 /* --- connection setup ------------------------------------------------- */
@@ -267,7 +297,7 @@ int on_message(void *ctx, const struct iucm_msg *msg)
 				(unsigned) IUCM_VERSION_MAJOR(hello.version));
 			if (iucm_encode_error(out, sizeof(out), IUCM_ERRCODE_VERSION_UNSUPPORTED, "major", &written) ==
 			    IUCM_OK)
-				send_all(s->fd, out, written);
+				send_all(s, out, written);
 			s->fatal = true;
 			return 1;
 		}
@@ -288,7 +318,7 @@ int on_message(void *ctx, const struct iucm_msg *msg)
 			start.bitrate_kbps = (uint32_t) s->bitrate_kbps;
 		}
 		if (iucm_encode_start(out, sizeof(out), &start, &written) != IUCM_OK ||
-		    !send_all(s->fd, out, written)) {
+		    !send_all(s, out, written)) {
 			obs_log(LOG_WARNING, "[iphone-cam] sending START failed");
 			return 1;
 		}
@@ -350,7 +380,7 @@ int on_message(void *ctx, const struct iucm_msg *msg)
 		uint64_t ts = 0;
 		if (iucm_parse_timestamp(msg->payload, msg->length, &ts) == IUCM_OK &&
 		    iucm_encode_pong(out, sizeof(out), ts, &written) == IUCM_OK)
-			send_all(s->fd, out, written);
+			send_all(s, out, written);
 		return 0;
 	}
 	case IUCM_MSG_ERROR: {
@@ -400,15 +430,25 @@ void run_session(iphone_source *s, std::vector<uint8_t> &parse_buf)
 	s->frames_since_report = 0;
 
 	while (s->running.load() && !s->restart.load() && !s->fatal) {
-		struct pollfd pfd = {s->fd, POLLIN, 0};
-		int pr = poll(&pfd, 1, 200);
+		struct pollfd pfd[2];
+		pfd[0] = {s->fd, POLLIN, 0};
+		pfd[1] = {s->wake_r, POLLIN, 0}; /* -1 is ignored by poll() */
+		int pr = poll(pfd, 2, 200);
 		if (pr < 0) {
 			if (errno == EINTR)
 				continue;
 			obs_log(LOG_WARNING, "[iphone-cam] poll failed: %d", errno);
 			return;
 		}
-		if (pr > 0 && (pfd.revents & (POLLIN | POLLHUP | POLLERR))) {
+		if (pr > 0 && (pfd[1].revents & POLLIN)) {
+			/* Stop or reconfigure requested. Drain the pipe and re-test the
+			 * loop condition; the caller closes the socket. */
+			uint8_t drain[64];
+			while (read(s->wake_r, drain, sizeof(drain)) > 0)
+				;
+			continue;
+		}
+		if (pr > 0 && (pfd[0].revents & (POLLIN | POLLHUP | POLLERR))) {
 			ssize_t n = recv(s->fd, rx, sizeof(rx), 0);
 			if (n == 0) {
 				obs_log(LOG_INFO, "[iphone-cam] peer closed the connection");
@@ -438,7 +478,7 @@ void run_session(iphone_source *s, std::vector<uint8_t> &parse_buf)
 				return;
 			}
 			if (iucm_encode_ping(out, sizeof(out), now_us(), &written) == IUCM_OK &&
-			    !send_all(s->fd, out, written)) {
+			    !send_all(s, out, written)) {
 				obs_log(LOG_WARNING, "[iphone-cam] sending PING failed");
 				return;
 			}
@@ -494,6 +534,10 @@ void worker_main(iphone_source *s)
 
 		int one = 1;
 		setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
+		/* Bounds a blocking send(): without it a wedged peer would pin the
+		 * worker inside send_all() where no flag can reach it. */
+		struct timeval sndto = {0, 200 * 1000};
+		setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &sndto, sizeof(sndto));
 		s->fd = fd;
 		backoff_ms = 1000;
 
@@ -551,6 +595,21 @@ void *source_create(obs_data_t *settings, obs_source_t *source)
 	video_format_get_parameters_for_format(VIDEO_CS_709, VIDEO_RANGE_PARTIAL, VIDEO_FORMAT_NV12, s->color_matrix,
 					       s->color_min, s->color_max);
 	read_settings(s, settings);
+
+	int wake[2] = {-1, -1};
+	if (pipe(wake) == 0) {
+		for (int i = 0; i < 2; i++) {
+			fcntl(wake[i], F_SETFD, FD_CLOEXEC);
+			fcntl(wake[i], F_SETFL, fcntl(wake[i], F_GETFL, 0) | O_NONBLOCK);
+		}
+		s->wake_r = wake[0];
+		s->wake_w = wake[1];
+	} else {
+		/* Degraded but correct: the worker still notices the flags within the
+		 * 200 ms poll timeout. */
+		obs_log(LOG_WARNING, "[iphone-cam] pipe() failed: %d — falling back to poll timeout", errno);
+	}
+
 	s->running.store(true);
 	s->worker = std::thread(worker_main, s);
 	obs_log(LOG_INFO, "[iphone-cam] source created");
@@ -562,11 +621,19 @@ void source_destroy(void *data)
 	auto *s = static_cast<iphone_source *>(data);
 	s->running.store(false);
 	if (s->worker.joinable()) {
-		/* The worker polls with a 200 ms timeout, so it observes the flag
-		 * quickly; shutdown the socket to break out of a blocking send. */
-		if (s->fd >= 0)
-			shutdown(s->fd, SHUT_RDWR);
+		/* Never touch s->fd from here: the worker may already have closed it
+		 * and the number may belong to somebody else. Poke the self-pipe
+		 * instead — the worker returns from poll() immediately. */
+		wake_worker(s);
 		s->worker.join();
+	}
+	if (s->wake_w >= 0) {
+		close(s->wake_w);
+		s->wake_w = -1;
+	}
+	if (s->wake_r >= 0) {
+		close(s->wake_r);
+		s->wake_r = -1;
 	}
 	obs_log(LOG_INFO, "[iphone-cam] source destroyed");
 	delete s;
@@ -577,8 +644,7 @@ void source_update(void *data, obs_data_t *settings)
 	auto *s = static_cast<iphone_source *>(data);
 	read_settings(s, settings);
 	s->restart.store(true);
-	if (s->fd >= 0)
-		shutdown(s->fd, SHUT_RD);
+	wake_worker(s); /* see source_destroy: s->fd is the worker's, not ours */
 	obs_log(LOG_INFO, "[iphone-cam] settings updated — reconnecting");
 }
 
