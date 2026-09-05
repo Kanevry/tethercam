@@ -1,4 +1,4 @@
-# CLAUDE.md — TetherCam (Repo obs-iphone-usb-cam)
+# CLAUDE.md: TetherCam (Repo obs-iphone-usb-cam)
 
 ## Was das ist
 
@@ -14,9 +14,9 @@ verbindet sich, decodiert per VideoToolbox und liefert NV12-Frames als Async-Sou
 | `protocol/PROTOCOL.md` | **Der Vertrag.** Framing, Nachrichtentypen, Fehlercodes | MIT |
 | `shared/` | C-Bausteine beider Seiten: `frame_parser`, `usbmux` (+ ctest) | MIT |
 | `ios-app/` | Swift/SwiftUI-App `TetherCam` (Capture, HEVC-Encoder, Server) | MIT |
-| `obs-plugin/` | OBS-Source `TetherCam (iPhone USB Camera)` (C/ObjC++, CMake) | GPL-2.0-or-later |
+| `obs-plugin/` | OBS-Source `TetherCam (iPhone via USB)` (C/ObjC++, CMake) | GPL-2.0-or-later |
 | `tools/` | Swift-Paket: `usbcam-sim`, `usbcam-recv`, `integration.sh` | MIT |
-| `docs/superpowers/specs/` | Design-Spec; Korrekturen datiert anfuegen, nichts umschreiben | — |
+| `docs/superpowers/specs/` | Design-Spec; Korrekturen datiert anfuegen, nichts umschreiben | n/a |
 
 ## Build und Test
 
@@ -73,11 +73,11 @@ erst beim naechsten Start. **Nie einen laufenden OBS-Prozess beenden.**
 
 > **Parity-exempt section.** This H2 is intentionally placed outside the `## Session Config` block so that the `claude-md-drift-check` Check-6 parity scanner (which extracts only column-0 keys inside the `## Session Config` block) does not flag repos that have not yet adopted this feature. Issue #679 / #681.
 
-Opt-in configuration for the cross-repo free-repo dispatcher autonomy gate (Epic #673). The default is `off` — fail-closed. The effective `autonomy` resolves with host-local precedence `SO_DISPATCHER_AUTONOMY` env > `owner.yaml` `dispatcher.autonomy` > committed > `off` (#653 pattern).
+Opt-in configuration for the cross-repo free-repo dispatcher autonomy gate (Epic #673). The default is `off`, fail-closed. The effective `autonomy` resolves with host-local precedence `SO_DISPATCHER_AUTONOMY` env > `owner.yaml` `dispatcher.autonomy` > committed > `off` (#653 pattern).
 
 ```yaml
 dispatcher-autonomy:
-  autonomy: off            # off | advisory | autonomous-gated — default off (fail-closed)
+  autonomy: off            # off | advisory | autonomous-gated: default off (fail-closed)
   confidence-floor: 0.5    # float 0.0..1.0
 ```
 

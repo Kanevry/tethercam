@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# install.sh — install the TetherCam OBS plugin from the latest GitHub release.
+# install.sh: install the TetherCam OBS plugin from the latest GitHub release.
 #
 #   curl -fsSL https://raw.githubusercontent.com/Kanevry/tethercam/main/scripts/install.sh | bash
 #
@@ -64,7 +64,7 @@ info "downloading $ASSET ($VERSION)"
 curl -fsSL --proto '=https' --tlsv1.2 -o "$WORK/$ASSET" "$BASE_URL/$ASSET" \
     || die "download failed: $BASE_URL/$ASSET"
 curl -fsSL --proto '=https' --tlsv1.2 -o "$WORK/$ASSET.sha256" "$BASE_URL/$ASSET.sha256" \
-    || die "checksum asset missing: $BASE_URL/$ASSET.sha256 — refusing to install unverified"
+    || die "checksum asset missing: $BASE_URL/$ASSET.sha256, refusing to install unverified"
 
 info "verifying sha256"
 # The .sha256 asset is "<hash>  <filename>"; compare the hash field only, because the
@@ -72,7 +72,7 @@ info "verifying sha256"
 EXPECTED="$(awk 'NR==1 {print $1}' "$WORK/$ASSET.sha256")"
 ACTUAL="$(shasum -a 256 "$WORK/$ASSET" | awk '{print $1}')"
 [ -n "$EXPECTED" ] || die "could not read expected hash"
-[ "$EXPECTED" = "$ACTUAL" ] || die "checksum mismatch — expected $EXPECTED, got $ACTUAL. Not installing."
+[ "$EXPECTED" = "$ACTUAL" ] || die "checksum mismatch: expected $EXPECTED, got $ACTUAL. Not installing."
 echo "   ok  $ACTUAL"
 
 if [ "$MODE" = "pkg" ]; then

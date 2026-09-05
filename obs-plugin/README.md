@@ -1,4 +1,4 @@
-# obs-plugin — OBS-Quelle "TetherCam (iPhone USB Camera)"
+# obs-plugin: OBS-Quelle "TetherCam (iPhone via USB)"
 
 macOS-Plugin fuer OBS Studio. Empfaengt den HEVC-Strom der iOS-App ueber den
 System-USB-Multiplexer (`/var/run/usbmuxd`), dekodiert ihn per VideoToolbox und
@@ -32,7 +32,7 @@ cmake --build --preset macos
 ```
 
 **`CI=1` ist noetig.** Ohne die Variable (oder ohne `-DPLUGIN_BUILD_NUMBER=1`) bricht
-das erste `configure` in `cmake/common/buildnumber.cmake` ab — ein Fehler der Vorlage,
+das erste `configure` in `cmake/common/buildnumber.cmake` ab, ein Fehler der Vorlage,
 nicht dieses Repos. Der Xcode-Generator ist Pflicht; gebaut wird universal
 (`arm64;x86_64`). Auf reines arm64 einschraenken: `-DCMAKE_OSX_ARCHITECTURES=arm64`.
 
@@ -54,7 +54,7 @@ Wirkt erst nach einem OBS-Neustart. Kontrolle im neuesten Log unter
 | Feld | Schluessel | Bedeutung |
 |---|---|---|
 | iPhone (USB) | `device_serial` | Liste aus `usbmux_list_devices`, nur USB. Leer = erstes angestecktes Geraet. Beschriftet mit der Seriennummer, weil iOS den HELLO-Namen auf "iPhone" kuerzt |
-| Kamera | `camera_id` | Vor dem ersten HELLO statische Liste (Rueck-Weit, Rueck-Ultraweit, Rueck-Tele, Front); danach die Namen aus dem HELLO des Geraets |
+| Kamera | `camera_id` | Vor dem ersten HELLO statische Liste (Back Wide, Back Ultra Wide, Back Telephoto, Front); danach die Namen aus dem HELLO des Geraets |
 | Aufloesung | `resolution` | `1280x720` oder `1920x1080` |
 | Bildrate | `fps` | 30 oder 60 |
 | Bitrate | `bitrate_kbps` | Vorgabe 12000 |
@@ -69,7 +69,7 @@ swift build -c release --package-path ../tools
 ../tools/.build/release/usbcam-sim --port 7878
 ```
 
-In OBS eine Quelle "TetherCam (iPhone USB Camera)" anlegen und im Feld **Debug-TCP**
+In OBS eine Quelle "TetherCam (iPhone via USB)" anlegen und im Feld **Debug-TCP**
 `127.0.0.1:7878` eintragen. Das Log zeigt dann:
 
 ```

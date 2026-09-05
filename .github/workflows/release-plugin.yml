@@ -151,7 +151,7 @@ jobs:
           echo "ident=$ident" >>"$GITHUB_OUTPUT"
           echo "installer_ident=$installer_ident" >>"$GITHUB_OUTPUT"
           echo "Application identity: $ident"
-          echo "Installer identity:   ${installer_ident:-<none — the .pkg will be unsigned and cannot be notarized>}"
+          echo "Installer identity:   ${installer_ident:-<none, the .pkg will be unsigned and cannot be notarized>}"
 
       - name: Cache obs-deps
         uses: actions/cache@v4
@@ -251,9 +251,9 @@ jobs:
           echo "== pkgutil --check-signature"
           pkgutil --check-signature "dist/${ASSET_BASENAME}.pkg" 2>&1 | head -20 || true
           if [ "${{ steps.secrets.outputs.notarize }}" != "true" ]; then
-            echo "::warning::Notarization skipped — NOTARY_KEY_P8 is not set. This artifact will be blocked by Gatekeeper on other machines."
+            echo "::warning::Notarization skipped: NOTARY_KEY_P8 is not set. This artifact will be blocked by Gatekeeper on other machines."
           elif [ "${{ steps.secrets.outputs.installer_signing }}" != "true" ]; then
-            echo "::warning::Notarization skipped — no Developer ID Installer certificate (MACOS_INSTALLER_CERT_P12). Apple rejects unsigned .pkg submissions."
+            echo "::warning::Notarization skipped: no Developer ID Installer certificate (MACOS_INSTALLER_CERT_P12). Apple rejects unsigned .pkg submissions."
           fi
 
       - uses: actions/upload-artifact@v4

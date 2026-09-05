@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# build-pkg.sh — build the TetherCam macOS installer package from a built .plugin bundle.
+# build-pkg.sh: build the TetherCam macOS installer package from a built .plugin bundle.
 #
 # Produces, in --out:
 #   TetherCam-obs-plugin.pkg         signed distribution package (signed only with --sign-identity)

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# release.sh — local release helper. Two phases, because a tag must point at the
+# release.sh: local release helper. Two phases, because a tag must point at the
 # commit that already carries the bumped version numbers:
 #
 #   scripts/release.sh 0.1.0          bump version files + CHANGELOG, then stop
@@ -41,7 +41,7 @@ if [ "$MODE" = "--tag" ]; then
     [ "$CURRENT" = "$VERSION" ] \
         || die "$BUILDSPEC says $CURRENT, not $VERSION. Run the bump phase first."
     if ! git diff --quiet -- "$BUILDSPEC" "$PROJECT_YML" "$CHANGELOG"; then
-        die "version files have uncommitted changes. Commit them first — otherwise the tag points at a commit without the bump."
+        die "version files have uncommitted changes. Commit them first, otherwise the tag points at a commit without the bump."
     fi
     if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
         die "tag $TAG already exists"
@@ -70,7 +70,7 @@ from datetime import date
 
 version = sys.argv[1]
 
-# 1) obs-plugin/buildspec.json — rewritten with json.dump to keep it valid; the file
+# 1) obs-plugin/buildspec.json: rewritten with json.dump to keep it valid; the file
 #    is 4-space indented and the template reads it with a plain JSON parser.
 path = "obs-plugin/buildspec.json"
 with open(path) as fh:
@@ -82,7 +82,7 @@ with open(path, "w") as fh:
     fh.write("\n")
 print(f"   buildspec.json      {old_plugin} -> {version}")
 
-# 2) ios-app/project.yml — line-level substitution, not a YAML round-trip, so that
+# 2) ios-app/project.yml: line-level substitution, not a YAML round-trip, so that
 #    comments and key order survive untouched. MARKETING_VERSION is the user-visible
 #    version; CURRENT_PROJECT_VERSION is the build number, which App Store Connect
 #    requires to be strictly increasing per marketing version.
@@ -102,7 +102,7 @@ open(path, "w").write(text)
 print(f"   project.yml         MARKETING_VERSION {old_marketing.group(1)} -> {version}, "
       f"CURRENT_PROJECT_VERSION {old_build.group(1)} -> {next_build}")
 
-# 3) CHANGELOG.md — promote Unreleased to a dated release heading and open a fresh
+# 3) CHANGELOG.md: promote Unreleased to a dated release heading and open a fresh
 #    empty Unreleased above it.
 path = "CHANGELOG.md"
 text = open(path).read()

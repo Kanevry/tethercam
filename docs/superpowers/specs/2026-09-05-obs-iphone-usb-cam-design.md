@@ -96,7 +96,7 @@ Typen:
   86 Frames enthielt 172 NALs, also exakt zwei pro Frame. Die App reicht den
   CMBlockBuffer unveraendert weiter, folglich stehen diese SEI-NALs in der VIDEO-Nutzlast.
   Verbindlich ist deshalb: **Empfaenger reichen ALLE NALs der Nutzlast durch** und
-  validieren nicht auf „nur VCL" — ein VCL-only-Filter verwirft die SEI und ein
+  validieren nicht auf „nur VCL": ein VCL-only-Filter verwirft die SEI und ein
   Empfaenger, der bei einem Nicht-VCL-NAL die Nutzlast als kaputt einstuft, bricht am
   ersten Frame ab. In-band-Parametersaetze (VPS/SPS/PPS) bleiben weiterhin
   ausgeschlossen; die kommen nur ueber CONFIG.

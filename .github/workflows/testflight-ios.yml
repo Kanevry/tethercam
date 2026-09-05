@@ -9,7 +9,7 @@ name: testflight-ios
 #      upload fails with "No suitable application records were found".
 #   2. Internal TestFlight testers (up to 100, on your team) get the build within
 #      minutes. A PUBLIC TestFlight link requires an EXTERNAL group, and every
-#      external group needs a one-time Beta App Review per major version — expect
+#      external group needs a one-time Beta App Review per major version: expect
 #      a day or two for the first submission.
 #   3. The bundle id must match the app record exactly.
 
@@ -129,7 +129,7 @@ jobs:
           KEY="$RUNNER_TEMP/AuthKey.p8"
           printf %s "$ASC_KEY_P8" | base64 --decode >"$KEY"
           chmod 600 "$KEY"
-          # Presence check only — never print the key or its length-derived content.
+          # Presence check only, never print the key or its length-derived content.
           test -s "$KEY" || { echo "::error::decoded API key is empty"; exit 1; }
           echo "path=$KEY" >>"$GITHUB_OUTPUT"
 

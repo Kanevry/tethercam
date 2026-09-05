@@ -19,7 +19,7 @@ concurrency:
 jobs:
   shared-tests:
     # The shared/ C core is deliberately free of Apple frameworks, so it is tested on
-    # Linux — that is the check that keeps it portable.
+    # Linux, that is the check that keeps it portable.
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -105,8 +105,8 @@ jobs:
       - name: ffmpeg for the integration run
         run: brew install ffmpeg
 
-      # Marked non-blocking on purpose. integration.sh needs no camera — usbcam-sim
-      # generates a test pattern — but it does need a working VideoToolbox *HEVC
+      # Marked non-blocking on purpose. integration.sh needs no camera, usbcam-sim
+      # generates a test pattern, but it does need a working VideoToolbox *HEVC
       # encoder*, and on the virtualised Apple-silicon runners the availability of the
       # hardware encoder is not contractual: VTCompressionSession creation can fall back
       # to software or fail outright depending on the image. The script also asserts a
