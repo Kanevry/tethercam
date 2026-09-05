@@ -11,6 +11,8 @@ plugin (`obs-plugin/`, GPL-2.0-or-later) and the iOS app (`ios-app/`, MIT). A ta
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-05
+
 ### Added
 
 - **Tools menu entry** "TetherCam: Add iPhone camera to current scene" (obs-frontend-api,
@@ -98,16 +100,6 @@ plugin (`obs-plugin/`, GPL-2.0-or-later) and the iOS app (`ios-app/`, MIT). A ta
 - The iOS app is distributed via TestFlight only. Apple offers no free public
   distribution channel outside the App Store and TestFlight.
 
-<!--
-Placeholder for the 0.1.0 section. Deliberately NOT written as a "## [0.1.0]" heading:
-scripts/changelog-section.py matches headings by regex and does not skip HTML comments,
-so a commented-out heading would be extracted as if it were real release notes.
-
-Placeholder only. `scripts/release.sh 0.1.0` promotes the Unreleased section above
-into a dated `[0.1.0]` heading and leaves a fresh empty Unreleased in its place.
-Do not fill this in by hand: `scripts/changelog-section.py` reads the real heading,
-and the release workflow publishes whatever it finds there.
--->
 
 [Unreleased]: https://github.com/Kanevry/tethercam/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/Kanevry/tethercam/releases/tag/v0.1.0

@@ -358,7 +358,7 @@ The purpose of the app is to deliver that camera picture to OBS Studio on a Mac 
 
 Demo video
 
-A 90 second screen recording of the complete flow, an iPhone plugged into a Mac and the picture appearing as a source in OBS: <DEMO_VIDEO_URL>
+A 90 second screen recording of the complete flow, an iPhone plugged into a Mac and the picture appearing as a source in OBS: https://tethercam.app/demo.mp4
 
 Technical notes
 
@@ -461,10 +461,10 @@ Steps only the owner can do, in order. Nothing here can be moved into CI.
 7. **GitHub secrets.** github.com/Kanevry/tethercam > Settings > Secrets and variables >
    Actions. Add `ASC_KEY_P8` (`base64 -i AuthKey_XXXX.p8 | pbcopy`), `ASC_KEY_ID`,
    `ASC_ISSUER_ID`. Delete the `.p8` from disk afterwards.
-8. **Two code changes.** Add `INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO` to
+8. **Two code changes (DONE 2026-09-05, commit 581a800).** Add `INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO` to
    `ios-app/project.yml`, and add a privacy policy `Link` to the settings sheet in
    `ios-app/Sources/UI/ContentView.swift`. Commit both before the first upload.
-9. **Publish the website pages.** `https://tethercam.app/privacy` with section 5, and an
+9. **Publish the website pages (DONE 2026-09-05: /privacy and /#faq live).** `https://tethercam.app/privacy` with section 5, and an
    `#faq` anchor on the landing page that contains a working contact address. Verify both
    return 200 in a private browser window. Placeholder pages violate 2.1(a).
 10. **App Privacy.** App Store Connect > your app > App Privacy > Get Started > "No" to
@@ -479,9 +479,9 @@ Steps only the owner can do, in order. Nothing here can be moved into CI.
     `Public Beta` > Add Builds > What to Test > Submit Review. Wait for status Testing.
 15. **Public link.** Group > Testers > Create Public Link > Open to Anyone > copy > publish
     on tethercam.app. Remember the 90-day build expiry.
-16. **Record the demo video.** 60 to 90 seconds, iPhone plugged into a Mac, plugin picking
+16. **Record the demo video (DONE 2026-09-05: https://tethercam.app/demo.mp4, 54 s, owner-approved).** 60 to 90 seconds, iPhone plugged into a Mac, plugin picking
     up the source in OBS, ending on the diagnostics panel. Host it somewhere stable and put
-    the URL into `<DEMO_VIDEO_URL>` in section 4.7.
+    the URL into `https://tethercam.app/demo.mp4` in section 4.7.
 17. **Screenshots.** Four landscape 2736 x 1260 shots per section 3.5. Screenshot 1 must
     show the standalone preview.
 18. **App Store submission.** Distribution > 1.0 Prepare for Submission. Paste section 4,
