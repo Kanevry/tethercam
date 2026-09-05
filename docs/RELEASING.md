@@ -4,11 +4,12 @@ One tag `vX.Y.Z` releases both artefacts: the macOS OBS plugin (signed, notarize
 `.pkg` on a GitHub release) and the iOS app (TestFlight). Everything below is a
 one-time setup except part 3, which is the recurring runbook.
 
-Repository layout for remotes: **GitLab `agents/obs-iphone-usb-cam` stays primary**,
-the public GitHub repository is a mirror that exists because GitHub Actions provides
-free macOS runners and a release-asset host. Assume `Kanevry/tethercam` until
-the name is decided; it appears in `scripts/install.sh` (`OWNER`/`REPO`) and in the
-CHANGELOG link references.
+Repository layout for remotes: **GitLab `agents/obs-iphone-usb-cam` stays primary**
+for development. The public GitHub repository **`Kanevry/tethercam`** is the mirror
+and the release host, because GitHub Actions provides free macOS runners and a
+release-asset host. That owner/repo pair appears in `scripts/install.sh`
+(`OWNER`/`REPO`), in the Homebrew cask draft and in the CHANGELOG link references;
+keep the three in sync. The user-facing entry point is **https://tethercam.app**.
 
 ---
 
@@ -62,8 +63,8 @@ upload fails with *"No suitable application records were found"*.
 
 1. developer.apple.com → Identifiers → register the App ID
    `at.gotzendorfer.tethercam` (the current bundle id) if it is not registered yet.
-   The App Store Connect record must use exactly this bundle id; the old
-   `at.gotzendorfer.usbcam` id is no longer built.
+   The App Store Connect record must use exactly this bundle id. (Historical: the
+   retired `at.gotzendorfer.usbcam` id is no longer built and needs no record.)
 2. appstoreconnect.apple.com → Apps → `+` → New App → platform iOS, pick the bundle
    id, set a name and SKU. The name must be unique across the whole App Store.
 3. Issue a **second** API key with role **App Manager** →

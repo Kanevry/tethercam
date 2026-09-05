@@ -29,21 +29,13 @@ plugin (`obs-plugin/`, GPL-2.0-or-later) and the iOS app (`ios-app/`, MIT). A ta
 - **Homebrew cask draft** (`packaging/homebrew/`), unpublished, with the open question about
   the install domain written down.
 - **README quick start**: three numbered steps at the top, before the background story.
-
-### Changed
-
-- **iOS app reduced to one screen**: full-screen preview with a single status line and a
-  traffic-light dot ("Waiting for OBS on the Mac" / "Connected to OBS" / "Streaming 1080p30").
-  Camera choice, auto rotation, horizon levelling, manual angle and the diagnostics moved
-  behind one gear icon; the camera list is plain rows with a checkmark instead of a picker,
-  which was unreadable with four lenses. Keep-screen-on is now always on and no longer a switch.
-- **Camera permission** is requested on first launch without an intermediate onboarding page;
-  a denial shows a card with a button into Settings.
-- **Source display name** is now "TetherCam (iPhone via USB)". The source id
-  (`iphone_usb_camera`) and the module name are unchanged, so existing scenes keep working.
-- **ENABLE_FRONTEND_API** defaults to ON in `obs-plugin/CMakeLists.txt` and the CMake presets.
-
-
+- **Website https://tethercam.app** as the user-facing entry point: quick start, the
+  three-step setup and the download link. The OBS plugin's Help link, the iOS app's
+  in-app link and `buildspec.json` all point there now instead of at a repository URL.
+- **Public GitHub repository** `Kanevry/tethercam`: the mirror is now the release host,
+  with `SECURITY.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, issue templates and a
+  pull-request template.
+- **README rewritten** around real screenshots of the app and of OBS instead of prose.
 - **IUCM wire protocol** (`protocol/PROTOCOL.md`) as the contract between both sides:
   framing, message types (CONFIG, VIDEO, PING/PONG), error codes.
 - **Shared C core** (`shared/`, MIT): incremental frame parser and usbmux client,
@@ -70,6 +62,24 @@ plugin (`obs-plugin/`, GPL-2.0-or-later) and the iOS app (`ios-app/`, MIT). A ta
   the plugin display name is "TetherCam for OBS". Repository name, module name
   `obs-iphone-usb-cam`, source id `iphone_usb_camera` and the IUCM wire protocol are
   unchanged, so existing scenes keep working.
+
+### Changed
+
+- **iOS app reduced to one screen**: full-screen preview with a single status line and a
+  traffic-light dot ("Waiting for OBS on the Mac" / "Connected to OBS" / "Streaming 1080p30").
+  Camera choice, auto rotation, horizon levelling, manual angle and the diagnostics moved
+  behind one gear icon; the camera list is plain rows with a checkmark instead of a picker,
+  which was unreadable with four lenses. Keep-screen-on is now always on and no longer a switch.
+- **Camera permission** is requested on first launch without an intermediate onboarding page;
+  a denial shows a card with a button into Settings.
+- **Source display name** is now "TetherCam (iPhone via USB)". The source id
+  (`iphone_usb_camera`) and the module name are unchanged, so existing scenes keep working.
+- **ENABLE_FRONTEND_API** defaults to ON in `obs-plugin/CMakeLists.txt` and the CMake presets.
+- **`scripts/install.sh` now points at the right repository** (`OWNER=Kanevry`). The
+  previous owner did not exist, so the one-line installer downloaded nothing.
+- **TestFlight workflow no longer fails without secrets**: a `check-secrets` job resolves
+  `ASC_KEY_P8` presence and the upload job is skipped rather than failed. A tag push in a
+  fork, or in this repo before the App Store Connect key is configured, is now green.
 
 ### Verified
 

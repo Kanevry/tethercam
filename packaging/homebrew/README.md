@@ -1,8 +1,18 @@
 # Homebrew cask (draft)
 
 `tethercam-obs.rb` installs the released `TetherCam-obs-plugin.pkg` from GitHub
-Releases. It is **not published**: no tap exists yet and the checksum in the file
-is a placeholder.
+Releases. **It is an unpublished draft. Do not link to it, do not document
+`brew install` anywhere user-facing yet.**
+
+Three things are false today and all three must become true before publishing:
+
+1. **The tap does not exist.** There is no `Kanevry/homebrew-tethercam` repository.
+   `brew tap kanevry/tethercam` fails. Creating it is a deliberate decision (a tap is
+   a maintenance commitment, one more thing that rots per release), not a chore to be
+   done in passing.
+2. **The checksum is a placeholder** (`0000...`), so the cask cannot install anything.
+3. **The install domain is wrong for Homebrew**: see the next section. This is the
+   real blocker; the other two are bookkeeping.
 
 ## Blocker before publishing
 
@@ -37,7 +47,8 @@ is worse than no cask.
 
 A tap is a plain Git repo named `homebrew-<tap>`. For `brew install --cask kanevry/tethercam/tethercam-obs`:
 
-1. Create the repo `Kanevry/homebrew-tethercam` on GitHub.
+1. Create the repo `Kanevry/homebrew-tethercam` on GitHub. It does not exist yet;
+   every command in this section fails until it does.
 2. Put the cask at `Casks/t/tethercam-obs.rb` (Homebrew shards by first letter).
 3. Fill in the real values:
    ```sh

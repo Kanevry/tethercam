@@ -34,3 +34,17 @@ shared/build-*/
 .claude/wave-scope.json
 .claude/STATE.md
 .orchestrator/wave-dispatch-scopes.json
+
+# Credentials and key material. Never committed; see docs/SECRETS.md.
+.env
+.env.*
+*.p8
+*.p12
+*.mobileprovision
+*.cer
+*.pem
+AuthKey_*
+
+# Vercel CLI link metadata
+.vercel/
+web/.vercel/

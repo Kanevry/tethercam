@@ -1,6 +1,3 @@
-# .vault.yaml — Meta-Vault Registration (agents/vault, Repo ID 60)
-# Schema: projects-baseline/packages/zod-schemas/src/vault-registration.ts
-
 apiVersion: vault.gotzendorfer/v1
 kind: Repository
 

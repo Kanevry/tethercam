@@ -40,6 +40,7 @@
     "displayName": "TetherCam for OBS",
     "version": "0.1.0",
     "author": "Bernhard Goetzendorfer",
-    "website": "https://gitlab.gotzendorfer.at/agents/obs-iphone-usb-cam",
-    "email": "venturestudio@ai-at.eu"
+    "website": "https://tethercam.app",
+    "email": "venturestudio@ai-at.eu",
+    "license": "GPL-2.0-or-later"
 }

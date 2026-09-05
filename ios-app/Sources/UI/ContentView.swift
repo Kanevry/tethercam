@@ -326,7 +326,7 @@ struct SettingsSheet: View {
                 }
 
                 Section {
-                    Link(destination: URL(string: "https://github.com/Kanevry/tethercam#quick-start")!) {
+                    Link(destination: URL(string: "https://tethercam.app")!) {
                         Label("link.installPlugin", systemImage: "arrow.down.circle")
                     }
                 }

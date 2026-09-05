@@ -2,7 +2,15 @@
 
 # TetherCam
 
-iPhone camera into OBS over the USB cable. No Continuity Camera, no Wi-Fi, no cloud, open source.
+[![CI](https://github.com/Kanevry/tethercam/actions/workflows/ci-plugin.yml/badge.svg)](https://github.com/Kanevry/tethercam/actions/workflows/ci-plugin.yml)
+[![Latest release](https://img.shields.io/github/v/release/Kanevry/tethercam?include_prereleases)](https://github.com/Kanevry/tethercam/releases/latest)
+[![License](https://img.shields.io/badge/license-GPL--2.0%20%2F%20MIT-blue)](#license)
+![Platform](https://img.shields.io/badge/platform-macOS%2012%2B%20%7C%20OBS%2030%2B%20%7C%20iOS%2017%2B-lightgrey)
+[![Website](https://img.shields.io/badge/website-tethercam.app-blue)](https://tethercam.app)
+
+Use your iPhone as a webcam for OBS over a plain USB cable: a Continuity Camera alternative with no Wi-Fi, no cloud and no pairing screen. Open source, hardware HEVC encoding on the phone, VideoToolbox decoding on the Mac.
+
+Website and downloads: https://tethercam.app. Prebuilt `.pkg` and `.zip` bundles are also on the latest GitHub release: https://github.com/Kanevry/tethercam/releases/latest.
 
 <br clear="left">
 
@@ -20,21 +28,20 @@ Three steps, about five minutes. The long version of each is further down.
 curl -fsSL https://raw.githubusercontent.com/Kanevry/tethercam/main/scripts/install.sh | bash
 ```
 
-Prefer a click? Download `TetherCam-obs-plugin.pkg` from [Releases](https://github.com/Kanevry/tethercam/releases) and open it. It installs into your own home, nothing system-wide. Details and the build-from-source path: [Install the Mac plugin](#install-the-mac-plugin).
-
-![The OBS Tools menu with the entry "TetherCam: Add iPhone camera to current scene"](docs/images/obs-iphone-live.png)
+Prefer a click? Download `TetherCam-obs-plugin.pkg` from [Releases](https://github.com/Kanevry/tethercam/releases/latest) and open it. It installs into your own home, nothing system wide. Details and the build from source path: [Install the Mac plugin](#install-the-mac-plugin).
 
 **2. Get the iPhone app.**
 
-TestFlight: `TESTFLIGHT_URL` *(placeholder, no public build yet)*. Until then you build it yourself with a free Apple ID, which takes one `xcodegen generate` and one Xcode run: [Install the iPhone app](#install-the-iphone-app).
+<!-- TESTFLIGHT: replace this paragraph with the public link -->
+A public TestFlight link is coming with the first tagged release. Until then build it yourself with a free Apple ID, five minutes: [Install the iPhone app](#install-the-iphone-app).
 
-![TetherCam on the iPhone: full-screen preview with a single status line](docs/images/obs-simulator.png)
+<img src="docs/images/app-live.png" width="720" alt="TetherCam on the iPhone: full-screen preview, status capsule Streaming 1080p30, gear icon top right">
 
 **3. In OBS: Tools, then "TetherCam: Add iPhone camera to current scene".**
 
 The menu entry creates the source, names it `TetherCam iPhone` and fits it to your canvas. Then plug the phone in, open TetherCam on it and leave it in the foreground. The status line on the phone turns green and says `Streaming 1080p30`.
 
-![Live 1080p from an iPhone in OBS](docs/images/obs-iphone-live.png)
+![The OBS Tools menu with the entry "TetherCam: Add iPhone camera to current scene"](docs/images/obs-tools-menu.png)
 
 There is no pairing, no code to type and no network setup. If the picture stays black, the source properties carry a status line at the top that says which of the three steps is missing.
 
@@ -86,8 +93,8 @@ Prebuilt bundles will appear under Releases. They are not signed and notarized y
 ### Option B: build from source
 
 ```sh
-git clone https://gitlab.gotzendorfer.at/agents/obs-iphone-usb-cam.git
-cd obs-iphone-usb-cam/obs-plugin
+git clone https://github.com/Kanevry/tethercam.git
+cd tethercam/obs-plugin
 CI=1 cmake --preset macos
 cmake --build --preset macos
 ```
@@ -138,9 +145,11 @@ More detail: [ios-app/README.md](ios-app/README.md).
 ## Usage
 
 1. Connect the iPhone to the Mac with a cable and unlock it.
-2. Open TetherCam on the phone and leave it in the foreground. iOS suspends the listener as soon as the app goes to the background, so the app keeps the screen on while streaming.
+2. Open TetherCam on the phone and leave it in the foreground. iOS suspends the listener as soon as the app goes to the background, so the app keeps the screen on while streaming. Tap the gear icon to open the settings sheet and pick camera, lens and resolution before you start OBS.
 3. In OBS: **Tools -> "TetherCam: Add iPhone camera to current scene"**. That creates a source named `TetherCam iPhone` in the current scene and fits it to the canvas. If a TetherCam source is already in the scene, the entry does nothing rather than adding a second one. The manual route still works: **Sources -> + -> TetherCam (iPhone via USB)**.
 4. The defaults are the ones that work: automatic device, back wide camera, 1920x1080, 30 fps, 12000 kbit/s, no rotation. Changing any property reconnects immediately.
+
+![TetherCam's settings sheet on the iPhone: camera and lens picker, resolution](docs/images/app-settings-sheet.png)
 
 The source properties are:
 
@@ -157,6 +166,10 @@ The source properties are:
 
 ### Troubleshooting
 
+Open the source's Properties dialog first. The status line at the top says which step is missing, before you read the table below.
+
+![The TetherCam source Properties dialog with the status line at the top](docs/images/obs-plugin-properties.png)
+
 | Symptom | Likely cause |
 |---|---|
 | Black source, no log lines | TetherCam is not in the foreground on the phone, or the phone is locked |
@@ -167,6 +180,8 @@ The source properties are:
 | Connection drops every few seconds | The Mac stopped sending PING, or the cable is flaky. Three missed PONGs, about 6 s, force a reconnect |
 
 ## Development
+
+Primary development happens on GitLab (`agents/obs-iphone-usb-cam` at gitlab.gotzendorfer.at). This GitHub repository is a mirror, updated whenever the state here is worth showing.
 
 | Path | Contents |
 |---|---|
@@ -227,4 +242,4 @@ swift build -c release --package-path tools
 
 ---
 
-Kurz auf Deutsch: Dieses Projekt bringt das iPhone-Kamerabild ueber das USB-Kabel in OBS, ohne Continuity Camera, ohne WLAN und ohne Cloud. Die Dokumentation ist auf Englisch, die Detaildokumente unter `protocol/`, `ios-app/`, `obs-plugin/` und `tools/` sind auf Deutsch. Fragen und Fehlerberichte bitte als Issue.
+Kurz auf Deutsch: Dieses Projekt bringt das iPhone-Kamerabild ueber das USB-Kabel in OBS, ohne Continuity Camera, ohne WLAN und ohne Cloud. Website und Downloads: https://tethercam.app. Die Dokumentation ist auf Englisch, die Detaildokumente unter `protocol/`, `ios-app/`, `obs-plugin/` und `tools/` sind auf Deutsch. Fragen und Fehlerberichte bitte als Issue auf GitHub.

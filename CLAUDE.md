@@ -56,8 +56,9 @@ erst beim naechsten Start. **Nie einen laufenden OBS-Prozess beenden.**
   `AVCaptureDevice.RotationCoordinator` am Horizont aus; aendert sich dadurch die Geometrie,
   wird die Encoder-Session neu gebaut und ein neues CONFIG gesendet. Die Rotation-Property
   im Plugin ist nur der manuelle Notausgang.
-- VCS: GitLab primaer (`agents/obs-iphone-usb-cam` auf gitlab.gotzendorfer.at). Ein
-  GitHub-Mirror wird nur gepflegt, wenn der Stand vorzeigbar ist.
+- VCS: GitLab primaer (`agents/obs-iphone-usb-cam` auf gitlab.gotzendorfer.at) fuer die
+  Entwicklung. `Kanevry/tethercam` auf GitHub ist der oeffentliche Mirror und der
+  Release-Host (Actions, Release-Assets). Website: https://tethercam.app
 - Lizenzen sind gemischt und bleiben es: das OBS-Plugin GPL-2.0-or-later (OBS-Header),
   alles uebrige MIT. Kein GPL-Code ausserhalb `obs-plugin/`.
 - Conventional Commits.

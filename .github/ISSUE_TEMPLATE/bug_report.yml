@@ -1,0 +1,80 @@
+name: Bug report
+description: Something in TetherCam is not working as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. The more of the fields below you can
+        fill in, the faster this can be tracked down.
+
+  - type: input
+    id: macos-version
+    attributes:
+      label: macOS version
+      placeholder: "e.g. macOS 26.5.2"
+    validations:
+      required: true
+
+  - type: input
+    id: obs-version
+    attributes:
+      label: OBS Studio version
+      placeholder: "e.g. 32.2.2"
+    validations:
+      required: true
+
+  - type: input
+    id: iphone-model
+    attributes:
+      label: iPhone model and iOS version
+      placeholder: "e.g. iPhone 15 Pro Max, iOS 26.6.1"
+    validations:
+      required: true
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: TetherCam plugin version
+      description: Visible in OBS, Help then Log Files, or in the release you installed
+      placeholder: "e.g. v0.1.3, or a git commit SHA if built from source"
+    validations:
+      required: true
+
+  - type: input
+    id: cable
+    attributes:
+      label: Cable
+      placeholder: "e.g. Apple USB-C to USB-C, 1 m"
+    validations:
+      required: false
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: What did you do, in order, and what did you expect to happen instead
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+
+  - type: input
+    id: status-line
+    attributes:
+      label: Status line text
+      description: The exact text shown at the top of the TetherCam source Properties dialog in OBS
+      placeholder: "e.g. \"Streaming 1080p30\" or \"No phone attached\""
+    validations:
+      required: true
+
+  - type: textarea
+    id: obs-log
+    attributes:
+      label: OBS log excerpt
+      description: The lines around "obs-iphone-usb-cam" from the newest log under ~/Library/Application Support/obs-studio/logs/
+      render: text
+    validations:
+      required: false

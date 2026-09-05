@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: FAQ
+    url: https://tethercam.app/#faq
+    about: Check the website FAQ before filing an issue, common setup questions are answered there.

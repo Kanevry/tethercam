@@ -1,6 +1,7 @@
 /*
 obs-iphone-usb-cam — Tools menu entry and first-run hint.
 Copyright (C) 2026 Bernhard Goetzendorfer <venturestudio@ai-at.eu>
+SPDX-License-Identifier: GPL-2.0-or-later
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

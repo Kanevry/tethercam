@@ -23,7 +23,7 @@
 
   <!-- iPhone -->
   <rect class="box" x="20" y="60" width="270" height="180"/>
-  <text class="head" x="40" y="92">iPhone, UsbCam app</text>
+  <text class="head" x="40" y="92">iPhone, TetherCam app</text>
   <text class="txt"  x="40" y="120">AVCaptureSession, NV12, BT.709</text>
   <text class="txt"  x="40" y="144">HEVC hardware encode</text>
   <text class="txt"  x="40" y="168">(VTCompressionSession, realtime)</text>
@@ -53,7 +53,7 @@
   <text class="txt"   x="732" y="144">VideoToolbox decode</text>
   <text class="txt"   x="732" y="168">(VTDecompressionSession)</text>
   <text class="txt"   x="732" y="200">obs_source_output_video2</text>
-  <text class="txt"   x="732" y="224">source "iPhone USB Camera"</text>
+  <text class="txt"   x="732" y="224">source "TetherCam (iPhone via USB)"</text>
 
   <text class="lbl" x="20" y="290">No Wi-Fi, no cloud, no Continuity Camera. Wire protocol: protocol/PROTOCOL.md</text>
   <text class="lbl" x="20" y="312">Control path back to the phone: START, STOP, PING every 2 s.</text>

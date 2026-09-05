@@ -28,17 +28,42 @@ permissions:
   contents: read
 
 env:
-  # Current bundle id. At the TetherCam rename this becomes
-  # at.gotzendorfer.tethercam — which requires a NEW App Store Connect app record
-  # and a new TestFlight beta review; a bundle id cannot be renamed in place once a
-  # build has been uploaded. Change it here, in ios-app/project.yml, and in the
-  # xcrun devicectl invocations in CLAUDE.md at the same time.
+  # Changing the bundle id requires a NEW App Store Connect app record and a new
+  # TestFlight beta review; a bundle id cannot be renamed in place once a build has
+  # been uploaded. Change it here, in ios-app/project.yml, and in the xcrun devicectl
+  # invocations in CLAUDE.md at the same time.
   IOS_BUNDLE_ID: at.gotzendorfer.tethercam
   TEAM_ID: G3QZ66475M
   SCHEME: TetherCam
 
 jobs:
+  # Secrets cannot be referenced in a job-level `if:`, so presence is resolved here
+  # and exposed as an output. Without this guard the tag push that releases the OBS
+  # plugin also fails this workflow on every fork and on any repo without an App
+  # Store Connect key; skipping is the honest outcome, not a red X.
+  check-secrets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      has_asc: ${{ steps.probe.outputs.has_asc }}
+    steps:
+      - name: Probe for ASC_KEY_P8
+        id: probe
+        env:
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          set -euo pipefail
+          # Presence only. Never echo the value: logs are public on a public repo.
+          if [ -n "${ASC_KEY_P8:-}" ]; then
+            echo "has_asc=true" >>"$GITHUB_OUTPUT"
+          else
+            echo "has_asc=false" >>"$GITHUB_OUTPUT"
+            echo "::notice::ASC_KEY_P8 is not set - the TestFlight upload job is skipped."
+          fi
+
   testflight:
+    needs: check-secrets
+    if: needs.check-secrets.outputs.has_asc == 'true'
     runs-on: macos-15
     timeout-minutes: 60
 

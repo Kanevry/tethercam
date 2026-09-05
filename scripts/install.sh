@@ -13,7 +13,7 @@
 # Options: --zip, --pkg, --version vX.Y.Z, --keep (do not delete the download).
 set -euo pipefail
 
-OWNER="goetzendorfer"
+OWNER="Kanevry"
 REPO="tethercam"
 ASSET_BASENAME="TetherCam-obs-plugin"
 PLUGIN_DIR="$HOME/Library/Application Support/obs-studio/plugins"
@@ -100,5 +100,6 @@ fi
 
 info "done"
 echo
-echo "  Restart OBS. The source is called 'TetherCam (iPhone USB Camera)'."
+echo "  Restart OBS. The source is called 'TetherCam (iPhone via USB)'."
 echo "  Connect the iPhone by cable, open the TetherCam app, then add the source in OBS."
+echo "  Setup guide and troubleshooting: https://tethercam.app"

@@ -1,0 +1,9 @@
+/* TEAM */
+Developer: Bernhard Goetzendorfer
+Site: https://gotzendorfer.at
+Location: Austria
+
+/* SITE */
+Standards: HTML5, CSS3
+Components: none, hand written static HTML and CSS
+Source: https://github.com/Kanevry/tethercam

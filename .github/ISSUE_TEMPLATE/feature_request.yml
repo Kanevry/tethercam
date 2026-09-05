@@ -1,0 +1,47 @@
+name: Feature request
+description: Suggest an idea for TetherCam
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check the Roadmap section in the README first, the idea may already be planned.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve
+      description: What are you trying to do that TetherCam does not support today
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: How you imagine this working, from the user's side
+    validations:
+      required: true
+
+  - type: dropdown
+    id: side
+    attributes:
+      label: Which side of the project does this touch
+      multiple: true
+      options:
+        - iOS app
+        - OBS plugin
+        - shared C core
+        - protocol
+        - docs / website
+        - not sure
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any workarounds you already tried
+    validations:
+      required: false
