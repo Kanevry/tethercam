@@ -10,9 +10,16 @@ iPhone testen.
 |---|---|---|
 | `IucmProtocol` | Library | Codec + zustandsbehafteter Frame-Parser fuer das Drahtprotokoll (`protocol/PROTOCOL.md`) |
 | `usbcam-sim` | Executable | Sender-Simulator: bewegtes Testbild, HEVC per VideoToolbox, TCP-Server |
+| `CUsbmux` | C-Target | Bindet `shared/usbmux.c` ein (usbmuxd-Tunnel) |
+| `usbcam-recv` | Executable | CLI-Empfaenger ueber TCP oder usbmuxd |
 
-`usbcam-recv` (CLI-Empfaenger) kommt als weiteres Executable-Target in dieselbe
-`Package.swift`.
+**Zu `CUsbmux`:** SwiftPM verlangt alle Quellen eines Targets unterhalb des
+Paketverzeichnisses, `shared/` liegt aber daneben. Statt Symlinks (deren
+Aufloesung SwiftPM je nach Version unterschiedlich handhabt) enthaelt
+`Sources/CUsbmux/shim.c` nur ein `#include "../../../shared/usbmux.c"`, der
+oeffentliche Header `Sources/CUsbmux/include/CUsbmux.h` analog ein
+`#include` von `shared/usbmux.h`. Es gibt also keine Kopie: der Wahrheitsort
+bleibt `shared/`, gebaut wird per CMake (C-Tests) und per SwiftPM (dieses Paket).
 
 ## Bauen und testen
 
@@ -56,6 +63,66 @@ Matrix — am Pixelpuffer und am Encoder gesetzt.
 ersten PING geschickt hat. Ein Empfaenger, der noch gar nicht pingt, wird also
 nicht mitten im Handshake abgeraeumt.
 
+## usbcam-recv
+
+```sh
+usbcam-recv [--tcp HOST:PORT | --serial UDID] [--port N] [--camera N]
+            [--size WxH] [--fps N] [--bitrate KBPS]
+            [--dump FILE] [--seconds N] [--json] [--hello-timeout S]
+```
+
+- `--tcp HOST:PORT` gewoehnliches TCP, also gegen `usbcam-sim`. Ohne diese Option
+  laeuft die Verbindung durch `/var/run/usbmuxd`.
+- `--serial UDID` waehlt das iPhone per Seriennummer; ohne Angabe das erste
+  USB-Geraet aus `usbmux_list_devices()`. Die `DeviceID` wechselt nach jedem
+  Neustart des Telefons, die Seriennummer nicht — deshalb ist `--serial` der
+  stabile Weg. Netzwerkgeraete werden nie ausgewaehlt (PROTOCOL.md 6.5).
+- `--port` ist der Geraeteport im Tunnel, Vorgabe 7878. `htons()` passiert in
+  `usbmux_connect()`, nie hier (PROTOCOL.md 6.3).
+- `--size/--fps/--bitrate/--camera` fuellen das START, Vorgaben `1920x1080`,
+  `30`, `12000` kbps, Kamera `0`.
+- `--dump FILE` schreibt Annex-B-HEVC: die Parametersaetze aus dem `hvcC` der
+  CONFIG stehen vor jedem Keyframe, die NALs bekommen Startcodes. Die
+  Wire-Nutzlast selbst bleibt unangetastet laengenpraefixiert.
+- `--seconds N` sendet nach N Sekunden ab CONFIG ein STOP und endet mit 0.
+- `--json` gibt am Ende eine Zeile auf stdout aus: `frames`, `fps_avg`,
+  `kbps_avg`, `keyframes`, `ping_rtt_ms_avg`, `first_frame_ms`, `nals`,
+  `width`, `height`. Alle Logzeilen gehen nach stderr, stdout bleibt sauber.
+
+Waehrend des Laufs geht pro Sekunde eine Zeile nach stderr (fps, kbps,
+Keyframes, NAL-Zahl, letzte PING-Umlaufzeit). PING geht alle 2 s raus, drei
+ausgebliebene PONG (~6 s) beenden den Lauf.
+
+Exit-Code ungleich 0 mit Klartext bei: falschem Magic beziehungsweise
+uebergrossem `length`, VIDEO vor CONFIG, nicht monotoner `pts`, Major-Version
+ungleich 1, ERROR der Gegenseite, ausbleibendem HELLO (`--hello-timeout`,
+Vorgabe 3 s) und abgelehntem Tunnel.
+
+```sh
+# gegen den Simulator
+./tools/.build/release/usbcam-sim --port 7979 &
+./tools/.build/release/usbcam-recv --tcp 127.0.0.1:7979 --size 1280x720 \
+    --seconds 5 --dump /tmp/out.hevc --json
+
+# gegen das iPhone am Kabel
+./tools/.build/release/usbcam-recv --serial 00008130-000C0DC40213803A --seconds 3
+```
+
+## integration.sh
+
+`tools/integration.sh` ist die Abnahme ohne iPhone und wiederholbar: baut das
+Paket in Release, startet `usbcam-sim` auf Port 7979 (per `IUCM_PORT`
+umstellbar), laesst `usbcam-recv` 5 s in `/tmp/iucm-int.hevc` aufzeichnen und
+prueft die JSON-Zusammenfassung gegen `fps_avg >= 25`, `keyframes >= 4`,
+`first_frame_ms < 1500` und `ping_rtt_ms_avg < 50`. Danach dekodiert `ffmpeg`
+einen Frame nach `/tmp/iucm-int.png` und `ffprobe` muss `1280x720` melden.
+Beendet wird nur der selbst gestartete Simulator, per gemerkter PID — nie per
+`pkill`. Pfade zu ffmpeg/ffprobe ueber `FFMPEG=`/`FFPROBE=` ueberschreibbar.
+
+```sh
+bash tools/integration.sh
+```
+
 ## Protokoll-Probe
 
 `scripts/probe_sim.py` ist ein Smoke-Test ohne Abhaengigkeiten (nur Python-stdlib):
@@ -66,6 +133,25 @@ das PONG-Echo und schickt STOP. Exit-Code ungleich 0 bei jedem Protokollverstoss
 ./tools/.build/release/usbcam-sim --port 7878 &
 python3 tools/scripts/probe_sim.py --seconds 3
 ```
+
+## usbmux_recv.py
+
+`scripts/usbmux_recv.py` ist derselbe Empfaenger noch einmal, aber in reinem
+Python-stdlib und direkt gegen `/var/run/usbmuxd`: ListDevices, Filter auf
+`ConnectionType == "USB"`, Connect mit `htons(7878)`, danach der Handshake aus
+`probe_sim.py`. Der Rueckfallweg fuer das echte Telefon, falls der Swift-Wrapper
+um `shared/usbmux.c` sich seltsam verhaelt — beide Wege koennen so gegeneinander
+gehalten werden, ohne dass ein Fehler in einer Schicht die andere verdeckt.
+
+```sh
+python3 tools/scripts/usbmux_recv.py --list
+python3 tools/scripts/usbmux_recv.py --serial 00008130-000C0DC40213803A \
+    --seconds 5 --size 1280x720 --dump /tmp/iphone.hevc
+```
+
+Optionen: `--serial`, `--port`, `--camera`, `--size`, `--fps`, `--bitrate`,
+`--seconds`, `--dump`, `--timeout`, `--list`. `--dump` schreibt Annex-B mit den
+Parametersaetzen aus dem `hvcC` vor jedem Keyframe.
 
 ## Lizenz
 

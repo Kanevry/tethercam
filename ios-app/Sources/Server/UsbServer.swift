@@ -149,12 +149,20 @@ public final class UsbServer {
     // MARK: - Action application
 
     private func apply(_ actions: [ServerStateMachine.Action]) {
-        for a in actions {
+        for (i, a) in actions.enumerated() {
             switch a {
             case let .send(msg, id):
-                send(msg, to: id)
+                // A `.close` later in the same batch (BUSY, teardown) must not
+                // race the send: cancelling right after queueing drops the bytes
+                // and the Mac only sees the socket close. Close in the send
+                // completion instead.
+                send(msg, to: id, thenClose: Self.batch(actions, closes: id, after: i))
             case let .close(id):
-                connections[id]?.cancel()
+                // Skip the abrupt cancel when a preceding send already scheduled
+                // the graceful close for this connection.
+                if !Self.batch(actions, sendsTo: id, before: i) {
+                    connections[id]?.cancel()
+                }
                 connections[id] = nil
                 parsers[id] = nil
             case let .startCapture(p):
@@ -200,9 +208,32 @@ public final class UsbServer {
         send(msg, to: id)
     }
 
-    private func send(_ msg: IucmMessage, to id: UInt64) {
+    private func send(_ msg: IucmMessage, to id: UInt64, thenClose: Bool = false) {
         guard let conn = connections[id] else { return }
-        conn.send(content: IucmCodec.encode(msg), completion: .idempotent)
+        if thenClose {
+            conn.send(content: IucmCodec.encode(msg),
+                      completion: .contentProcessed { _ in conn.cancel() })
+        } else {
+            conn.send(content: IucmCodec.encode(msg), completion: .idempotent)
+        }
+    }
+
+    /// True when `actions` closes `id` at an index after `i`.
+    static func batch(_ actions: [ServerStateMachine.Action],
+                      closes id: UInt64, after i: Int) -> Bool {
+        actions[(i + 1)...].contains {
+            if case let .close(cid) = $0 { return cid == id }
+            return false
+        }
+    }
+
+    /// True when `actions` sends to `id` at an index before `i`.
+    static func batch(_ actions: [ServerStateMachine.Action],
+                      sendsTo id: UInt64, before i: Int) -> Bool {
+        actions[..<i].contains {
+            if case let .send(_, sid) = $0 { return sid == id }
+            return false
+        }
     }
 
     private func refreshStats() {
