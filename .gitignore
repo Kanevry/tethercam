@@ -49,5 +49,3 @@ AuthKey_*
 .vercel/
 web/.vercel/
 
-# demo video: deployed via Vercel CLI, attached to GitHub releases, not tracked in git (32 MB)
-web/demo.mp4

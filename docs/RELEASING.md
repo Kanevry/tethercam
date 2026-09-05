@@ -4,9 +4,8 @@ One tag `vX.Y.Z` releases both artefacts: the macOS OBS plugin (signed, notarize
 `.pkg` on a GitHub release) and the iOS app (TestFlight). Everything below is a
 one-time setup except part 3, which is the recurring runbook.
 
-Repository layout for remotes: **GitLab `agents/obs-iphone-usb-cam` stays primary**
-for development. The public GitHub repository **`Kanevry/tethercam`** is the mirror
-and the release host, because GitHub Actions provides free macOS runners and a
+Repository layout for remotes: the public GitHub repository **`Kanevry/tethercam`** is
+the source of truth and the release host, because GitHub Actions provides free macOS runners and a
 release-asset host. That owner/repo pair appears in `scripts/install.sh`
 (`OWNER`/`REPO`), in the Homebrew cask draft and in the CHANGELOG link references;
 keep the three in sync. The user-facing entry point is **https://tethercam.app**.
@@ -135,7 +134,7 @@ git commit -m "chore(release): 0.1.0"
 # 4. Create the annotated tag (refuses if the bump is not committed).
 scripts/release.sh 0.1.0 --tag
 
-# 5. Push. GitLab first, it is primary; the GitHub push is what starts the workflows.
+# 5. Push. The GitHub push is what starts the workflows.
 git push origin HEAD && git push origin v0.1.0
 git push github HEAD && git push github v0.1.0
 ```

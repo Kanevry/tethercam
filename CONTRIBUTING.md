@@ -1,7 +1,6 @@
 # Contributing to TetherCam
 
-Primary development happens on GitLab (`agents/obs-iphone-usb-cam` at
-gitlab.gotzendorfer.at). This GitHub repository is a mirror, but pull requests here are
+Development happens on GitHub (`Kanevry/tethercam`). Pull requests are
 welcome and get reviewed the same way.
 
 ## Before you change the wire protocol

@@ -53,9 +53,8 @@ $NOTES"
     info "created annotated tag $TAG (not pushed)"
     echo
     echo "Next:"
-    echo "  git push origin HEAD              # GitLab, primary"
     echo "  git push origin $TAG"
-    echo "  git push github HEAD && git push github $TAG   # mirror; the tag push starts the release workflows"
+    echo "  git push github HEAD && git push github $TAG   # the tag push starts the release workflows"
     echo "  gh run watch --repo <owner>/<repo>"
     exit 0
 fi

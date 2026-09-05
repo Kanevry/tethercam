@@ -60,8 +60,7 @@ HEVC stream travels only through the cable via usbmuxd.
 
 - Website: https://tethercam.app/
 - Privacy policy: https://tethercam.app/privacy (the app collects no data at all)
-- GitHub (public mirror): https://github.com/Kanevry/tethercam
-- GitLab (primary): https://gitlab.gotzendorfer.at/agents/obs-iphone-usb-cam
+- GitHub: https://github.com/Kanevry/tethercam
 - Releases: https://github.com/Kanevry/tethercam/releases
 - Plugin .pkg: https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-obs-plugin.pkg
 - Plugin .zip: https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-obs-plugin.zip

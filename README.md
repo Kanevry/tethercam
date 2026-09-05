@@ -191,7 +191,7 @@ The app's own gear icon has a matching Diagnostics sheet, useful when the phone 
 
 ## Development
 
-Primary development happens on GitLab (`agents/obs-iphone-usb-cam` at gitlab.gotzendorfer.at). This GitHub repository is a mirror, updated whenever the state here is worth showing.
+Development happens on GitHub (`Kanevry/tethercam`): issues, pull requests and releases live there.
 
 | Path | Contents |
 |---|---|
