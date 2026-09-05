@@ -20,12 +20,26 @@ which works on a temp copy. Never print a `.p8` or a JWT.
 | GitHub secrets `ASC_KEY_P8` / `ASC_KEY_ID` / `ASC_ISSUER_ID` | set |
 | GitHub secrets `NOTARY_KEY_P8` / `NOTARY_KEY_ID` / `NOTARY_ISSUER_ID` | set (same key) |
 | Bundle id `at.gotzendorfer.tethercam` | registered (`2G7A77TNZ6`, UNIVERSAL) |
-| App Store Connect **app record** | **MISSING — blocks every TestFlight upload** |
+| App Store Connect **app record** | created 2026-09-05 (app id `6808997521`); build 0.1.0 (2) uploaded, in Beta App Review; public link https://testflight.apple.com/join/wmT74Ry8 |
 | Developer ID **Installer** certificate + `MACOS_INSTALLER_CERT_P12` | **MISSING — the .pkg ships unsigned and unnotarized** |
 | Local key | `~/.appstoreconnect/private_keys/AuthKey_<KEYID>.p8`; key id and issuer id live in the git-ignored `.env.local` (`ASC_KEY_ID`, `ASC_ISSUER_ID`) |
 
 Both missing items are **owner steps** — no API key can create them. See
 `docs/RELEASING.md` §1b and §1d.
+
+## A0. Listing metadata
+
+`scripts/asc-listing.py` pushes everything in `docs/app-store/` (both localizations,
+categories, age rating, review notes, price Free, availability, screenshots and the App
+Preview) to App Store Connect and is idempotent. `--dry-run` prints the calls. The App
+Privacy questionnaire has no public API and stays a one-time owner click.
+
+## A0. Listing metadata
+
+`scripts/asc-listing.py` pushes everything in `docs/app-store/` (both localizations,
+categories, age rating, review notes, price Free, availability, screenshots and the App
+Preview) to App Store Connect and is idempotent. `--dry-run` prints the calls. The App
+Privacy questionnaire has no public API and stays a one-time owner click.
 
 ## A. iOS to TestFlight
 

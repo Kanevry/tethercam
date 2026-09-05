@@ -36,8 +36,8 @@ Until v0.1.0 is published, both links 404: build the plugin from source instead,
 
 **2. Get the iPhone app.**
 
-<!-- TESTFLIGHT: replace this paragraph with the public link -->
-A public TestFlight link is coming with the first tagged release. Until then build it yourself with a free Apple ID, five minutes: [Install the iPhone app](#install-the-iphone-app).
+<!-- TESTFLIGHT: public link, external group "Public Beta" -->
+Free public beta on TestFlight: **[https://testflight.apple.com/join/wmT74Ry8](https://testflight.apple.com/join/wmT74Ry8)**. Build 0.1.0 (2) was submitted to Beta App Review on 2026-09-05; until Apple approves it the link says the beta is not accepting testers. Or build it yourself with a free Apple ID, five minutes: [Install the iPhone app](#install-the-iphone-app).
 
 <img src="docs/images/app-live.png" width="720" alt="TetherCam on the iPhone: full-screen preview, status capsule Streaming 1080p30, gear icon top right">
 

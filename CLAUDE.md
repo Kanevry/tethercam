@@ -55,6 +55,7 @@ erst beim naechsten Start. **Nie einen laufenden OBS-Prozess beenden.**
 scripts/appstore-upload.sh --dry-run   # iOS: archivieren + .ipa exportieren, kein Upload
 scripts/appstore-upload.sh             # iOS: Upload nach App Store Connect / TestFlight
 scripts/asc-api.sh apps                # App-Records/Bundle-Ids/Builds bei Apple abfragen
+scripts/asc-listing.py --dry-run       # Listing aus docs/app-store/ nach App Store Connect
 ```
 
 Der App-Store-Connect-Key liegt unter `~/.appstoreconnect/private_keys/` und niemals
@@ -62,8 +63,8 @@ im Repo; `.p8`-Inhalte und JWTs werden nie ausgegeben. Logs landen in
 `build/appstore-*.log` (gitignored). Das `.pkg` des OBS-Plugins baut ausschliesslich
 `release-plugin.yml` auf dem `v*`-Tag; danach muss der Draft-Release **veroeffentlicht**
 werden, sonst liefert `releases/latest/download/...` 404 (docs/RELEASING.md, Teil 3).
-Offene Owner-Schritte Stand 2026-09-05: App-Store-Connect-App-Record und
-Developer-ID-Installer-Zertifikat fehlen.
+Offene Owner-Schritte Stand 2026-09-05 abends: App-Privacy-Fragebogen in App Store
+Connect (kein API) und Developer-ID-Installer-Zertifikat fuer das signierte Plugin-.pkg.
 
 
 ## Konventionen
