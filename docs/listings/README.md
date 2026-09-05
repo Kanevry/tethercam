@@ -6,9 +6,10 @@ state; none of these venues rewards superlatives.
 
 | File | Venue | Where to post |
 |---|---|---|
-| `obs-forum-resource.md` | OBS Resources (plugin directory) | https://obsproject.com/forum/resources/ then "Add resource", category Plugins, platform macOS |
+| `obs-forum-resource.md` | OBS Resources (plugin directory) | https://obsproject.com/forum/resources/ then "Add resource", category "OBS Studio Plugins", platform macOS |
 | `awesome-obs-pr.md` | awesome-obs list on GitHub | Pull request against https://github.com/Pralhad-Nasane/awesome-obs, section "Camera & Video Sources" |
 | `reddit-r-obs.md` | r/obs | https://www.reddit.com/r/obs/submit, text post |
+| `homebrew-decision.md` | (not a post) | Decision memo, not a draft: whether/how to ship a Homebrew cask. Read before touching `packaging/homebrew/`. |
 
 ## Prerequisites
 
@@ -33,6 +34,17 @@ Check that the link accepts testers before pasting it anywhere that gets traffic
 State on 2026-09-05: App Store version 0.1.0 and TestFlight build 0.1.0 (2) are both
 `WAITING_FOR_REVIEW`. No GitHub release exists.
 
+**Repo/bundle name note:** this repo and the plugin bundle are named
+`obs-iphone-usb-cam`, carrying the "obs-" prefix the OBS forum's IP policy discourages
+for resource names. That prefix never surfaces as a user-facing product name (the
+product name is "TetherCam" everywhere: forum Title field, cask `name`, app name), it
+only lives in the repo path and the bundle identifier, so it does not block the forum
+listing.
+
+**OBS forum moderation note:** right after submitting the resource, its status shows
+"DELETED" on the forum until a moderator approves it. That is normal queue behaviour,
+not an actual deletion and not something to resubmit over.
+
 ## Placeholder checklist
 
 Every draft uses the same placeholders. Replace all of them before posting:
@@ -41,16 +53,25 @@ Every draft uses the same placeholders. Replace all of them before posting:
       `https://github.com/Kanevry/tethercam/releases/tag/v0.1.0`
 - [ ] `<RELEASE_DATE>`: date of the v0.1.0 release, ISO format
 - [ ] `<PKG_URL>`: direct link to `TetherCam-obs-plugin.pkg` on that release
+- [ ] `<TAG_URL>`: the v0.1.0 tag source view, expected
+      `https://github.com/Kanevry/tethercam/tree/v0.1.0` (`obs-forum-resource.md`'s
+      Source code URL field; never the default branch)
 - [ ] TestFlight link verified to accept testers (open it in Safari on an iPhone)
 - [ ] `docs/listings/obs-forum-resource.md`: screenshots uploaded (paths listed in the file)
 - [ ] `docs/listings/awesome-obs-pr.md`: list format re-checked against the upstream README
-      on the day of the PR (the section name may have changed)
-- [ ] `docs/listings/reddit-r-obs.md`: current r/obs rules read before posting; some days
-      or flairs restrict self-promotion
+      on the day of the PR (the section name may have changed), `npx awesome-lint README.md`
+      run clean on the fork
+- [ ] `docs/listings/reddit-r-obs.md`: current r/obs rules read from a logged-in browser
+      immediately before posting; self-promo rules change and could not be verified from
+      this sandbox
 
 ## Order
 
-1. GitHub release published, links checked by hand.
+1. GitHub release published and verified (links checked by hand, not just assumed green
+   from CI).
 2. OBS forum resource (the audience that will actually install it).
 3. awesome-obs PR (one line, no urgency).
 4. Reddit, last, and only once the forum page exists so the post can link to it.
+5. Homebrew tap, after v0.1.0 ships signed and notarized; see `homebrew-decision.md`.
+   Not the core `homebrew/cask` repo, which the repo's age and star count rule out for
+   now (see that memo).

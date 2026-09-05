@@ -32,6 +32,7 @@
 "diag.port" = "Port";
 "diag.angle" = "Angle";
 "diag.residual" = "Residual";
+"diag.dropped" = "drop";
 "diag.yes" = "yes";
 "diag.no" = "no";
 

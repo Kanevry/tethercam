@@ -7,6 +7,8 @@
 <meta name="description" content="TetherCam turns an iPhone into an OBS camera on macOS over the USB cable. Open source, no Wi-Fi, no cloud, no pairing code, 1080p30 HEVC.">
 <link rel="canonical" href="https://tethercam.app/">
 <link rel="alternate" hreflang="en" href="https://tethercam.app/">
+<link rel="alternate" hreflang="de" href="https://tethercam.app/de/">
+<link rel="alternate" hreflang="x-default" href="https://tethercam.app/">
 <meta name="author" content="Bernhard Goetzendorfer">
 <meta name="theme-color" content="#0B0C10" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#F7F6F3" media="(prefers-color-scheme: light)">
@@ -47,8 +49,11 @@
       <li><a href="#quick-start">Quick start</a></li>
       <li><a href="#how-it-works">How it works</a></li>
       <li><a href="#download">Download</a></li>
+      <li><a href="/install">Install</a></li>
+      <li><a href="/changelog">Changelog</a></li>
       <li><a href="#faq">FAQ</a></li>
       <li><a href="#source">Source</a></li>
+      <li><a href="/de/">DE</a></li>
     </ul>
   </nav>
 </header>
@@ -65,7 +70,7 @@
       <p class="actions rise d2">
         <a class="btn btn-primary btn--stack" href="#download">
           <span>Get the OBS plugin <span class="arw" aria-hidden="true">&rarr;</span></span>
-          <span class="btn-sub">v0.1.0, not released yet</span>
+          <span class="btn-sub" data-release="pkg">v0.1.0, not released yet</span>
         </a>
         <a class="btn btn-secondary btn--stack" href="#quick-start">
           <span>Read the quick start <span class="arw" aria-hidden="true">&rarr;</span></span>
@@ -118,7 +123,7 @@
           <img src="/img/obs-iphone-live.png" width="1600" height="1166" alt="The OBS source TetherCam showing a live 1080p picture from an iPhone 15 Pro Max over the USB cable" fetchpriority="high" decoding="async">
         </picture>
       </div>
-      <figcaption>Live 1080p from an iPhone 15 Pro Max, decoded in OBS. The stream never leaves the cable.</figcaption>
+      <figcaption>Live 1080p from an iPhone 15 Pro Max, decoded in OBS. The stream never leaves the cable. Shot on an earlier build; the Tools menu entry now names the source &ldquo;TetherCam iPhone&rdquo;.</figcaption>
     </figure>
   </div>
 </section>
@@ -212,7 +217,7 @@
       <article class="step" data-reveal>
         <span class="step-n">01</span>
         <h3>Install the OBS plugin</h3>
-        <p>Open the <code>.pkg</code> from the <a href="#download">download section</a> or run the one-line installer, then restart OBS. Nothing is installed system-wide and no administrator rights are needed.</p>
+        <p>Open the <code>.pkg</code> from the <a href="#download">download section</a> or run the one-line installer, then restart OBS. Nothing is installed system-wide and no administrator rights are needed. See the <a href="/install">Install guide</a> if anything goes sideways.</p>
         <pre tabindex="0"><code>~/Library/Application Support/
   obs-studio/plugins/</code></pre>
       </article>
@@ -379,14 +384,14 @@
         <p class="actions" data-reveal>
           <a class="btn btn-primary btn--stack" href="https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-obs-plugin.pkg">
             <span>TetherCam-obs-plugin.pkg <span class="arw" aria-hidden="true">&rarr;</span></span>
-            <span class="btn-sub">v0.1.0, not released yet</span>
+            <span class="btn-sub" data-release="pkg">v0.1.0, not released yet</span>
           </a>
           <a class="btn btn-secondary btn--stack" href="https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-obs-plugin.zip">
             <span>TetherCam-obs-plugin.zip <span class="arw" aria-hidden="true">&rarr;</span></span>
-            <span class="btn-sub">v0.1.0, not released yet</span>
+            <span class="btn-sub" data-release="zip">v0.1.0, not released yet</span>
           </a>
         </p>
-        <p class="notice" data-reveal>Until the first release is published, <a href="https://github.com/Kanevry/tethercam#install-the-mac-plugin">build from source (5 minutes)</a>. The two links above point at the final release URLs and will start working the moment v0.1.0 is tagged.</p>
+        <p class="notice" data-reveal>Until the first release is published, <a href="https://github.com/Kanevry/tethercam#install-the-mac-plugin">build from source (5 minutes)</a>. The two links above point at the final release URLs and will start working the moment v0.1.0 is tagged. <a href="/install">Full install guide and troubleshooting</a>.</p>
         <p data-reveal>The one-line installer, for the same reason, also waits for that first release:</p>
         <div class="code-block" data-reveal>
           <pre tabindex="0"><code id="install-cmd">curl -fsSL https://raw.githubusercontent.com/Kanevry/tethercam/main/scripts/install.sh | bash</code></pre>
@@ -462,6 +467,14 @@
       <details class="faq" data-reveal>
         <summary>Does it work on Windows or Linux?</summary>
         <div class="answer"><p>No, macOS only for now. The shared C core already builds on Linux, so a receiver for other systems is possible, but none ships today.</p></div>
+      </details>
+      <details class="faq" data-reveal>
+        <summary>Where is the full install guide?</summary>
+        <div class="answer"><p>The <a href="/install">install guide</a> covers requirements, the Mac plugin, the iPhone app, connecting the two and what to do if the picture stays black, in more detail than the quick start above.</p></div>
+      </details>
+      <details class="faq" data-reveal>
+        <summary>Is there a German version?</summary>
+        <div class="answer"><p>Yes. The whole site is also available <a href="/de/">in German</a>, at the same content and structure.</p></div>
       </details>
     </div>
   </div>
@@ -578,6 +591,16 @@
       "@type": "Question",
       "name": "Does it work on Windows or Linux?",
       "acceptedAnswer": {"@type": "Answer", "text": "No, macOS only for now. The shared C core already builds on Linux, so a receiver for other systems is possible, but none ships today."}
+    },
+    {
+      "@type": "Question",
+      "name": "Where is the full install guide?",
+      "acceptedAnswer": {"@type": "Answer", "text": "The install guide at tethercam.app/install covers requirements, the Mac plugin, the iPhone app, connecting the two and what to do if the picture stays black, in more detail than the quick start above."}
+    },
+    {
+      "@type": "Question",
+      "name": "Is there a German version?",
+      "acceptedAnswer": {"@type": "Answer", "text": "Yes. The whole site is also available in German at tethercam.app/de/, at the same content and structure."}
     }
   ]
 }

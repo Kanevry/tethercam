@@ -321,9 +321,10 @@ struct SettingsSheet: View {
                         diagRow("diag.angle", String(format: "%.0f\u{00B0} (m=%.2f)",
                                                     Double(model.capture.orientation.captureAngle),
                                                     Double(model.capture.orientation.confidence)))
-                        diagRow("diag.residual", String(format: "%+.1f\u{00B0}  %.1f ms  drop %d",
+                        diagRow("diag.residual", String(format: "%+.1f\u{00B0}  %.1f ms  %@ %d",
                                                         Double(model.leveler.lastResidualDeg),
                                                         model.leveler.avgMs,
+                                                        String(localized: "diag.dropped"),
                                                         model.leveler.droppedFrames))
                     }
                 }

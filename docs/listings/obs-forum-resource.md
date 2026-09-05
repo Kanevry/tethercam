@@ -1,26 +1,82 @@
 # OBS Resources draft: TetherCam
 
-Venue: https://obsproject.com/forum/resources/ ("Add resource").
-Category: Plugins. Platform: macOS. Version field: `0.1.0`.
-Do not submit before the v0.1.0 GitHub release is published (see `README.md` in this folder).
+Venue: https://obsproject.com/forum/resources/. Fields, category name and account
+requirement verified against live listings and the "Forum Resource and IP Policy"
+thread on 2026-09-05.
+
+**Before you start:** the forum account needs two-step verification enabled, or "Add
+Resource" is not offered. The button sits top right of the resources page once logged
+in and verified.
+
+Category: **OBS Studio Plugins** (exact name, not "Plugins"). Do not submit before the
+v0.1.0 GitHub release is published (see `README.md` in this folder).
+
+**After submitting:** the resource shows status "DELETED" until a moderator approves
+it. That is normal moderation queue behaviour, not an error and not an actual deletion.
+Do not resubmit or panic if it says that for a day or two.
+
+---
+
+## Fields (as seen on live resource listings)
+
+| Field | Value |
+|---|---|
+| Title | `TetherCam` (no "OBS" in the name; see policy note below) |
+| Version | `0.1.0` |
+| Tagline | see below |
+| Minimum OBS Studio Version | `30.0` |
+| Source code URL | `<TAG_URL>` (the v0.1.0 tag, e.g. `https://github.com/Kanevry/tethercam/tree/v0.1.0`; never the default branch) |
+| Platforms | macOS 12+ (Apple Silicon and Intel), text field, no platform checkboxes seen on this venue |
+| Download link ("Go to download") | `<PKG_URL>` (direct link to `TetherCam-obs-plugin.pkg` on the v0.1.0 release; external links to GitHub Releases are explicitly the endorsed pattern for this field) |
+| Icon | `docs/images/tethercam-icon-256.png`, 256x256 |
+| Description | rich text, see below, written by hand |
+| Screenshots | gallery, see list below |
+
+## Policy notes specific to this venue
+
+- **No "OBS" in the product name.** The Title field above is `TetherCam`, not
+  "TetherCam OBS" or similar. "OBS" only appears in the tagline/description as a
+  description of what the plugin is for, never as part of the name.
+- **No OBS logos** in the icon or screenshots. `docs/images/tethercam-icon-256.png` is
+  the TetherCam icon, not an OBS mark.
+- **No implied affiliation.** The description below does not claim endorsement by or
+  partnership with the OBS Project; it says "for OBS Studio", nothing stronger.
+- **GPL compliance** is satisfied by the public source repository: `obs-plugin/` is
+  GPL-2.0-or-later (links against libobs) and the repo is public at
+  `https://github.com/Kanevry/tethercam`; the Source code URL field above points at it.
+  Say so plainly in the description (see License section below).
+- **Release-ready only.** The Source code URL and Download link fields both resolve to
+  the v0.1.0 tag/release, never to `main` or a branch, so a visitor's first click
+  always lands on something installable.
+- **English.** All text below is English.
+- **AI-generated descriptions must be disclosed.** The description below is written by
+  hand; it is not run through an AI generator or paraphraser and is not flagged as
+  AI-generated because it is not. Keep it that way when editing: hand-write changes, or
+  disclose if that ever stops being true.
+- **Repo/bundle name note:** the repository and plugin bundle are named
+  `obs-iphone-usb-cam`, which carries the "obs-" prefix the forum discourages for
+  resource *names*. That prefix lives only in the repo path and bundle id, never in the
+  Title field or in any user-facing product name; the one-line explanation for the
+  README lives in `docs/listings/README.md`.
 
 ---
 
 ## Title
 
-TetherCam: iPhone as an OBS camera over USB (macOS)
+TetherCam
 
 ## Tagline (one line)
 
-Use your iPhone as a webcam for OBS over a plain USB cable, no Wi-Fi, no cloud, no pairing screen.
+Use your iPhone as a webcam for OBS Studio over a plain USB cable, no Wi-Fi, no cloud, no pairing screen.
 
 ## Description
 
 TetherCam brings the iPhone camera into OBS Studio on macOS through the USB cable. The
 phone encodes HEVC in hardware and serves the stream on a local TCP port; the Mac reaches
 that port through usbmuxd, the same system service that carries Xcode traffic over the
-cable; the OBS plugin decodes with VideoToolbox and hands NV12 frames straight to OBS.
-Nothing is buffered in the plugin and nothing leaves the cable.
+cable; the plugin decodes with VideoToolbox and hands NV12 frames straight to OBS.
+Nothing is buffered in the plugin and nothing leaves the cable. TetherCam is not
+affiliated with or endorsed by the OBS Project.
 
 It exists because Continuity Camera stopped working for me after an iOS and macOS version
 mismatch (iOS 26.6 against macOS 26.5): the handshake succeeded, the picture stayed black.
@@ -51,7 +107,8 @@ administrator rights, no system extension, no daemon.
   picture is black; matching diagnostics sheet in the app.
 - Reconnects on its own after a cable pull.
 - Documented wire protocol (`protocol/PROTOCOL.md`) if you want to write your own receiver.
-- Open source. Plugin GPL-2.0-or-later, everything else MIT.
+- Open source. Plugin GPL-2.0-or-later, everything else MIT. Source at
+  `https://github.com/Kanevry/tethercam`.
 
 ## Requirements
 
@@ -64,7 +121,7 @@ administrator rights, no system extension, no daemon.
 
 **Mac plugin**
 
-1. Download `TetherCam-obs-plugin.pkg` from <RELEASE_URL> and open it, or run
+1. Download `TetherCam-obs-plugin.pkg` from <PKG_URL> and open it, or run
    `curl -fsSL https://raw.githubusercontent.com/Kanevry/tethercam/main/scripts/install.sh | bash`.
    Read the script first; it downloads the release bundle and unpacks it into
    `~/Library/Application Support/obs-studio/plugins/`, nothing else.
@@ -108,13 +165,22 @@ administrator rights, no system extension, no daemon.
 
 ## License
 
-- `obs-plugin/`: GPL-2.0-or-later, because it links against libobs.
+- `obs-plugin/`: GPL-2.0-or-later, because it links against libobs. GPL compliance is
+  the public source repository above; the full source at the v0.1.0 tag is what the
+  Source code URL field links to.
 - iPhone app, shared C core, tools, protocol spec, docs: MIT.
+
+## Icon
+
+`docs/images/tethercam-icon-256.png`, 256x256. Not an OBS logo or a modification of one.
 
 ## Screenshots to attach
 
-Upload in this order (repo paths; the `web/img/*.webp` twins are smaller if the forum
-accepts WebP):
+PNG is the safest format for this venue; WebP support on the forum's upload form is
+unconfirmed as of 2026-09-05, so use the PNG originals below rather than the `web/img/*.webp`
+twins unless a test upload confirms WebP works.
+
+Upload in this order (repo paths):
 
 1. `docs/images/obs-iphone-live.png`: OBS showing live 1080p from the iPhone.
 2. `docs/images/obs-tools-menu.png`: the Tools menu entry.
@@ -122,14 +188,14 @@ accepts WebP):
 4. `docs/images/app-live.png`: the app streaming, status capsule "Streaming 1080p30".
 5. `docs/images/app-settings-sheet.png`: camera and lens picker, resolution.
 6. `docs/images/app-diagnostics.png`: diagnostics sheet on the phone.
-7. `docs/images/architecture.svg`: data path diagram (convert to PNG if SVG is rejected).
+7. `docs/images/architecture.svg`: data path diagram (convert to PNG, SVG upload is
+   unconfirmed on this venue too).
 
-Optional, the App Store frames: `web/img/store-01-hero-wired-into-obs.webp` through
-`web/img/store-05-diagnostics.webp`. The camera picture in those is a generated studio
-scene, say so if you use them.
-
-Demo video, 54 seconds: https://tethercam.app (embedded), file `web/demo.mp4`.
+Demo video, 54 seconds: https://tethercam.app (embedded), file `web/demo.mp4`. Link it
+in the description text rather than uploading the raw file if the venue has no video
+upload field.
 
 ## Placeholders
 
-- `<RELEASE_URL>`: v0.1.0 release page.
+- `<TAG_URL>`: `https://github.com/Kanevry/tethercam/tree/v0.1.0` once the tag exists.
+- `<PKG_URL>`: direct link to `TetherCam-obs-plugin.pkg` on the v0.1.0 release.

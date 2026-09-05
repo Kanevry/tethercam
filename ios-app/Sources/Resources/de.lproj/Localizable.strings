@@ -17,8 +17,8 @@
 "settings.done" = "Fertig";
 "settings.camera" = "Kamera";
 "settings.advanced" = "Erweitert";
-"settings.autoRotation" = "Auto-Rotation";
-"settings.horizonLeveling" = "Horizont begradigen";
+"settings.autoRotation" = "Automatische Drehung";
+"settings.horizonLeveling" = "Horizont ausrichten";
 "settings.manualAngle" = "Winkel von Hand";
 "settings.diagnostics" = "Diagnose";
 "link.privacy" = "Datenschutz";
@@ -30,8 +30,9 @@
 "diag.fps" = "fps";
 "diag.kbps" = "kbit/s";
 "diag.port" = "Port";
-"diag.angle" = "Lage";
-"diag.residual" = "Rest";
+"diag.angle" = "Winkel";
+"diag.residual" = "Restfehler";
+"diag.dropped" = "verworfen";
 "diag.yes" = "ja";
 "diag.no" = "nein";
 
