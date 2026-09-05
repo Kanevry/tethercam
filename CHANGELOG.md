@@ -11,6 +11,24 @@ plugin (`obs-plugin/`, GPL-2.0-or-later) and the iOS app (`ios-app/`, MIT). A ta
 
 ## [Unreleased]
 
+### Added
+
+- **App Store submission of 0.1.0 (2)** on 2026-09-05: listing in en-US and de-DE pushed with
+  `scripts/asc-listing.py`, five marketing screenshots designed in `tethercam.pen`
+  (AI-generated studio scene, no people), TestFlight external group `Public Beta` with the
+  public link https://testflight.apple.com/join/wmT74Ry8, Beta App Review and App Review both
+  submitted.
+- **Local release tooling**: `scripts/appstore-upload.sh` (archive + upload with the App Store
+  Connect API key), `scripts/asc-api.sh` (JWT helper), `.claude/skills/distribute`.
+- **Website**: demo video embedded with poster, gallery carousel of the App Store frames,
+  TestFlight button, FAQ answers for the USB and Continuity Camera queries, VideoObject schema,
+  `llms.txt` discoverable.
+
+### Changed
+
+- The App Preview video was withdrawn from the listing (it showed the owner). 0.1.0 ships
+  without an App Preview.
+
 ## [0.1.0] - 2026-09-05
 
 ### Added

@@ -955,3 +955,12 @@ pre code { font-size: inherit; }
   background: #000;
 }
 .video-figure figcaption { max-width: var(--prose); }
+
+/* Gallery: App Store frames as a scroll-snap carousel, no JS */
+.gallery { margin-top: 2.5rem; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: thin; padding-bottom: 0.5rem; -webkit-overflow-scrolling: touch; }
+.gallery:focus-visible { outline: 3px solid var(--accent); outline-offset: 6px; border-radius: var(--radius-card); }
+.gallery-track { display: flex; gap: 1.25rem; list-style: none; margin: 0; padding: 0 0 0.25rem; }
+.gallery-item { flex: 0 0 min(88%, 880px); scroll-snap-align: start; }
+.gallery-item figure { margin: 0; }
+.gallery-item img { display: block; width: 100%; height: auto; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--card); box-shadow: var(--shadow-md); }
+@media (min-width: 900px) { .gallery-item { flex-basis: min(72%, 880px); } }

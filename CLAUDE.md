@@ -17,6 +17,8 @@ verbindet sich, decodiert per VideoToolbox und liefert NV12-Frames als Async-Sou
 | `obs-plugin/` | OBS-Source `TetherCam (iPhone via USB)` (C/ObjC++, CMake) | GPL-2.0-or-later |
 | `tools/` | Swift-Paket: `usbcam-sim`, `usbcam-recv`, `integration.sh` | MIT |
 | `docs/superpowers/specs/` | Design-Spec; Korrekturen datiert anfuegen, nichts umschreiben | n/a |
+| `docs/app-store/` | Store-Metadaten (en-US, de-DE), Review Notes, Klickpfad, `validate.sh` | n/a |
+| `tethercam.pen` + `images/` | Pen-Design-File der App-Store-Frames und Website-Galerie; KI-Szene, nie Gesichter | n/a |
 
 ## Build und Test
 
