@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Install TetherCam: iPhone as an OBS camera over USB</title>
+<meta name="description" content="Step-by-step install guide: the TetherCam plugin on your Mac, the TetherCam app on your iPhone, then connect over USB. No Wi-Fi, no cloud, no pairing code. Troubleshooting included.">
+<link rel="canonical" href="https://tethercam.app/install">
+<link rel="alternate" hreflang="en" href="https://tethercam.app/install">
+<meta name="author" content="Bernhard Goetzendorfer">
+<meta name="theme-color" content="#0B0C10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#F7F6F3" media="(prefers-color-scheme: light)">
+
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="TetherCam">
+<meta property="og:url" content="https://tethercam.app/install">
+<meta property="og:title" content="Install TetherCam: iPhone as an OBS camera over USB">
+<meta property="og:description" content="Step-by-step install guide: the TetherCam plugin on your Mac, the TetherCam app on your iPhone, then connect over USB. No Wi-Fi, no cloud, no pairing code.">
+<meta property="og:image" content="https://tethercam.app/img/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Install TetherCam: iPhone as an OBS camera over USB">
+<meta name="twitter:description" content="Step-by-step install guide: the TetherCam plugin on your Mac, the TetherCam app on your iPhone, then connect over USB. No Wi-Fi, no cloud, no pairing code.">
+<meta name="twitter:image" content="https://tethercam.app/img/og.png">
+
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="icon" href="/favicon.png" type="image/png" sizes="512x512">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="preload" href="/fonts/space-grotesk-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt: plain-text summary for language models">
+<link rel="stylesheet" href="/style.css">
+<script src="/main.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a class="brand" href="/#top"><picture><source type="image/webp" srcset="/img/wordmark-56.webp"><img src="/img/icon-192.png" alt="" width="28" height="28"></picture> TetherCam</a>
+    <ul>
+      <li><a href="#requirements">Requirements</a></li>
+      <li><a href="#mac-plugin">Mac plugin</a></li>
+      <li><a href="#iphone-app">iPhone app</a></li>
+      <li><a href="#connect">Connect</a></li>
+      <li><a href="#troubleshooting">Troubleshooting</a></li>
+      <li><a href="/">Home</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main id="main">
+
+<section class="section">
+  <div class="wrap">
+    <p class="eyebrow">Guide</p>
+    <h1>Install TetherCam: an iPhone as an OBS camera over USB</h1>
+    <p class="lede">No Wi-Fi, no pairing code and no Continuity Camera handshake involved. Everything below travels over one data cable: the plugin on the Mac, the app on the iPhone, and the USB connection between them.</p>
+    <p class="meta">Last updated: 2026-09-05. This is the guide version of the <a href="/#quick-start">quick start on the homepage</a>, with the troubleshooting cases spelled out.</p>
+  </div>
+</section>
+
+<section id="requirements" class="section">
+  <div class="wrap">
+    <p class="eyebrow" data-reveal>Requirements</p>
+    <h2 data-reveal>What you need before you start</h2>
+    <div class="card" data-reveal>
+      <h3>Requirements</h3>
+      <ul class="reqs">
+        <li>
+          <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg"><path class="tick" pathLength="1" d="M 4 10.5 L 8.5 15 L 16 5.5"/></svg>
+          <span><b>macOS 12</b> or later. Tested on Apple Silicon with macOS 26.</span>
+        </li>
+        <li>
+          <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg"><path class="tick" pathLength="1" d="M 4 10.5 L 8.5 15 L 16 5.5"/></svg>
+          <span><b>OBS Studio 30</b> or later. Tested with 32.2.2.</span>
+        </li>
+        <li>
+          <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg"><path class="tick" pathLength="1" d="M 4 10.5 L 8.5 15 L 16 5.5"/></svg>
+          <span><b>iOS 17</b> or later. Tested on an iPhone 15 Pro Max with iOS 26.6.</span>
+        </li>
+        <li>
+          <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg"><path class="tick" pathLength="1" d="M 4 10.5 L 8.5 15 L 16 5.5"/></svg>
+          <span><b>A data cable</b>, not a charge-only one.</span>
+        </li>
+      </ul>
+      <p class="meta">Video only for now. Use a separate microphone in OBS.</p>
+    </div>
+  </div>
+</section>
+
+<section id="mac-plugin" class="section">
+  <div class="wrap">
+    <p class="eyebrow" data-reveal>Step 1</p>
+    <h2 data-reveal>Install the OBS plugin on the Mac</h2>
+    <p class="lede" data-reveal>The plugin installs into your own home folder, so it needs no administrator rights. Restart OBS after installing.</p>
+
+    <div class="steps">
+      <article class="step" data-reveal>
+        <span class="step-n">A</span>
+        <h3>The .pkg from GitHub Releases</h3>
+        <p>Download <code>TetherCam-obs-plugin.pkg</code> from the <a href="https://github.com/Kanevry/tethercam/releases/latest">latest release</a> and open it.</p>
+        <p class="notice">Until v0.1.0 is published, both links 404: build the plugin from source instead, see <a href="https://github.com/Kanevry/tethercam#install-the-mac-plugin">Install the Mac plugin</a>.</p>
+      </article>
+
+      <article class="step s1" data-reveal>
+        <span class="step-n">B</span>
+        <h3>The one-line installer</h3>
+        <p>Read the script before you pipe it into a shell. It downloads the release bundle and unpacks it into the OBS plugins directory in your home folder, nothing else.</p>
+        <div class="code-block">
+          <pre tabindex="0"><code id="install-guide-cmd">curl -fsSL https://raw.githubusercontent.com/Kanevry/tethercam/main/scripts/install.sh | bash</code></pre>
+          <button class="copy-btn" type="button" data-copy="install-guide-cmd" aria-live="polite">Copy</button>
+        </div>
+        <p class="meta">From v0.1.0 on, this works. Until v0.1.0 is published, both links 404: build the plugin from source instead.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section id="iphone-app" class="section">
+  <div class="wrap">
+    <p class="eyebrow" data-reveal>Step 2</p>
+    <h2 data-reveal>Get the iPhone app</h2>
+    <p class="lede" data-reveal>Free public beta on TestFlight. Build 0.1.0 (2) has been submitted for App Store review; until Apple approves it, TestFlight is the fastest way onto a real device.</p>
+    <p class="actions" data-reveal><a class="btn btn-primary" href="https://testflight.apple.com/join/wmT74Ry8" rel="noopener">Join the TestFlight beta</a></p>
+    <p data-reveal>Build 0.1.0 (2) is in Beta App Review; until Apple approves it the link says the beta is not accepting testers, so try again a little later. The same build is also submitted, pending review, for the public App Store listing; once that clears, TetherCam will be a direct App Store download instead. You can also <a href="https://github.com/Kanevry/tethercam#install-the-iphone-app">build the app from source</a> with a free Apple ID.</p>
+  </div>
+</section>
+
+<section id="connect" class="section">
+  <div class="wrap">
+    <p class="eyebrow" data-reveal>Step 3</p>
+    <h2 data-reveal>Connect the iPhone and add the source in OBS</h2>
+    <ol class="prose" data-reveal>
+      <li>Plug the iPhone into the Mac with the data cable and unlock it. The first time you connect that particular Mac, the iPhone shows a <strong>&ldquo;Trust This Computer?&rdquo;</strong> prompt: tap <strong>Trust</strong> and enter the phone's passcode. Without this, the Mac cannot see the phone at all.</li>
+      <li>Open TetherCam on the phone and <strong>keep it in the foreground</strong>. iOS suspends the listener as soon as the app goes to the background, so the stream stops the moment you switch apps or lock the screen.</li>
+      <li>In OBS, choose <strong>Tools</strong>, then <strong>TetherCam: Add iPhone camera to current scene</strong>. That creates the source, names it <code>TetherCam iPhone</code> and fits it to your canvas. If a TetherCam source is already in the scene, the entry does nothing rather than adding a second one.</li>
+    </ol>
+    <p class="meta" data-reveal>The phone's status line turns green and says <code>Streaming 1080p30</code> once the picture is live.</p>
+  </div>
+</section>
+
+<section id="troubleshooting" class="section">
+  <div class="wrap">
+    <p class="eyebrow" data-reveal>Troubleshooting</p>
+    <h2 data-reveal>What each status line means</h2>
+    <p class="lede" data-reveal>Open the source's Properties dialog in OBS first. The status line at the top names the missing piece before you read the list below.</p>
+
+    <div class="faq-list prose">
+      <details class="faq" data-reveal>
+        <summary>The status line says &ldquo;No iPhone attached over USB&rdquo;</summary>
+        <div class="answer"><p>Plug the phone into the Mac with a cable and unlock it. A charge-only cable will not show up in the device list, and the Mac cannot see a locked phone as a USB device it can trust.</p></div>
+      </details>
+      <details class="faq" data-reveal>
+        <summary>The status line says &ldquo;Waiting for iPhone&rdquo;</summary>
+        <div class="answer"><p>Open TetherCam on the phone and keep it in the foreground. If it is already open, check the OBS log for a version or connection error, since this status also shows when the app and the plugin disagree on the protocol.</p></div>
+      </details>
+      <details class="faq" data-reveal>
+        <summary>It is stuck on &ldquo;iPhone reached, waiting for the first frame&rdquo;</summary>
+        <div class="answer"><p>The Mac has found the phone and connected, but no video has arrived yet. If this does not change within a few seconds, unplug and replug the cable. That resets the USB connection without needing to reopen either app.</p></div>
+      </details>
+      <details class="faq" data-reveal>
+        <summary>macOS says the .pkg is from an unidentified developer</summary>
+        <div class="answer"><p>Until a Developer ID Installer certificate signs the release, the <code>.pkg</code> is unsigned and Gatekeeper blocks a plain double-click. Right-click (or Control-click) the file and choose <strong>Open</strong>, then confirm <strong>Open</strong> again in the dialog that follows. This is a one-time step per download.</p></div>
+      </details>
+      <details class="faq" data-reveal>
+        <summary>OBS still shows the old plugin after I installed an update</summary>
+        <div class="answer"><p>OBS reads plugins only at launch. After installing a new <code>.pkg</code> or copying in a new build, fully quit OBS and reopen it; a running instance keeps the plugin binary it already loaded.</p></div>
+      </details>
+      <details class="faq" data-reveal>
+        <summary>Continuity Camera keeps grabbing the phone instead of TetherCam</summary>
+        <div class="answer"><p>On the iPhone, open <strong>Settings, General, AirPlay &amp; Continuity</strong>, and turn off <strong>Continuity Camera</strong>. That stops the phone from also offering itself to macOS as a Continuity Camera device, which otherwise competes with TetherCam for the same camera hardware.</p></div>
+      </details>
+      <details class="faq" data-reveal>
+        <summary>The phone never shows up at all, even with a good cable</summary>
+        <div class="answer"><p>usbmuxd is the system service that TetherCam relies on to reach the phone; it normally starts on its own the first time a phone is connected. If the plugin never gets past &ldquo;No iPhone attached&rdquo;, open Finder once with the phone plugged in and unlocked. That is usually enough to make macOS start the service and show the &ldquo;Trust This Computer?&rdquo; prompt, after which the plugin can see the phone too.</p></div>
+      </details>
+    </div>
+    <p class="meta" data-reveal>Still stuck? Read the full <a href="https://github.com/Kanevry/tethercam#troubleshooting">troubleshooting table on GitHub</a> or <a href="https://github.com/Kanevry/tethercam/issues">open an issue</a>.</p>
+  </div>
+</section>
+
+</main>
+
+<footer class="site-footer surface-ink">
+  <div class="grain"></div>
+  <div class="wrap">
+    <div class="foot-grid">
+      <p>Built by <a href="https://gotzendorfer.at">Bernhard Goetzendorfer</a>. Not affiliated with Apple or the OBS Project.</p>
+      <ul class="foot-links">
+        <li><a href="/changelog">Changelog</a></li>
+        <li><a href="/privacy">Privacy policy</a></li>
+        <li><a href="https://github.com/Kanevry/tethercam">GitHub</a></li>
+      </ul>
+    </div>
+    <p class="foot-mark">&mdash; TetherCam 0.1.0</p>
+  </div>
+</footer>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {"@type": "ListItem", "position": 1, "name": "TetherCam", "item": "https://tethercam.app/"},
+    {"@type": "ListItem", "position": 2, "name": "Install", "item": "https://tethercam.app/install"}
+  ]
+}
+</script>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "@id": "https://tethercam.app/install",
+  "url": "https://tethercam.app/install",
+  "name": "Install TetherCam: iPhone as an OBS camera over USB",
+  "inLanguage": "en",
+  "description": "Step-by-step install guide: the TetherCam plugin on your Mac, the TetherCam app on your iPhone, then connect over USB. No Wi-Fi, no cloud, no pairing code.",
+  "dateModified": "2026-09-05",
+  "isPartOf": {"@id": "https://tethercam.app/#website"},
+  "publisher": {"@id": "https://tethercam.app/#organization"}
+}
+</script>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "The status line says “No iPhone attached over USB”",
+      "acceptedAnswer": {"@type": "Answer", "text": "Plug the phone into the Mac with a cable and unlock it. A charge-only cable will not show up in the device list, and the Mac cannot see a locked phone as a USB device it can trust."}
+    },
+    {
+      "@type": "Question",
+      "name": "The status line says “Waiting for iPhone”",
+      "acceptedAnswer": {"@type": "Answer", "text": "Open TetherCam on the phone and keep it in the foreground. If it is already open, check the OBS log for a version or connection error, since this status also shows when the app and the plugin disagree on the protocol."}
+    },
+    {
+      "@type": "Question",
+      "name": "It is stuck on “iPhone reached, waiting for the first frame”",
+      "acceptedAnswer": {"@type": "Answer", "text": "The Mac has found the phone and connected, but no video has arrived yet. If this does not change within a few seconds, unplug and replug the cable. That resets the USB connection without needing to reopen either app."}
+    },
+    {
+      "@type": "Question",
+      "name": "macOS says the .pkg is from an unidentified developer",
+      "acceptedAnswer": {"@type": "Answer", "text": "Until a Developer ID Installer certificate signs the release, the .pkg is unsigned and Gatekeeper blocks a plain double-click. Right-click (or Control-click) the file and choose Open, then confirm Open again in the dialog that follows. This is a one-time step per download."}
+    },
+    {
+      "@type": "Question",
+      "name": "OBS still shows the old plugin after I installed an update",
+      "acceptedAnswer": {"@type": "Answer", "text": "OBS reads plugins only at launch. After installing a new .pkg or copying in a new build, fully quit OBS and reopen it; a running instance keeps the plugin binary it already loaded."}
+    },
+    {
+      "@type": "Question",
+      "name": "Continuity Camera keeps grabbing the phone instead of TetherCam",
+      "acceptedAnswer": {"@type": "Answer", "text": "On the iPhone, open Settings, General, AirPlay & Continuity, and turn off Continuity Camera. That stops the phone from also offering itself to macOS as a Continuity Camera device, which otherwise competes with TetherCam for the same camera hardware."}
+    },
+    {
+      "@type": "Question",
+      "name": "The phone never shows up at all, even with a good cable",
+      "acceptedAnswer": {"@type": "Answer", "text": "usbmuxd is the system service that TetherCam relies on to reach the phone; it normally starts on its own the first time a phone is connected. If the plugin never gets past “No iPhone attached”, open Finder once with the phone plugged in and unlocked. That is usually enough to make macOS start the service and show the “Trust This Computer?” prompt, after which the plugin can see the phone too."}
+    }
+  ]
+}
+</script>
+
+</body>
+</html>

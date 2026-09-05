@@ -60,6 +60,13 @@ extern "C" {
 #define IUCM_PARSER_CAP (IUCM_HEADER_SIZE + IUCM_MAX_PAYLOAD + 64u)
 #define IUCM_PING_INTERVAL_MS 2000
 #define IUCM_MAX_MISSED_PONG 3
+/* A tunnel that opens but never speaks would otherwise keep the session in
+ * link_state::starting forever; these two deadlines force the reconnect path. */
+#define IUCM_HELLO_TIMEOUT_MS 5000
+#define IUCM_CONFIG_TIMEOUT_MS 5000
+/* "no USB device attached" is the normal state of an unplugged Mac and the
+ * retry runs every 1-5 s, so the line is rate-limited. */
+#define IUCM_NO_DEVICE_LOG_INTERVAL_MS 30000
 
 namespace {
 
@@ -76,6 +83,8 @@ enum class link_state {
 	waiting,    /* device attached, but nothing listening on 7878 (app closed or backgrounded) */
 	starting,   /* socket open, no CONFIG yet */
 	streaming,
+	incompatible, /* peer speaks a protocol major we do not support */
+	busy,         /* the phone already serves another receiver */
 };
 
 struct iphone_source {
@@ -138,6 +147,16 @@ struct iphone_source {
 	 * the normal case, so the first four retries stay at LOG_INFO. */
 	int connect_failures = 0;
 	bool fatal = false; /* close the connection, do not retry immediately */
+	/* Status shown while a fatal condition holds. close_connection() would
+	 * otherwise fall back to "waiting", which reads as "open the app" and is
+	 * the wrong advice for a version mismatch or a busy phone. */
+	link_state fatal_state = link_state::waiting;
+	/* Last accepted CONFIG. A CONFIG that repeats these values does not need a
+	 * new decoder session (rebuilding one costs the next keyframe). */
+	std::vector<uint8_t> dec_hvcc;
+	int dec_width = 0;
+	int dec_height = 0;
+	int dec_fps = 0;
 
 	float color_matrix[16];
 	float color_min[3];
@@ -241,17 +260,28 @@ int connect_tcp(const std::string &hostport, int loglevel)
 	return fd;
 }
 
-int connect_usbmux(const std::string &serial, std::string &out_serial, int loglevel)
+/* out_device_count reports what the ListDevices call in here already saw, so the
+ * caller can tell "no cable" from "app not listening" without asking usbmuxd a
+ * second time. It is 0 when the query itself failed. */
+int connect_usbmux(const std::string &serial, std::string &out_serial, int loglevel, size_t &out_device_count)
 {
 	struct usbmux_device devices[16];
 	size_t count = 0;
+	out_device_count = 0;
 	int rc = usbmux_list_devices(devices, 16, &count);
 	if (rc != USBMUX_OK) {
 		obs_log(loglevel, "[iphone-cam] usbmux ListDevices failed: %s", usbmux_strerror(rc));
 		return -1;
 	}
+	out_device_count = count;
 	if (count == 0) {
-		obs_log(LOG_INFO, "[iphone-cam] no USB device attached");
+		/* Same throttle idiom as the STATS info line. */
+		static uint64_t no_device_log_deadline_ms = 0;
+		uint64_t now = now_ms();
+		if (now >= no_device_log_deadline_ms) {
+			no_device_log_deadline_ms = now + IUCM_NO_DEVICE_LOG_INTERVAL_MS;
+			obs_log(LOG_INFO, "[iphone-cam] no USB device attached");
+		}
 		return -1;
 	}
 	const struct usbmux_device *pick = nullptr;
@@ -332,6 +362,7 @@ int on_message(void *ctx, const struct iucm_msg *msg)
 		if (rc != IUCM_OK) {
 			obs_log(LOG_WARNING, "[iphone-cam] bad HELLO: %s", iucm_strerror(rc));
 			s->fatal = true;
+			s->fatal_state = link_state::incompatible;
 			return 1;
 		}
 		if (IUCM_VERSION_MAJOR(hello.version) != 1) {
@@ -341,6 +372,7 @@ int on_message(void *ctx, const struct iucm_msg *msg)
 			    IUCM_OK)
 				send_all(s, out, written);
 			s->fatal = true;
+			s->fatal_state = link_state::incompatible;
 			return 1;
 		}
 		obs_log(LOG_INFO, "[iphone-cam] HELLO from '%s' (app %s, proto %u.%u, %u cameras)", hello.name,
@@ -361,7 +393,8 @@ int on_message(void *ctx, const struct iucm_msg *msg)
 		}
 		if (iucm_encode_start(out, sizeof(out), &start, &written) != IUCM_OK ||
 		    !send_all(s, out, written)) {
-			obs_log(LOG_WARNING, "[iphone-cam] sending START failed");
+			obs_log(LOG_WARNING, "[iphone-cam] sending START failed: errno %d (%s)", errno,
+				strerror(errno));
 			return 1;
 		}
 		s->started = true;
@@ -379,20 +412,36 @@ int on_message(void *ctx, const struct iucm_msg *msg)
 			return 1;
 		}
 		/* A rotation on the phone changes the encoded geometry, so CONFIG can
-		 * arrive mid-stream. The decoder is rebuilt unconditionally below and
+		 * arrive mid-stream. The decoder is rebuilt when anything changed and
 		 * OBS resizes the async source from the next frame's dimensions. */
 		obs_log(LOG_INFO, "[iphone-cam] CONFIG received: cam %u, %ux%u@%u, hvcC %u bytes",
 			(unsigned) s->active_camera_id, (unsigned) cfg.width, (unsigned) cfg.height,
 			(unsigned) cfg.fps, (unsigned) cfg.hvcc_len);
+		/* Rebuilding the session costs the wait for the next keyframe, so an
+		 * identical CONFIG (the app re-announces after a no-op rotation) keeps
+		 * the running decoder. */
+		if (s->dec && s->dec_width == (int) cfg.width && s->dec_height == (int) cfg.height &&
+		    s->dec_fps == (int) cfg.fps && s->dec_hvcc.size() == (size_t) cfg.hvcc_len &&
+		    (cfg.hvcc_len == 0 || memcmp(s->dec_hvcc.data(), cfg.hvcc, cfg.hvcc_len) == 0)) {
+			obs_log(LOG_INFO, "[iphone-cam] CONFIG unchanged, keeping decoder");
+			return 0;
+		}
 		if (s->dec) {
 			iucm_decoder_destroy(s->dec);
 			s->dec = nullptr;
 		}
 		s->dec = iucm_decoder_create(cfg.hvcc, cfg.hvcc_len, cfg.width, cfg.height, on_decoded_frame, s);
 		if (!s->dec) {
-			obs_log(LOG_WARNING, "[iphone-cam] decoder setup failed");
+			obs_log(LOG_WARNING, "[iphone-cam] decoder setup failed for %ux%u, hvcC %u bytes",
+				(unsigned) cfg.width, (unsigned) cfg.height, (unsigned) cfg.hvcc_len);
+			s->dec_hvcc.clear();
+			s->dec_width = s->dec_height = s->dec_fps = 0;
 			return 1;
 		}
+		s->dec_hvcc.assign(cfg.hvcc, cfg.hvcc + cfg.hvcc_len);
+		s->dec_width = (int) cfg.width;
+		s->dec_height = (int) cfg.height;
+		s->dec_fps = (int) cfg.fps;
 		s->config_seen = true;
 		{
 			std::lock_guard<std::mutex> lock(s->cfg_mutex);
@@ -482,8 +531,11 @@ int on_message(void *ctx, const struct iucm_msg *msg)
 		struct iucm_error err = {};
 		if (iucm_parse_error(msg->payload, msg->length, &err) == IUCM_OK) {
 			obs_log(LOG_WARNING, "[iphone-cam] peer ERROR %u: %s", (unsigned) err.code, err.text);
-			if (err.code == IUCM_ERRCODE_BUSY || err.code == IUCM_ERRCODE_VERSION_UNSUPPORTED)
+			if (err.code == IUCM_ERRCODE_BUSY || err.code == IUCM_ERRCODE_VERSION_UNSUPPORTED) {
 				s->fatal = true;
+				s->fatal_state = err.code == IUCM_ERRCODE_BUSY ? link_state::busy
+									      : link_state::incompatible;
+			}
 		}
 		return 1;
 	}
@@ -500,6 +552,8 @@ void close_connection(iphone_source *s)
 		iucm_decoder_destroy(s->dec);
 		s->dec = nullptr;
 	}
+	s->dec_hvcc.clear();
+	s->dec_width = s->dec_height = s->dec_fps = 0;
 	if (s->fd >= 0) {
 		close(s->fd);
 		s->fd = -1;
@@ -509,8 +563,10 @@ void close_connection(iphone_source *s)
 	s->missed_pongs = 0;
 	s->stats_log_deadline_ms = 0; /* log the first STATS of the next session at once */
 	/* The device is usually still attached, only the app is gone. The next
-	 * failed connect attempt corrects this to no_device if the cable went. */
-	set_status(s, link_state::waiting);
+	 * failed connect attempt corrects this to no_device if the cable went.
+	 * A fatal condition keeps its own state so the dialog does not tell the
+	 * user to open an app that is already open. */
+	set_status(s, s->fatal ? s->fatal_state : link_state::waiting);
 	/* Clear the source so OBS does not keep showing a frozen frame. */
 	obs_source_output_video2(s->source, nullptr);
 }
@@ -525,6 +581,11 @@ void run_session(iphone_source *s, std::vector<uint8_t> &parse_buf)
 	size_t written = 0;
 
 	s->last_ping_ts = now_ms();
+	/* Deadlines for the silent-tunnel cases: usbmux hands out a socket as soon
+	 * as the port is open, so a wedged app looks exactly like a healthy one
+	 * until the first message arrives. */
+	const uint64_t session_start_ms = now_ms();
+	uint64_t hello_ms = 0;
 	s->report_deadline_ms = now_ms() + 5000;
 	s->frames_since_report = 0;
 	s->bytes_since_report = 0;
@@ -537,7 +598,7 @@ void run_session(iphone_source *s, std::vector<uint8_t> &parse_buf)
 		if (pr < 0) {
 			if (errno == EINTR)
 				continue;
-			obs_log(LOG_WARNING, "[iphone-cam] poll failed: %d", errno);
+			obs_log(LOG_WARNING, "[iphone-cam] poll failed: errno %d (%s)", errno, strerror(errno));
 			return;
 		}
 		if (pr > 0 && (pfd[1].revents & POLLIN)) {
@@ -558,7 +619,8 @@ void run_session(iphone_source *s, std::vector<uint8_t> &parse_buf)
 			if (n < 0) {
 				if (errno == EINTR || errno == EAGAIN)
 					continue;
-				obs_log(LOG_WARNING, "[iphone-cam] recv failed: %d", errno);
+				obs_log(LOG_WARNING, "[iphone-cam] recv failed: errno %d (%s)", errno,
+					strerror(errno));
 				return;
 			}
 			int rc = iucm_parser_feed(&parser, rx, (size_t) n, on_message, s);
@@ -570,6 +632,21 @@ void run_session(iphone_source *s, std::vector<uint8_t> &parse_buf)
 		}
 
 		uint64_t t = now_ms();
+		if (!s->started) {
+			if (t - session_start_ms >= IUCM_HELLO_TIMEOUT_MS) {
+				obs_log(LOG_WARNING, "[iphone-cam] no HELLO within %d ms — reconnecting",
+					IUCM_HELLO_TIMEOUT_MS);
+				return;
+			}
+		} else {
+			if (hello_ms == 0)
+				hello_ms = t;
+			if (!s->config_seen && t - hello_ms >= IUCM_CONFIG_TIMEOUT_MS) {
+				obs_log(LOG_WARNING, "[iphone-cam] no CONFIG within %d ms — reconnecting",
+					IUCM_CONFIG_TIMEOUT_MS);
+				return;
+			}
+		}
 		if (s->started && t - s->last_ping_ts >= IUCM_PING_INTERVAL_MS) {
 			s->last_ping_ts = t;
 			s->missed_pongs++;
@@ -580,7 +657,8 @@ void run_session(iphone_source *s, std::vector<uint8_t> &parse_buf)
 			}
 			if (iucm_encode_ping(out, sizeof(out), now_us(), &written) == IUCM_OK &&
 			    !send_all(s, out, written)) {
-				obs_log(LOG_WARNING, "[iphone-cam] sending PING failed");
+				obs_log(LOG_WARNING, "[iphone-cam] sending PING failed: errno %d (%s)", errno,
+					strerror(errno));
 				return;
 			}
 		}
@@ -620,6 +698,8 @@ void worker_main(iphone_source *s)
 
 		const int loglevel = s->connect_failures >= 5 ? LOG_WARNING : LOG_INFO;
 		int fd = -1;
+		/* Non-zero only on the usbmux path; debug_tcp never asks usbmuxd. */
+		size_t device_count = 0;
 		if (!debug_tcp.empty()) {
 			fd = connect_tcp(debug_tcp, loglevel);
 			if (fd >= 0) {
@@ -630,7 +710,7 @@ void worker_main(iphone_source *s)
 			}
 		} else {
 			std::string used;
-			fd = connect_usbmux(serial, used, loglevel);
+			fd = connect_usbmux(serial, used, loglevel, device_count);
 			if (fd >= 0) {
 				obs_log(LOG_INFO, "[iphone-cam] connected via usbmux to %s:%d", used.c_str(),
 					IUCM_PORT);
@@ -642,13 +722,8 @@ void worker_main(iphone_source *s)
 
 		if (fd < 0) {
 			/* Split "cable/phone missing" from "app not in the foreground".
-			 * One usbmuxd list per retry, and the retry is 1-5 s apart. */
-			struct usbmux_device attached[16];
-			size_t attached_count = 0;
-			bool have_device = debug_tcp.empty()
-						   ? (usbmux_list_devices(attached, 16, &attached_count) == USBMUX_OK &&
-						      attached_count > 0)
-						   : true;
+			 * connect_usbmux already listed the devices, so no second query. */
+			bool have_device = debug_tcp.empty() ? device_count > 0 : true;
 			set_status(s, have_device ? link_state::waiting : link_state::no_device);
 			s->connect_failures++;
 			obs_log(s->connect_failures >= 5 ? LOG_WARNING : LOG_INFO,
@@ -837,6 +912,12 @@ obs_properties_t *source_get_properties(void *data)
 			break;
 		case link_state::waiting:
 			snprintf(status, sizeof(status), "%s", obs_module_text("Status.Waiting"));
+			break;
+		case link_state::incompatible:
+			snprintf(status, sizeof(status), "%s", obs_module_text("Status.Incompatible"));
+			break;
+		case link_state::busy:
+			snprintf(status, sizeof(status), "%s", obs_module_text("Status.Busy"));
 			break;
 		default:
 			snprintf(status, sizeof(status), "%s", obs_module_text("Status.NoDevice"));

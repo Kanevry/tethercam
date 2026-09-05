@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Changelog, TetherCam</title>
+<meta name="description" content="What changed in TetherCam, release by release: the OBS plugin and the iPhone app, one shared version number. Full history and release assets on GitHub.">
+<link rel="canonical" href="https://tethercam.app/changelog">
+<link rel="alternate" hreflang="en" href="https://tethercam.app/changelog">
+<meta name="author" content="Bernhard Goetzendorfer">
+<meta name="theme-color" content="#0B0C10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#F7F6F3" media="(prefers-color-scheme: light)">
+
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="TetherCam">
+<meta property="og:url" content="https://tethercam.app/changelog">
+<meta property="og:title" content="Changelog, TetherCam">
+<meta property="og:description" content="What changed in TetherCam, release by release: the OBS plugin and the iPhone app, one shared version number.">
+<meta property="og:image" content="https://tethercam.app/img/og.png">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Changelog, TetherCam">
+<meta name="twitter:description" content="What changed in TetherCam, release by release: the OBS plugin and the iPhone app, one shared version number.">
+<meta name="twitter:image" content="https://tethercam.app/img/og.png">
+
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="icon" href="/favicon.png" type="image/png" sizes="512x512">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="preload" href="/fonts/space-grotesk-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt: plain-text summary for language models">
+<link rel="stylesheet" href="/style.css">
+<script src="/main.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a class="brand" href="/#top"><picture><source type="image/webp" srcset="/img/wordmark-56.webp"><img src="/img/icon-192.png" alt="" width="28" height="28"></picture> TetherCam</a>
+    <ul>
+      <li><a href="/#quick-start">Quick start</a></li>
+      <li><a href="/install">Install guide</a></li>
+      <li><a href="/#download">Download</a></li>
+      <li><a href="/#faq">FAQ</a></li>
+      <li><a href="/#source">Source</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main id="main">
+<section class="section">
+  <div class="wrap">
+    <p class="eyebrow">Changelog</p>
+    <h1>What changed</h1>
+    <p class="lede">The repository ships two artefacts with one shared version number: the macOS OBS plugin (<code>obs-plugin/</code>, GPL-2.0-or-later) and the iOS app (<code>ios-app/</code>, MIT). A tag <code>vX.Y.Z</code> releases both.</p>
+    <p class="meta">Full history, diffs and release assets: <a href="https://github.com/Kanevry/tethercam/releases">GitHub Releases</a>. This page mirrors <a href="https://github.com/Kanevry/tethercam/blob/main/CHANGELOG.md">CHANGELOG.md</a> in the repository.</p>
+
+    <div class="legal">
+      <h2 id="unreleased">Unreleased</h2>
+
+      <h3>Added</h3>
+      <ul class="prose">
+        <li><b>App Store submission of 0.1.0 (2)</b> on 2026-09-05: listing in en-US and de-DE pushed with <code>scripts/asc-listing.py</code>, five marketing screenshots designed in <code>tethercam.pen</code> (AI-generated studio scene, no people), TestFlight external group &ldquo;Public Beta&rdquo; with the public link <a href="https://testflight.apple.com/join/wmT74Ry8">https://testflight.apple.com/join/wmT74Ry8</a>, Beta App Review and App Review both submitted.</li>
+        <li><b>Local release tooling</b>: <code>scripts/appstore-upload.sh</code> (archive and upload with the App Store Connect API key), <code>scripts/asc-api.sh</code> (JWT helper), <code>.claude/skills/distribute</code>.</li>
+        <li><b>Website</b>: demo video embedded with poster, gallery carousel of the App Store frames, TestFlight button, FAQ answers for the USB and Continuity Camera queries, VideoObject schema, <code>llms.txt</code> discoverable.</li>
+      </ul>
+
+      <h3>Changed</h3>
+      <ul class="prose">
+        <li>The App Preview video was withdrawn from the listing (it showed the owner). 0.1.0 ships without an App Preview.</li>
+      </ul>
+
+      <h2 id="v0-1-0">0.1.0 &mdash; 2026-09-05</h2>
+      <p class="meta"><a href="https://github.com/Kanevry/tethercam/releases/tag/v0.1.0">v0.1.0 on GitHub</a></p>
+
+      <h3>Added</h3>
+      <ul class="prose">
+        <li><b>Tools menu entry</b> &ldquo;TetherCam: Add iPhone camera to current scene&rdquo; (obs-frontend-api, no Qt): creates the source in the current scene, names it <code>TetherCam iPhone</code>, fits it to the canvas (<code>OBS_BOUNDS_SCALE_INNER</code>) and does nothing if the scene already has one.</li>
+        <li><b>First-run hint</b>: if no scene in the collection contains a TetherCam source, the plugin logs the Tools-menu path once per scene collection at <code>FINISHED_LOADING</code>.</li>
+        <li><b>Status line in the source properties</b>: read-only first row saying whether a phone is attached, whether the app is in the foreground, and the live format plus measured frame rate while streaming. Plus a plain-text link to the setup guide.</li>
+        <li><b>German plugin locale</b> (<code>data/locale/de-DE.ini</code>).</li>
+        <li><b>German and English app localisation</b> (<code>ios-app/Sources/Resources/{de,en}.lproj</code>), including the Info.plist purpose strings.</li>
+        <li><b>Homebrew cask draft</b> (<code>packaging/homebrew/</code>), unpublished.</li>
+        <li><b>Website https://tethercam.app</b> as the user-facing entry point: quick start, the three-step setup and the download link.</li>
+        <li><b>Public GitHub repository</b> <code>Kanevry/tethercam</code>: the mirror is now the release host, with <code>SECURITY.md</code>, <code>CONTRIBUTING.md</code>, <code>CODE_OF_CONDUCT.md</code>, issue templates and a pull-request template.</li>
+        <li><b>IUCM wire protocol</b> (<code>protocol/PROTOCOL.md</code>) as the contract between both sides: framing, message types (CONFIG, VIDEO, PING/PONG), error codes.</li>
+        <li><b>Shared C core</b> (<code>shared/</code>, MIT): incremental frame parser and usbmux client, free of Apple frameworks so it builds and unit-tests on Linux.</li>
+        <li><b>iOS app</b> (<code>ios-app/</code>, SwiftUI): AVFoundation capture, hardware HEVC encoding via VideoToolbox, TCP listener on port 7878 reachable from the Mac through the usbmux tunnel. No Wi-Fi involved.</li>
+        <li><b>OBS source plugin</b> &ldquo;TetherCam (iPhone via USB)&rdquo; (<code>obs-plugin/</code>, C/ObjC++): connects over usbmuxd, decodes HEVC with VideoToolbox, delivers NV12 frames as an async source. Universal binary (arm64 + x86_64), Hardened Runtime, macOS 12.0+.</li>
+        <li><b>Auto-rotation</b>: the app levels to the horizon via <code>AVCaptureDevice.RotationCoordinator</code> with gravity-based hysteresis and a flat-device fallback; geometry changes rebuild the encoder session and emit a fresh CONFIG.</li>
+        <li><b>Developer tools</b> (<code>tools/</code>, Swift package): <code>usbcam-sim</code> (test-pattern sender), <code>usbcam-recv</code> (CLI receiver over TCP or the usbmux tunnel), and <code>integration.sh</code>, an end-to-end acceptance run that needs no iPhone.</li>
+        <li><b>Release engineering</b>: installer <code>.pkg</code>, signed and notarized when the release is built with the Apple signing secrets, otherwise unsigned; one-line installer script, TestFlight upload workflow, GitHub Actions CI.</li>
+        <li><b>Product name TetherCam</b> and an app icon.</li>
+      </ul>
+
+      <h3>Changed</h3>
+      <ul class="prose">
+        <li><b>Camera names sent to OBS are English</b> (<code>Back Wide</code>, <code>Back Ultra Wide</code>, <code>Back Telephoto</code>, <code>Front</code>) instead of German.</li>
+        <li><b>iOS app reduced to one screen</b>: full-screen preview with a single status line and a traffic-light dot. Camera choice, auto rotation, horizon levelling, manual angle and the diagnostics moved behind one gear icon.</li>
+        <li><b>Camera permission</b> is requested on first launch without an intermediate onboarding page; a denial shows a card with a button into Settings.</li>
+        <li><b>ENABLE_FRONTEND_API</b> defaults to ON in <code>obs-plugin/CMakeLists.txt</code> and the CMake presets.</li>
+        <li><b>scripts/install.sh now points at the right repository</b> (<code>OWNER=Kanevry</code>).</li>
+        <li><b>TestFlight workflow no longer fails without secrets</b>: a <code>check-secrets</code> job resolves <code>ASC_KEY_P8</code> presence and the upload job is skipped rather than failed.</li>
+      </ul>
+
+      <h3>Verified</h3>
+      <ul class="prose">
+        <li>1080p30 over usbmuxd against a physical iPhone.</li>
+        <li><code>tools/integration.sh</code> end to end against the simulator: frame rate, keyframe cadence, first-frame latency, ping round-trip, and an ffmpeg decode of the dump.</li>
+      </ul>
+
+      <h3>Known limitations</h3>
+      <ul class="prose">
+        <li>macOS only. The plugin depends on VideoToolbox and usbmuxd; the CMake configure step fails on other platforms by design.</li>
+        <li>One iPhone at a time.</li>
+        <li>The iOS app is distributed via TestFlight only. Apple offers no free public distribution channel outside the App Store and TestFlight.</li>
+      </ul>
+    </div>
+
+    <p class="actions"><a class="btn btn-secondary" href="/#top">Back to the start <span class="arw" aria-hidden="true">&rarr;</span></a></p>
+  </div>
+</section>
+</main>
+
+<footer class="site-footer surface-ink">
+  <div class="grain"></div>
+  <div class="wrap">
+    <div class="foot-grid">
+      <p>Built by <a href="https://gotzendorfer.at">Bernhard Goetzendorfer</a>. Not affiliated with Apple or the OBS Project.</p>
+      <ul class="foot-links">
+        <li><a href="/install">Install guide</a></li>
+        <li><a href="/privacy">Privacy policy</a></li>
+        <li><a href="https://github.com/Kanevry/tethercam">GitHub</a></li>
+      </ul>
+    </div>
+    <p class="foot-mark">&mdash; TetherCam 0.1.0</p>
+  </div>
+</footer>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {"@type": "ListItem", "position": 1, "name": "TetherCam", "item": "https://tethercam.app/"},
+    {"@type": "ListItem", "position": 2, "name": "Changelog", "item": "https://tethercam.app/changelog"}
+  ]
+}
+</script>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "@id": "https://tethercam.app/changelog",
+  "url": "https://tethercam.app/changelog",
+  "name": "Changelog, TetherCam",
+  "inLanguage": "en",
+  "description": "What changed in TetherCam, release by release: the OBS plugin and the iPhone app, one shared version number.",
+  "dateModified": "2026-09-05",
+  "isPartOf": {"@id": "https://tethercam.app/#website"},
+  "publisher": {"@id": "https://tethercam.app/#organization"}
+}
+</script>
+
+</body>
+</html>

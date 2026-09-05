@@ -24,6 +24,7 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 #include <plugin-support.h>
 #include <util/platform.h>
 
+#include <stdio.h>
 #include <string.h>
 
 #define IUCM_SOURCE_ID "iphone_usb_camera"
@@ -142,11 +143,16 @@ static void add_source_to_current_scene(void *private_data)
  * scratch collection should be told once per collection, not once per install. */
 static void hint_if_no_source(void)
 {
-	if (collection_has_tethercam())
-		return;
-
 	char *collection = obs_frontend_get_current_scene_collection();
 	const char *key = (collection && *collection) ? collection : "default";
+
+	if (collection_has_tethercam()) {
+		obs_log(LOG_INFO, "[iphone-cam] first-run hint: TetherCam source present in collection '%s', nothing to do",
+			key);
+		bfree(collection);
+		return;
+	}
+
 	char *path = obs_module_config_path(IUCM_HINT_FILE);
 
 	obs_data_t *cfg = path ? obs_data_create_from_json_file(path) : NULL;
@@ -154,9 +160,17 @@ static void hint_if_no_source(void)
 		cfg = obs_data_create();
 
 	if (!obs_data_get_bool(cfg, key)) {
-		obs_log(LOG_INFO,
-			"[iphone-cam] no TetherCam source in scene collection '%s'. Use Tools -> \"%s\", then open TetherCam on the iPhone. Guide: https://github.com/Kanevry/tethercam#quick-start",
-			key, obs_module_text("ToolsMenu.AddSource"));
+		/* The format string comes from the locale file, so the compiler cannot
+		 * check it. The argument list is fixed here and the .ini ships with the
+		 * plugin. The source name inside stays unlocalised (see above). */
+		char hint[512];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wformat-nonliteral"
+#pragma clang diagnostic ignored "-Wformat-security"
+		snprintf(hint, sizeof(hint), obs_module_text("ToolsMenu.HintNoSource"), key,
+			 obs_module_text("ToolsMenu.AddSource"));
+#pragma clang diagnostic pop
+		obs_log(LOG_INFO, "[iphone-cam] %s", hint);
 		obs_data_set_bool(cfg, key, true);
 		if (path) {
 			char *dir = obs_module_config_path("");
@@ -177,7 +191,10 @@ static void hint_if_no_source(void)
 static void frontend_event(enum obs_frontend_event event, void *private_data)
 {
 	UNUSED_PARAMETER(private_data);
-	if (event == OBS_FRONTEND_EVENT_FINISHED_LOADING)
+	/* Once per scene collection: at startup for the collection that loads, and
+	 * again whenever the user switches to another one. The JSON flag file keeps
+	 * a repeated switch from repeating the hint. */
+	if (event == OBS_FRONTEND_EVENT_FINISHED_LOADING || event == OBS_FRONTEND_EVENT_SCENE_COLLECTION_CHANGED)
 		hint_if_no_source();
 }
 

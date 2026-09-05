@@ -109,6 +109,9 @@ public final class CaptureEngine: NSObject {
     private var requestedOutput = CGSize(width: 1920, height: 1080)
     /// Latest raw motion sample, written on main, read on the sample queue.
     private var motion = (continuous: CGFloat(90), confidence: CGFloat(0), sector: CGFloat(90))
+    /// Angle `applyRotation()` last wrote to the video connection. Written on
+    /// main, read on `sessionQueue` — hence guarded by `motionLock`.
+    private var appliedCaptureAngle: CGFloat = 90
     private let motionLock = NSLock()
     private var lastFrameTime: CFAbsoluteTime = 0
     private var statWindowStart: CFAbsoluteTime = 0
@@ -239,6 +242,7 @@ public final class CaptureEngine: NSObject {
                 if let c = videoOutput.connection(with: .video) {
                     c.isVideoMirrored = false
                 }
+                applyStoredRotation()
 
                 session.commitConfiguration()
                 if !session.isRunning { session.startRunning() }
@@ -259,6 +263,12 @@ public final class CaptureEngine: NSObject {
     public func stop() {
         setEncoding(false)
         sessionQueue.async { [self] in
+            // A START that arrived while this block waited (the restart path in
+            // ServerStateMachine emits stopCapture + startCapture for a format
+            // change) has already flipped encoding back on and queued its own
+            // configuration behind us. Dropping to the preview format here would
+            // undo it and leak a 720p buffer into the encoder.
+            guard !isEncoding else { return }
             activeFormat = nil
             sourceFormat = nil
             resetLeveling()
@@ -319,6 +329,7 @@ public final class CaptureEngine: NSObject {
                 if let c = videoOutput.connection(with: .video) {
                     c.isVideoMirrored = false
                 }
+                applyStoredRotation()
                 session.commitConfiguration()
                 currentDevice = cam.device
                 DispatchQueue.main.async { [self] in rebuildRotationCoordinator() }
@@ -420,6 +431,7 @@ public final class CaptureEngine: NSObject {
     private func applyRotation() {
         let apply = { [self] in
             let angle = desiredCaptureAngle()
+            motionLock.lock(); appliedCaptureAngle = angle; motionLock.unlock()
             if let c = videoOutput.connection(with: .video),
                c.isVideoRotationAngleSupported(angle) {
                 c.videoRotationAngle = angle
@@ -440,6 +452,28 @@ public final class CaptureEngine: NSObject {
             }
         }
         if Thread.isMainThread { apply() } else { DispatchQueue.main.async(execute: apply) }
+    }
+
+    /// sessionQueue-only. Writes the last known angle to the video connection
+    /// inside the running configuration transaction.
+    ///
+    /// A fresh connection (new input, or the output re-added after preview)
+    /// starts at angle 0. Waiting for `rebuildRotationCoordinator()` to hop to
+    /// main and call `applyRotation()` leaves a window in which a portrait mount
+    /// delivers landscape 1920x1080 buffers although CONFIG announced 1080x1920:
+    /// `HevcEncoder.encode` then rebuilds the VT session on the transposed size
+    /// and a spurious CONFIG pair goes out. So the angle is applied here, before
+    /// `commitConfiguration`, from `appliedCaptureAngle` — the value the previous
+    /// connection already carried. `desiredCaptureAngle()` cannot be used: it
+    /// reads main-only state (`OrientationSensor`'s published values and the
+    /// RotationCoordinator).
+    private func applyStoredRotation() {
+        motionLock.lock()
+        let angle = appliedCaptureAngle
+        motionLock.unlock()
+        guard let c = videoOutput.connection(with: .video),
+              c.isVideoRotationAngleSupported(angle) else { return }
+        c.videoRotationAngle = angle
     }
 
     /// Picks the format whose dimensions and frame-rate range are nearest to the

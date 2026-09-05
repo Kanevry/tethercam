@@ -81,6 +81,9 @@ https://tethercam.app/demo.mp4 (MP4, H.264, 1920x1080, about 31 MB).
 ## Links
 
 - Website: https://tethercam.app/
+- German landing page: https://tethercam.app/de/
+- Install guide (step by step, with troubleshooting): https://tethercam.app/install
+- Changelog: https://tethercam.app/changelog
 - Demo video: https://tethercam.app/demo.mp4 (54 s, MP4)
 - Privacy policy: https://tethercam.app/privacy (the app collects no data at all)
 - GitHub: https://github.com/Kanevry/tethercam
