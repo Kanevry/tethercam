@@ -93,6 +93,15 @@ public final class UsbServer {
         }
     }
 
+    /// Lens choice from the phone's settings sheet. Applied immediately when a
+    /// stream is running (stop + start with the same format), remembered for
+    /// every later START otherwise.
+    public func selectCamera(_ id: UInt8) {
+        queue.async { [self] in
+            apply(machine.handle(.selectCamera(id)))
+        }
+    }
+
     private func startTicking() {
         let t = DispatchSource.makeTimerSource(queue: queue)
         t.schedule(deadline: .now() + 1, repeating: 1)
@@ -189,6 +198,12 @@ public final class UsbServer {
                 switch result {
                 case .success:
                     let f = self.capture.activeFormat ?? (p.width, p.height, p.fps)
+                    // The effective camera id is the one the phone decided on,
+                    // not necessarily the one START asked for — log it next to
+                    // the format the following CONFIG announces.
+                    NSLog("[usbcam] config cam=%d %dx%d@%d %d kbps",
+                          Int(p.cameraId), Int(f.width), Int(f.height),
+                          Int(f.fps), Int(p.bitrateKbps))
                     do {
                         try self.encoder.start(width: f.width, height: f.height,
                                                fps: f.fps, bitrateKbps: p.bitrateKbps)

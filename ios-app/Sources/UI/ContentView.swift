@@ -70,6 +70,15 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// The phone's lens choice. Goes through the server so a running stream is
+    /// restarted with the new camera and the same format; while nothing streams
+    /// it is only remembered and applied to the next START.
+    func selectCamera(_ id: UInt8) {
+        guard capture.cameras.contains(where: { $0.id == id }) else { return }
+        selectedCameraId = id
+        server.selectCamera(id)
+    }
+
     func refreshPermission() {
         cameraDenied = AVCaptureDevice.authorizationStatus(for: .video) == .denied
     }
@@ -83,6 +92,9 @@ final class AppModel: ObservableObject {
 struct ContentView: View {
     @StateObject private var model = AppModel()
     @AppStorage("horizonLeveling") private var horizonLeveling = true
+    /// Back wide (id 0) is the default: it is the lens a phone in a mount is
+    /// pointed with unless someone says otherwise.
+    @AppStorage("preferredCameraId") private var preferredCameraId = 0
     @Environment(\.scenePhase) private var scenePhase
     @State private var showSettings = false
     @State private var showForegroundBanner = false
@@ -131,11 +143,14 @@ struct ContentView: View {
         .onAppear {
             model.horizonLeveling = horizonLeveling
             model.boot()
+            model.selectCamera(UInt8(clamping: preferredCameraId))
         }
         .onChange(of: horizonLeveling) { _, on in model.horizonLeveling = on }
+        .onChange(of: preferredCameraId) { _, id in model.selectCamera(UInt8(clamping: id)) }
         .onChange(of: scenePhase) { _, phase in handleScenePhase(phase) }
         .sheet(isPresented: $showSettings) {
-            SettingsSheet(model: model, horizonLeveling: $horizonLeveling)
+            SettingsSheet(model: model, horizonLeveling: $horizonLeveling,
+                          preferredCameraId: $preferredCameraId)
         }
     }
 
@@ -232,6 +247,7 @@ struct PermissionDeniedCard: View {
 struct SettingsSheet: View {
     @ObservedObject var model: AppModel
     @Binding var horizonLeveling: Bool
+    @Binding var preferredCameraId: Int
     @Environment(\.dismiss) private var dismiss
     @State private var showAdvanced = false
     @State private var showDiagnostics = false
@@ -244,7 +260,9 @@ struct SettingsSheet: View {
                     // menu variant becomes unreadable once four lenses are listed.
                     ForEach(model.cameras, id: \.id) { c in
                         Button {
-                            model.selectedCameraId = c.id
+                            // Persist first; the onChange in ContentView is what
+                            // restarts a running capture on the new lens.
+                            preferredCameraId = Int(c.id)
                         } label: {
                             HStack {
                                 Text(c.name).foregroundStyle(.primary)

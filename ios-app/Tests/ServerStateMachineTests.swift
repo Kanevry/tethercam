@@ -147,6 +147,54 @@ final class ServerStateMachineTests: XCTestCase {
         XCTAssertEqual(m.phase, .greeted, "the listener stays open after a capture failure")
     }
 
+    func testPreferredCameraOverridesStartCamera() {
+        var m = makeMachine()
+        _ = m.handle(.connectionAccepted(id: 1, nowUs: 0))
+        XCTAssertTrue(m.handle(.selectCamera(1)).isEmpty, "nothing is streaming yet")
+        XCTAssertEqual(m.preferredCameraId, 1)
+
+        // START asks for camera 0, the phone already said 1: format survives,
+        // camera id does not.
+        let a = m.handle(.message(.start(start), nowUs: 1))
+        let expected = StartParams(cameraId: 1, width: 1920, height: 1080,
+                                   fps: 30, bitrateKbps: 12000)
+        XCTAssertEqual(a, [.startCapture(expected)])
+        XCTAssertEqual(m.phase, .streaming(expected))
+    }
+
+    func testStartCameraIsHonoredWhileNoPreferenceIsSet() {
+        var m = makeMachine()
+        XCTAssertNil(m.preferredCameraId)
+        _ = m.handle(.connectionAccepted(id: 1, nowUs: 0))
+        let next = StartParams(cameraId: 1, width: 1280, height: 720, fps: 60, bitrateKbps: 6000)
+        XCTAssertEqual(m.handle(.message(.start(next), nowUs: 1)), [.startCapture(next)])
+    }
+
+    func testSelectCameraWhileStreamingRestartsWithSameFormat() {
+        var m = makeMachine()
+        _ = m.handle(.connectionAccepted(id: 1, nowUs: 0))
+        _ = m.handle(.message(.start(start), nowUs: 0))
+
+        let a = m.handle(.selectCamera(1))
+        let switched = StartParams(cameraId: 1, width: start.width, height: start.height,
+                                   fps: start.fps, bitrateKbps: start.bitrateKbps)
+        XCTAssertEqual(a, [.stopCapture, .startCapture(switched)],
+                       "encoder must be rebuilt so a fresh CONFIG goes out")
+        XCTAssertEqual(m.phase, .streaming(switched))
+
+        // Picking the lens that is already live is a no-op — no stream hiccup.
+        XCTAssertTrue(m.handle(.selectCamera(1)).isEmpty)
+    }
+
+    func testSelectingAnAbsentCameraLeavesStartInCharge() {
+        var m = makeMachine()
+        _ = m.handle(.connectionAccepted(id: 1, nowUs: 0))
+        _ = m.handle(.message(.start(start), nowUs: 0))
+        XCTAssertTrue(m.handle(.selectCamera(9)).isEmpty)
+        XCTAssertNil(m.preferredCameraId)
+        XCTAssertEqual(m.phase, .streaming(start))
+    }
+
     func testTickWithoutConnectionDoesNothing() {
         var m = makeMachine()
         XCTAssertTrue(m.handle(.tick(nowUs: 999_999_999)).isEmpty)

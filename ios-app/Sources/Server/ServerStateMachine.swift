@@ -19,6 +19,8 @@ public struct ServerStateMachine: Equatable {
         case connectionClosed(id: UInt64)
         case tick(nowUs: UInt64)
         case captureFailed(IucmErrorCode, text: String)
+        /// The user picked a lens on the phone. The phone wins over START.
+        case selectCamera(UInt8)
     }
 
     public enum Action: Equatable {
@@ -34,6 +36,11 @@ public struct ServerStateMachine: Equatable {
     public private(set) var phase: Phase = .idle
     public private(set) var activeConnection: UInt64?
     public private(set) var lastPingUs: UInt64 = 0
+    /// Lens chosen on the phone. `nil` means nobody has chosen yet — only then
+    /// does the camera id out of START decide. Once set, the phone is the source
+    /// of truth and START's camera id is ignored: the person holding the device
+    /// can see which lens is pointing at the subject, the Mac cannot.
+    public private(set) var preferredCameraId: UInt8?
 
     private let deviceName: String
     private let appVersion: String
@@ -75,10 +82,16 @@ public struct ServerStateMachine: Equatable {
                     return [.send(.error(code: IucmErrorCode.formatUnsupported.rawValue,
                                          text: "unknown camera id \(p.cameraId)"), to: conn)]
                 }
+                // START's format is authoritative, its camera id is not: a
+                // preference set on the phone survives every START.
+                var effective = p
+                if let pref = preferredCameraId, cameras.contains(where: { $0.id == pref }) {
+                    effective.cameraId = pref
+                }
                 var actions: [Action] = []
                 if isStreaming { actions.append(.stopCapture) }   // restart with new params
-                phase = .streaming(p)
-                actions.append(.startCapture(p))
+                phase = .streaming(effective)
+                actions.append(.startCapture(effective))
                 return actions
             case .stop:
                 guard isStreaming else { return [] }
@@ -116,6 +129,19 @@ public struct ServerStateMachine: Equatable {
             var actions: [Action] = wasStreaming ? [.stopCapture] : []
             actions.append(.send(.error(code: code.rawValue, text: text), to: conn))
             return actions
+
+        case let .selectCamera(id):
+            // A lens the hardware does not have is not a choice — leaving the
+            // preference untouched keeps START in charge instead of failing.
+            guard cameras.contains(where: { $0.id == id }) else { return [] }
+            preferredCameraId = id
+            guard case let .streaming(current) = phase, current.cameraId != id else { return [] }
+            // Same width/height/fps/bitrate, new lens: the restart rebuilds the
+            // encoder, so a fresh CONFIG reaches the receiver.
+            var next = current
+            next.cameraId = id
+            phase = .streaming(next)
+            return [.stopCapture, .startCapture(next)]
         }
     }
 
