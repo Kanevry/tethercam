@@ -76,10 +76,12 @@ Typen:
 - `0x02 START` (Mac -> App): Kamera-ID, Breite, Hoehe, fps, Bitrate kbit/s.
 - `0x03 STOP` (Mac -> App).
 - `0x10 CONFIG` (App -> Mac): tatsaechlich aktives Format nach START (Breite, Hoehe, fps),
-  plus HEVC-Parametersaetze (VPS/SPS/PPS) als `hvcC`-Record. Die App liest die
-  Parametersaetze explizit aus der `CMFormatDescription` des ersten Keyframes
-  (`CMVideoFormatDescriptionGetHEVCParameterSetAtIndex`) und sendet CONFIG erneut, sobald
-  sich die Format-Description aendert. Der Empfaenger baut aus jedem CONFIG die
+  plus HEVC-Parametersaetze als fertiger `hvcC`-Record. Die App baut ihn nicht selbst,
+  sondern liest ihn aus der `CMFormatDescription` des ersten Keyframes
+  (`kCMFormatDescriptionExtension_SampleDescriptionExtensionAtoms`, Schluessel `hvcC`)
+  und sendet CONFIG erneut, sobald sich die Format-Description aendert. Der Empfaenger
+  erzeugt daraus per `CMVideoFormatDescriptionCreate` mit derselben Extension die
+  Decoder-Format-Description. Der Empfaenger baut aus jedem CONFIG die
   Decoder-Session neu und wartet dann auf den naechsten Keyframe.
 - `0x11 VIDEO` (App -> Mac): pts in Mikrosekunden (u64), dann ausschliesslich VCL-NAL-Einheiten
   mit 4-Byte-Laengenpraefix (HVCC-Stil, kein Annex-B). **Keine Parametersaetze in-band**;
@@ -95,17 +97,23 @@ Matrix). Die App setzt das am Capture-Output und am Encoder, das Plugin setzt
 - `0x20 PING` / `0x21 PONG`: Mac sendet alle 2 s PING mit u64-Zeitstempel, App antwortet
   PONG mit demselben Wert. Dient Latenzmessung und Totlink-Erkennung (3 fehlende PONG =
   Verbindung schliessen und neu verbinden).
-- `0x30 ERROR` (App -> Mac): u16 Code, UTF-8 Text. Codes: 1 BUSY, 2 CAMERA_DENIED,
-  3 FORMAT_UNSUPPORTED, 4 ENCODER_FAILED.
+- `0x30 ERROR` (beide Richtungen): u16 Code, UTF-8 Text. Codes: 1 BUSY, 2 CAMERA_DENIED,
+  3 FORMAT_UNSUPPORTED, 4 ENCODER_FAILED, 5 VERSION_UNSUPPORTED.
 
 Versionsregel: HELLO traegt die Protokollversion; der Mac lehnt unbekannte Major-Version
-mit ERROR ab. Prototyp ist Version 1.
+mit ERROR 5 ab und schliesst. Prototyp ist Version 1.
+
+Totlink beidseitig: Der Mac sendet PING alle 2 s (3 fehlende PONG = neu verbinden). Die
+App verwirft eine Verbindung ohne PING seit 6 s und gibt den Listener frei, damit ein
+neuer Empfaenger nicht dauerhaft BUSY bekommt.
 
 ## 5. iOS-App (`ios-app/`)
 
 - Swift 6, SwiftUI, iOS 17 Minimum (deckt alle Geraete mit HEVC-Hardware-Encoder ab).
 - Ein `CaptureEngine`-Actor: AVCaptureSession mit `AVCaptureVideoDataOutput` (NV12
-  Video-Range, BT.709, siehe Farbkonvention in Abschnitt 4),
+  Video-Range; `activeColorSpace = .sRGB` am Geraet, Rec.709-Primaries; am Encoder
+  explizit `ColorPrimaries`, `TransferFunction`, `YCbCrMatrix` = ITU-R 709-2; siehe
+  Farbkonvention in Abschnitt 4),
   Formatwahl nach START-Wunsch, naechstliegendes unterstuetztes Format.
 - Ein `HevcEncoder`: VTCompressionSession, `kVTProfileLevel_HEVC_Main_AutoLevel`,
   `RealTime=true`, `AllowFrameReordering=false` (keine B-Frames, niedrige Latenz),
@@ -125,12 +133,17 @@ mit ERROR ab. Prototyp ist Version 1.
 
 - Basis: offizielle `obs-plugintemplate` (CMake, buildspec.json, laedt libobs und
   Abhaengigkeiten). Sprache: C fuer Kern, Objective-C++ fuer VideoToolbox.
-- Module:
-  - `usbmux.c/.h`: Unix-Socket-Client fuer `/var/run/usbmuxd`, Plist-Nachrichten
-    (XML-Plist per CoreFoundation), `list_devices`, `connect(device_id, port)`,
-    Ereignisse Attach/Detach ueber `Listen`. Keine externen Bibliotheken.
-  - `frame_parser.c/.h`: zustandsbehafteter Parser fuer das Drahtprotokoll aus Abschnitt 4,
-    liefert komplette Nachrichten aus einem Byte-Strom. Pure C, ohne I/O, testbar.
+- Geteilte C-Module liegen in `shared/` (MIT, Top-Level), `obs-plugin/` und `tools/`
+  linken beide dagegen:
+  - `shared/usbmux.c/.h`: Unix-Socket-Client fuer `/var/run/usbmuxd`. usbmux-Header
+    16 Byte little-endian (length, version=1, message=8 fuer Plist, tag), Nutzlast
+    XML-Plist. Der Plist-Codec ist handgeschrieben (nur die Nachrichten `ListDevices`,
+    `Listen`, `Connect`, `Result`, `Attached`, `Detached`), kein CoreFoundation, damit
+    er auf Linux baut und testbar ist. API: `list_devices`, `connect(device_id, port)`,
+    `listen(callback)`.
+  - `shared/frame_parser.c/.h`: zustandsbehafteter Parser fuer das Drahtprotokoll aus
+    Abschnitt 4, liefert komplette Nachrichten aus einem Byte-Strom. Pure C, ohne I/O.
+- Plugin-eigene Module:
   - `hevc_decoder.mm/.h`: VTDecompressionSession aus dem `hvcC`-Record, Ausgabe NV12
     CVPixelBuffer, Reset bei neuem CONFIG.
   - `iphone_source.mm`: `obs_source_info` (Typ `OBS_SOURCE_VIDEO | OBS_SOURCE_ASYNC`),
@@ -151,8 +164,8 @@ mit ERROR ab. Prototyp ist Version 1.
 
 - `usbcam-recv` (Swift-Paket, macOS): verbindet sich wie das Plugin, schreibt Statistik
   (fps, Bitrate, PING-Latenz, Keyframe-Abstand) und optional den HEVC-Rohstrom in eine
-  `.hevc`-Datei (mit `ffmpeg` abspielbar). Nutzt dieselben C-Module wie das Plugin
-  (usbmux, frame_parser) ueber ein kleines C-Target.
+  `.hevc`-Datei (mit `ffmpeg` abspielbar). Nutzt die C-Module aus `shared/` ueber ein
+  C-Target im Swift-Paket.
 - `usbcam-sim` (Swift-Paket, macOS): Sender-Simulator, der ein bewegtes Testbild mit
   eingeblendetem Zeitstempel kodiert und auf `127.0.0.1:7878` das Protokoll spricht.
   Ermoeglicht Plugin- und Empfaenger-Tests ohne Telefon; der Empfaenger bekommt dafuer
@@ -182,7 +195,8 @@ mit ERROR ab. Prototyp ist Version 1.
 - Integration: `usbcam-sim` -> `usbcam-recv --tcp` als lokal reproduzierbares Skript
   `tools/integration.sh`, prueft fps und Bildinhalt (Zeitstempel im Bild vs. pts). Es gibt
   in der Estate keinen macOS-Runner; CI laeuft im Prototyp nur fuer die reinen C-Tests
-  (frame_parser, usbmux-Fixtures) auf Linux. macOS-CI ist ausser Scope.
+  aus `shared/` (frame_parser, usbmux-Plist-Fixtures) auf Linux. macOS-CI ist ausser
+  Scope.
 - Manuell: Telefon am Kabel in OBS, Latenzmessung per Stoppuhr im Bild, Kabel ziehen und
   neu anstecken.
 
@@ -222,9 +236,10 @@ Drei Schnitte, jeder ohne den naechsten testbar:
 ```
 obs-iphone-usb-cam/
   README.md  LICENSE (MIT)  obs-plugin/LICENSE (GPL-2.0-or-later)  CLAUDE.md
-  protocol/PROTOCOL.md
+  protocol/PROTOCOL.md   Drahtprotokoll plus usbmux-Header/Plist-Nachrichten
+  shared/                C: usbmux, frame_parser, ctest (MIT)
   ios-app/            Xcode-Projekt (SwiftUI)
   obs-plugin/         obs-plugintemplate-basiert (CMake)
-  tools/              Swift-Paket mit usbcam-recv, usbcam-sim, C-Target shared/
+  tools/              Swift-Paket mit usbcam-recv, usbcam-sim, linkt shared/
   docs/superpowers/specs/, docs/superpowers/plans/
 ```
