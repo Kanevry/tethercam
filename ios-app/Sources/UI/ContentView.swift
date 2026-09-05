@@ -75,6 +75,8 @@ struct ContentView: View {
 
                 Toggle("Auto-Rotation", isOn: $model.autoRotation)
 
+                OrientationRow(sensor: model.capture.orientation)
+
                 if !model.autoRotation {
                     Picker("Drehung", selection: $model.manualRotation) {
                         ForEach([0, 90, 180, 270], id: \.self) { a in
@@ -113,5 +115,24 @@ struct ContentView: View {
             Spacer()
             Text(v)
         }
+    }
+}
+
+/// Tripod diagnostics: quantised angle, confidence (in-plane gravity magnitude)
+/// and the raw continuous angle, so the orientation can be verified on site
+/// without a console attached.
+struct OrientationRow: View {
+    @ObservedObject var sensor: OrientationSensor
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(String(format: "Lage: %.0f\u{00B0} (m=%.2f)",
+                        Double(sensor.captureAngle), Double(sensor.confidence)))
+            Text(String(format: "roh %.0f\u{00B0}%@",
+                        Double(sensor.continuousAngle),
+                        sensor.confidence < OrientationMath.flatThreshold ? "  flach - haelt" : ""))
+                .foregroundStyle(.secondary)
+        }
+        .font(.system(.caption2, design: .monospaced))
     }
 }

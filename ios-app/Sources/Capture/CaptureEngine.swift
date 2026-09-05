@@ -42,6 +42,12 @@ public final class CaptureEngine: NSObject {
         didSet { rebuildRotationCoordinator() }
     }
 
+    /// Gravity-based orientation. Source of truth for the *capture* angle in
+    /// auto mode; the RotationCoordinator stays on board for the preview layer
+    /// and as a cross-check in the log. See OrientationSensor.swift for why the
+    /// coordinator alone is not enough on a steeply tilted tripod.
+    public let orientation = OrientationSensor()
+
     private let sessionQueue = DispatchQueue(label: "at.gotzendorfer.usbcam.session")
     private let sampleQueue = DispatchQueue(label: "at.gotzendorfer.usbcam.samples")
     private let videoOutput = AVCaptureVideoDataOutput()
@@ -58,6 +64,8 @@ public final class CaptureEngine: NSObject {
     public override init() {
         cameras = CaptureEngine.discover()
         super.init()
+        orientation.onCaptureAngleChange = { [weak self] _ in self?.applyRotation() }
+        orientation.start()
     }
 
     public var descriptors: [CameraDescriptor] { cameras.map(\.descriptor) }
@@ -169,6 +177,10 @@ public final class CaptureEngine: NSObject {
     /// and sends a fresh CONFIG.
     private func desiredCaptureAngle() -> CGFloat {
         guard autoRotation else { return manualRotationAngle }
+        // Gravity first. The coordinator is only the fallback for the window
+        // before the first motion sample (or a device without an accelerometer),
+        // because its horizon-level angle freezes when no horizon is in frame.
+        if orientation.hasFix { return orientation.captureAngle }
         return rotationCoordinator?.videoRotationAngleForHorizonLevelCapture ?? manualRotationAngle
     }
 
@@ -198,8 +210,14 @@ public final class CaptureEngine: NSObject {
                c.isVideoRotationAngleSupported(angle) {
                 c.videoRotationAngle = angle
             }
-            NSLog("[usbcam] rotation angle=%.0f auto=%d coordinator=%d",
-                  Double(angle), autoRotation ? 1 : 0, rotationCoordinator != nil ? 1 : 0)
+            let source = autoRotation ? (orientation.hasFix ? "sensor" : "coordinator") : "manual"
+            // Cross-check: with the phone held normally both numbers must agree.
+            // They diverge exactly in the steep-tilt case this sensor exists for.
+            NSLog("[usbcam] rotation angle=%.0f source=%@ m=%.2f cont=%.0f coordinator=%.0f auto=%d",
+                  Double(angle), source as NSString,
+                  Double(orientation.confidence), Double(orientation.continuousAngle),
+                  Double(rotationCoordinator?.videoRotationAngleForHorizonLevelCapture ?? -1),
+                  autoRotation ? 1 : 0)
             if let pc = previewLayer?.connection {
                 let pa = autoRotation
                     ? (rotationCoordinator?.videoRotationAngleForHorizonLevelPreview ?? angle)
