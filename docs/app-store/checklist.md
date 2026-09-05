@@ -12,7 +12,7 @@ API, so the record itself is unavoidably manual (section 2.1, step O4).
 | 1 | developer.apple.com > Account > Membership details: membership active, team G3QZ66475M, note the renewal date | OWNER | 6.1 |
 | 2 | App Store Connect > Business > Trader Status: declare EU trader status, submit address, phone, mail, wait for verification. Do this first, it gates EU distribution and takes days | OWNER | 2.1 O2, 6.2 |
 | 3 | App Store Connect > Business > Agreements: accept the current Apple Developer Program License Agreement. Skip Paid Applications, the app is free | OWNER | 2.1 O3, 6.3 |
-| 4 | developer.apple.com > Certificates, Identifiers & Profiles > Identifiers: confirm `at.gotzendorfer.tethercam` exists as an explicit App ID, not a wildcard | OWNER | 6.4 |
+| 4 | developer.apple.com > Certificates, Identifiers & Profiles > Identifiers: confirm `at.gotzendorfer.tethercam` exists as an explicit App ID, not a wildcard | DONE 2026-09-05 (registered via API, id 2G7A77TNZ6) | 6.4 |
 | 5 | `INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO` in `ios-app/project.yml` | AUTOMATED (done, commit 581a800) | 2.2 C1, risk 4 |
 | 6 | In-app privacy policy link in the settings sheet | AUTOMATED (done, commit 581a800) | 2.2 C2, risk 3 |
 | 7 | `https://tethercam.app/privacy` and `https://tethercam.app/#faq` return 200 with a real contact address | AUTOMATED (done, live since 2026-09-05) | 2.2 C3, 6.9 |
@@ -22,8 +22,8 @@ API, so the record itself is unavoidably manual (section 2.1, step O4).
 | # | Step | Who | Reference |
 |---|---|---|---|
 | 8 | App Store Connect > Apps > `+` > New App. Platform **iOS**, Name **TetherCam**, Primary Language **English (U.S.)**, Bundle ID **at.gotzendorfer.tethercam**, SKU **tethercam-ios**, User Access **Full**. The bundle id can never be changed afterwards | OWNER | 2.1 O4, 6.5 |
-| 9 | App Store Connect > Users and Access > Integrations > App Store Connect API > Team Keys > `+`, role **App Manager**, download the `.p8` once. This is a different key from the notarization key in `docs/RELEASING.md` 1c | OWNER | 2.1 O5, 6.6 |
-| 10 | github.com/Kanevry/tethercam > Settings > Secrets and variables > Actions: add `ASC_KEY_P8` (`base64 -i AuthKey_XXXX.p8 \| pbcopy`), `ASC_KEY_ID`, `ASC_ISSUER_ID`, then delete the `.p8` from disk | OWNER | 6.7 |
+| 9 | App Store Connect > Users and Access > Integrations > App Store Connect API > Team Keys > `+`, role **App Manager**, download the `.p8` once. This is a different key from the notarization key in `docs/RELEASING.md` 1c | DONE 2026-09-05 with the existing Admin team key (shared with WalkAITalkie); a dedicated App Manager key is optional hygiene, see `docs/SECRETS.md` | 2.1 O5, 6.6 |
+| 10 | github.com/Kanevry/tethercam > Settings > Secrets and variables > Actions: add `ASC_KEY_P8` (`base64 -i AuthKey_XXXX.p8 \| pbcopy`), `ASC_KEY_ID`, `ASC_ISSUER_ID`, then delete the `.p8` from disk | DONE 2026-09-05 (all six ASC_*/NOTARY_* secrets set) | 6.7 |
 
 ## Phase 2: compliance questionnaires, required before any external testing
 
@@ -37,7 +37,7 @@ API, so the record itself is unavoidably manual (section 2.1, step O4).
 
 | # | Step | Who | Reference |
 |---|---|---|---|
-| 14 | Push tag `v0.1.0`, or run the `testflight-ios` workflow via workflow_dispatch. It generates the project with xcodegen, archives with `-allowProvisioningUpdates` and uploads with `packaging/ExportOptions.plist` | AUTOMATED (CI, needs the secrets from step 10) | 2, 2.3 |
+| 14 | Push tag `v0.1.0`, or run the `testflight-ios` workflow via workflow_dispatch. It generates the project with xcodegen, archives with `-allowProvisioningUpdates` and uploads with `packaging/ExportOptions.plist` | AUTOMATED (CI, secrets are set) or locally `scripts/appstore-upload.sh` after step 8 | 2, 2.3 |
 | 15 | App Store Connect > TetherCam > TestFlight > iOS builds: wait for processing, 5 to 30 minutes. "Missing Compliance" must not appear; if it does, step 5 did not reach the build | OWNER (watch only) | 2.3 |
 
 ## Phase 4: TestFlight
