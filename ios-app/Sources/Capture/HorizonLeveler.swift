@@ -10,14 +10,22 @@ import Metal
 /// on the simulator without a camera.
 public enum LevelerMath {
 
-    /// Residual roll is clamped to this magnitude. Two reasons:
-    /// the fill zoom grows fast (16:9 needs 1.43x at 15 degrees, 2.04x at 60),
-    /// and the sector hysteresis (45 + 15 degrees) legitimately lets the residual
-    /// reach 60 degrees *while the mount is being turned*. Fully levelling that
-    /// transient would punch a 2x crop out of the frame for a second. Clamping
-    /// leaves a visible tilt during the turn and a level picture once the sector
-    /// has followed, which is the trade Continuity Camera also makes.
-    public static let maxResidualDeg: CGFloat = 25
+    /// Residual roll is clamped to this magnitude.
+    ///
+    /// **45, raised from 25 on 2026-09-05.** With `OrientationMath.hysteresisMargin`
+    /// at 5 the sector is at most 50 degrees off, so a *steady* tripod tilt now
+    /// always lands inside this clamp and the picture comes out level. At 25 a
+    /// stale sector pinned the residual at the clamp and left the horizon visibly
+    /// tilted — the reported `Rest +25` symptom.
+    ///
+    /// Zoom cost at the clamp: `fillScale(45, 16/9) = cos45 + sin45 * 16/9`
+    /// = 0.7071 + 0.7071 * 1.7778 ≈ **1.964x**. Oversampling 4K (3840x2160) into a
+    /// 1920x1080 output has 2.0x of linear headroom, so even the worst case still
+    /// samples from ~1955x1100 source pixels — no upscaling. Without oversampling
+    /// (1080p in, 1080p out) a 45-degree residual is a real ~2x crop; that is the
+    /// price of a level horizon on a heavily tilted mount and it is reported in the
+    /// STATS telemetry (`flags` bit 2) so the cost is visible rather than silent.
+    public static let maxResidualDeg: CGFloat = 45
 
     /// Below this residual change the smoothed value does not move at all —
     /// kills the 0.1-degree sensor noise that would otherwise resample every frame.
@@ -40,6 +48,36 @@ public enum LevelerMath {
     /// (0 = landscape/charge-port-right, 90 = portrait, counted the same way as
     /// `OrientationMath.continuousAngle`). The connection already rotated the
     /// buffer by `sector`, so `continuous - sector` is exactly what is missing.
+    ///
+    /// ## Sign, end to end (verified 2026-09-05, unchanged — the existing sign is right)
+    ///
+    /// Physical case: the phone is rolled **10 degrees clockwise as seen from
+    /// behind it**, i.e. from where the operator stands looking at the screen while
+    /// the rear camera looks at the scene. Start from landscape/charge-port-right
+    /// so the capture connection contributes nothing (sector 0) and the chain is
+    /// free of AVFoundation's own convention:
+    ///
+    /// 1. **Gravity.** At rest the body reads `g = (-1, 0)`. Rolling the *body* 10
+    ///    degrees clockwise in that view rotates a world-fixed vector 10 degrees
+    ///    counter-clockwise in body coordinates: `g = (-cos10, -sin10)
+    ///    = (-0.985, -0.174)`.
+    /// 2. **Continuous angle.** `270 - atan2(-0.985, -0.174) * 180/pi
+    ///    = 270 - (-100) = 370 -> 10`. So `continuous = +10`.
+    /// 3. **Residual.** `snap(10) = 0`, so `residual = 10 - 0 = +10`.
+    /// 4. **CoreImage.** The rear camera is not mirrored, so image-right is `+x`
+    ///    and image-up is `+y`; the world horizon therefore appears tilted 10
+    ///    degrees *counter-clockwise* in the frame. Levelling it means rotating the
+    ///    image 10 degrees **clockwise**. `HorizonLeveler.process` builds
+    ///    `CGAffineTransform(rotationAngle: -delta * .pi / 180)`, and CoreImage's
+    ///    y-up space turns counter-clockwise for a positive angle — so `-10` is a
+    ///    10-degree clockwise turn of the picture.
+    /// 5. **Result.** Horizon level. Positive residual = rotate the picture
+    ///    clockwise; the pinned regression test is
+    ///    `HorizonLevelerTests.testResidualSignForTenDegreeClockwiseRoll`.
+    ///
+    /// For a non-zero sector the extra rotation happens in the already-rotated
+    /// frame, and an in-plane rotation keeps its direction under a preceding
+    /// rotation, so the same sign holds there.
     public static func residualAngle(continuous: CGFloat, sector: CGFloat) -> CGFloat {
         wrap180(continuous - sector)
     }

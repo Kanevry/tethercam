@@ -18,6 +18,7 @@ public enum IucmMessageType: UInt8, Sendable {
     case hello = 0x01
     case start = 0x02
     case stop = 0x03
+    case stats = 0x12
     case config = 0x10
     case video = 0x11
     case ping = 0x20
@@ -87,6 +88,53 @@ public struct ConfigMessage: Equatable, Sendable {
     }
 }
 
+/// STATS (`0x12`), app to Mac. See `protocol/PROTOCOL.md` section 4.8.
+///
+/// Fixed-point on the wire so a decoded message round-trips byte-identically.
+public struct StatsMessage: Equatable, Sendable {
+    public static let flagAutoRotation: UInt8 = 1 << 0
+    public static let flagHorizonLeveling: UInt8 = 1 << 1
+    public static let flagOversampling: UInt8 = 1 << 2
+    public static let flagFlatHold: UInt8 = 1 << 3
+
+    public var continuousAngleX10: Int16
+    public var sector: UInt16
+    public var residualX10: Int16
+    public var gravityMX1000: UInt16
+    public var levelerMsX10: UInt16
+    public var droppedFrames: UInt16
+    public var sourceWidth: UInt16
+    public var sourceHeight: UInt16
+    public var outputWidth: UInt16
+    public var outputHeight: UInt16
+    public var flags: UInt8
+    public var cameraId: UInt8
+
+    public init(continuousAngleX10: Int16, sector: UInt16, residualX10: Int16,
+                gravityMX1000: UInt16, levelerMsX10: UInt16, droppedFrames: UInt16,
+                sourceWidth: UInt16, sourceHeight: UInt16,
+                outputWidth: UInt16, outputHeight: UInt16,
+                flags: UInt8, cameraId: UInt8) {
+        self.continuousAngleX10 = continuousAngleX10
+        self.sector = sector
+        self.residualX10 = residualX10
+        self.gravityMX1000 = gravityMX1000
+        self.levelerMsX10 = levelerMsX10
+        self.droppedFrames = droppedFrames
+        self.sourceWidth = sourceWidth
+        self.sourceHeight = sourceHeight
+        self.outputWidth = outputWidth
+        self.outputHeight = outputHeight
+        self.flags = flags
+        self.cameraId = cameraId
+    }
+
+    public var continuousDeg: Double { Double(continuousAngleX10) / 10 }
+    public var residualDeg: Double { Double(residualX10) / 10 }
+    public var gravityM: Double { Double(gravityMX1000) / 1000 }
+    public var levelerMs: Double { Double(levelerMsX10) / 10 }
+}
+
 public struct VideoMessage: Equatable, Sendable {
     public var ptsUs: UInt64
     public var isKeyframe: Bool
@@ -126,6 +174,7 @@ public enum IucmMessage: Equatable, Sendable {
     case hello(HelloMessage)
     case start(StartMessage)
     case stop
+    case stats(StatsMessage)
     case config(ConfigMessage)
     case video(VideoMessage)
     case ping(UInt64)
@@ -137,6 +186,7 @@ public enum IucmMessage: Equatable, Sendable {
         case .hello: return .hello
         case .start: return .start
         case .stop: return .stop
+        case .stats: return .stats
         case .config: return .config
         case .video: return .video
         case .ping: return .ping

@@ -21,7 +21,17 @@ public enum OrientationMath {
 
     /// How far past a 45-degree sector boundary the continuous angle must travel
     /// before the quantised angle follows. Prevents flapping at the boundary.
-    public static let hysteresisMargin: CGFloat = 15
+    ///
+    /// **5, not 15 (2026-09-05).** The margin is the upper bound of the residual
+    /// the horizon leveller has to absorb: `|residual| <= 45 + margin`. At 15 the
+    /// residual could legitimately sit at 60 degrees while the leveller clamped at
+    /// 25 — the picture then stays visibly tilted on a tripod and the diagnostics
+    /// read `Rest +25` forever, which is exactly what was observed. 5 degrees is
+    /// still ten times the sensor noise floor (~0.5 deg) and, together with the
+    /// 300 ms dwell in `OrientationSensor`, keeps the sector from flapping, while
+    /// capping the residual at 50 — inside the leveller's new 45-degree clamp
+    /// except for the brief moment the mount is being turned.
+    public static let hysteresisMargin: CGFloat = 5
 
     /// In-plane gravity magnitude — the confidence of the roll estimate.
     /// 1.0 = device vertical (screen plane parallel to gravity), 0.0 = flat.
@@ -64,8 +74,12 @@ public enum OrientationMath {
     /// - Returns `last` when the device is too flat to measure roll.
     /// - Returns `last` while the continuous angle is within
     ///   45 + `hysteresisMargin` degrees of it, i.e. the boundary must be
-    ///   overshot by 15 degrees before the sector changes.
-    /// - Otherwise snaps to the nearest multiple of 90.
+    ///   overshot by 5 degrees before the sector changes.
+    /// - Otherwise snaps to the **nearest** multiple of 90.
+    ///
+    /// Consequence, and the whole point of the small margin: the sector is never
+    /// more than `45 + hysteresisMargin` = 50 degrees away from the continuous
+    /// angle, so `LevelerMath.residualAngle` can never exceed 50 either.
     ///
     /// Pure function: the 300 ms dwell time is enforced by `OrientationSensor`,
     /// not here, because it needs a clock.

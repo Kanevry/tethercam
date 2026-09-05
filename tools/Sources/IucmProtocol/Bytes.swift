@@ -11,6 +11,8 @@ struct ByteWriter {
         bytes.append(UInt8((v >> 8) & 0xFF))
     }
 
+    mutating func i16(_ v: Int16) { u16(UInt16(bitPattern: v)) }
+
     mutating func u32(_ v: UInt32) {
         for i in 0..<4 { bytes.append(UInt8((v >> (8 * UInt32(i))) & 0xFF)) }
     }
@@ -68,6 +70,8 @@ struct ByteReader {
         let s = Array(try take(2))
         return UInt16(s[0]) | (UInt16(s[1]) << 8)
     }
+
+    mutating func i16() throws -> Int16 { Int16(bitPattern: try u16()) }
 
     mutating func u32() throws -> UInt32 {
         let s = Array(try take(4))

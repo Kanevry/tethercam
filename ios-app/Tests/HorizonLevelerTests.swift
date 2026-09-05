@@ -108,8 +108,50 @@ final class HorizonLevelerTests: XCTestCase {
         XCTAssertEqual(LevelerMath.clampResidual(60), LevelerMath.maxResidualDeg)
         XCTAssertEqual(LevelerMath.clampResidual(-60), -LevelerMath.maxResidualDeg)
         XCTAssertEqual(LevelerMath.clampResidual(12), 12)
-        XCTAssertLessThan(LevelerMath.fillScale(angleDeg: LevelerMath.maxResidualDeg,
-                                                aspect: 16.0 / 9), 1.7)
+        // Raised 25 -> 45 on 2026-09-05: a steady 45-degree tripod tilt must come
+        // out level, so the clamp has to sit above the 50-degree worst-case
+        // residual the 5-degree sector hysteresis can produce in transit only.
+        XCTAssertEqual(LevelerMath.maxResidualDeg, 45)
+        XCTAssertEqual(LevelerMath.clampResidual(30), 30)
+    }
+
+    /// Zoom cost at the new clamp, pinned so the trade stays visible: 16:9 at 45
+    /// degrees needs cos45 + sin45 * 16/9 = 1.964x. Oversampling 4K into 1080p has
+    /// 2.0x of linear headroom, so the worst case still does not upscale.
+    func testFillScaleAtTheClampFitsInsideFourKOversampling() {
+        let s = LevelerMath.fillScale(angleDeg: 45, aspect: 16.0 / 9)
+        XCTAssertEqual(s, 1.964, accuracy: 0.002)
+        XCTAssertLessThan(s, 3840.0 / 1920.0)
+    }
+
+    /// End-to-end sign check for the physical case described in
+    /// `LevelerMath.residualAngle`: the phone rolled 10 degrees CLOCKWISE as seen
+    /// from behind it (operator looking at the screen, rear camera at the scene).
+    ///
+    /// Rolling the body clockwise in that view rotates a world-fixed vector
+    /// counter-clockwise in body coordinates, so gravity moves from (-1, 0) to
+    /// (-cos10, -sin10). The chain must end in a POSITIVE residual, because
+    /// `HorizonLeveler.process` turns the picture clockwise for a positive one
+    /// (`rotationAngle: -delta` in CoreImage's counter-clockwise y-up space) and
+    /// clockwise is what levels a horizon that appears tilted counter-clockwise.
+    func testResidualSignForTenDegreeClockwiseRoll() {
+        let r = 10 * CGFloat.pi / 180
+        let gx = -cos(r), gy = -sin(r)
+
+        let continuous = OrientationMath.continuousAngle(gx: gx, gy: gy)
+        XCTAssertEqual(continuous, 10, accuracy: 0.001)
+
+        let sector = OrientationMath.quantizeAngle(gx: gx, gy: gy, last: 0)
+        XCTAssertEqual(sector, 0)
+
+        let residual = LevelerMath.residualAngle(continuous: continuous, sector: sector)
+        XCTAssertEqual(residual, 10, accuracy: 0.001)
+        XCTAssertGreaterThan(residual, 0, "positive residual = rotate the picture clockwise")
+        XCTAssertEqual(LevelerMath.clampResidual(residual), residual, accuracy: 0.001)
+
+        // Mirror case: rolled counter-clockwise -> negative residual.
+        let ccw = OrientationMath.continuousAngle(gx: -cos(r), gy: sin(r))
+        XCTAssertEqual(LevelerMath.residualAngle(continuous: ccw, sector: 0), -10, accuracy: 0.001)
     }
 
     // MARK: - smoothing

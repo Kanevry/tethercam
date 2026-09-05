@@ -26,6 +26,7 @@ public enum IucmType: UInt8, Sendable, CaseIterable {
     case hello = 0x01
     case start = 0x02
     case stop = 0x03
+    case stats = 0x12
     case config = 0x10
     case video = 0x11
     case ping = 0x20
@@ -57,6 +58,82 @@ public struct CameraDescriptor: Equatable, Sendable {
     }
 }
 
+/// STATS (`0x12`) payload — device-side orientation and leveller state, once per
+/// second while a receiver is connected. See `protocol/PROTOCOL.md` section 4.8.
+///
+/// Fields are stored exactly as they travel: fixed-point integers, so a decoded
+/// message compares byte-identical to the encoded one. The `init(continuousDeg:…)`
+/// overload does the scaling and saturation.
+public struct DeviceStats: Equatable, Sendable {
+    /// Bit 0 — auto rotation is on (gravity drives the sector).
+    public static let flagAutoRotation: UInt8 = 1 << 0
+    /// Bit 1 — horizon levelling is on.
+    public static let flagHorizonLeveling: UInt8 = 1 << 1
+    /// Bit 2 — the camera runs above the output size so the fill zoom crops out of
+    /// surplus pixels instead of upscaling.
+    public static let flagOversampling: UInt8 = 1 << 2
+    /// Bit 3 — in-plane gravity is below the flat threshold, angle is being held.
+    public static let flagFlatHold: UInt8 = 1 << 3
+
+    public var continuousAngleX10: Int16
+    public var sector: UInt16
+    public var residualX10: Int16
+    public var gravityMX1000: UInt16
+    public var levelerMsX10: UInt16
+    public var droppedFrames: UInt16
+    public var sourceWidth: UInt16
+    public var sourceHeight: UInt16
+    public var outputWidth: UInt16
+    public var outputHeight: UInt16
+    public var flags: UInt8
+    public var cameraId: UInt8
+
+    public init(continuousAngleX10: Int16, sector: UInt16, residualX10: Int16,
+                gravityMX1000: UInt16, levelerMsX10: UInt16, droppedFrames: UInt16,
+                sourceWidth: UInt16, sourceHeight: UInt16,
+                outputWidth: UInt16, outputHeight: UInt16,
+                flags: UInt8, cameraId: UInt8) {
+        self.continuousAngleX10 = continuousAngleX10
+        self.sector = sector
+        self.residualX10 = residualX10
+        self.gravityMX1000 = gravityMX1000
+        self.levelerMsX10 = levelerMsX10
+        self.droppedFrames = droppedFrames
+        self.sourceWidth = sourceWidth
+        self.sourceHeight = sourceHeight
+        self.outputWidth = outputWidth
+        self.outputHeight = outputHeight
+        self.flags = flags
+        self.cameraId = cameraId
+    }
+
+    /// Saturating conversion from the physical values. Everything is clamped
+    /// rather than trapped: telemetry must never crash the streaming app.
+    public init(continuousDeg: Double, sector: Double, residualDeg: Double,
+                gravityM: Double, levelerMs: Double, droppedFrames: Int,
+                sourceWidth: Int, sourceHeight: Int, outputWidth: Int, outputHeight: Int,
+                flags: UInt8, cameraId: UInt8) {
+        func i16(_ v: Double) -> Int16 { Int16(max(-32768, min(32767, v.rounded()))) }
+        func u16(_ v: Double) -> UInt16 { UInt16(max(0, min(65535, v.rounded()))) }
+        self.init(continuousAngleX10: i16(continuousDeg * 10),
+                  sector: u16(sector),
+                  residualX10: i16(residualDeg * 10),
+                  gravityMX1000: u16(gravityM * 1000),
+                  levelerMsX10: u16(levelerMs * 10),
+                  droppedFrames: u16(Double(droppedFrames)),
+                  sourceWidth: u16(Double(sourceWidth)),
+                  sourceHeight: u16(Double(sourceHeight)),
+                  outputWidth: u16(Double(outputWidth)),
+                  outputHeight: u16(Double(outputHeight)),
+                  flags: flags, cameraId: cameraId)
+    }
+
+    public var continuousDeg: Double { Double(continuousAngleX10) / 10 }
+    public var residualDeg: Double { Double(residualX10) / 10 }
+    public var gravityM: Double { Double(gravityMX1000) / 1000 }
+    public var levelerMs: Double { Double(levelerMsX10) / 10 }
+}
+
 public struct StartParams: Equatable, Sendable {
     public var cameraId: UInt8
     public var width: UInt16
@@ -77,6 +154,7 @@ public enum IucmMessage: Equatable, Sendable {
     case hello(version: UInt16, deviceName: String, appVersion: String, cameras: [CameraDescriptor])
     case start(StartParams)
     case stop
+    case stats(DeviceStats)
     case config(width: UInt16, height: UInt16, fps: UInt16, hvcC: Data)
     /// `nalUnits` is the raw remainder after the pts field: a concatenation of
     /// 4-byte-big-endian-length-prefixed NAL units, passed through unchanged.
@@ -90,6 +168,7 @@ public enum IucmMessage: Equatable, Sendable {
         case .hello: return .hello
         case .start: return .start
         case .stop: return .stop
+        case .stats: return .stats
         case .config: return .config
         case .video: return .video
         case .ping: return .ping
@@ -116,6 +195,7 @@ struct ByteWriter {
     init(reserving n: Int = 0) { data.reserveCapacity(n) }
     mutating func u8(_ v: UInt8) { data.append(v) }
     mutating func u16(_ v: UInt16) { data.append(contentsOf: [UInt8(v & 0xFF), UInt8(v >> 8)]) }
+    mutating func i16(_ v: Int16) { u16(UInt16(bitPattern: v)) }
     mutating func u32(_ v: UInt32) {
         data.append(contentsOf: (0..<4).map { UInt8((v >> (8 * UInt32($0))) & 0xFF) })
     }
@@ -173,6 +253,7 @@ struct ByteReader {
         for k in 0..<8 { v |= UInt64(buf[i + k]) << (8 * UInt64(k)) }
         return v
     }
+    mutating func i16() throws -> Int16 { Int16(bitPattern: try u16()) }
     mutating func bytes(_ n: Int) throws -> Data {
         guard n >= 0, remaining >= n else { throw IucmDecodeError.truncatedPayload }
         defer { i += n }
@@ -224,6 +305,19 @@ public enum IucmCodec {
             p.u32(s.bitrateKbps)
         case .stop:
             break
+        case let .stats(st):
+            p.i16(st.continuousAngleX10)
+            p.u16(st.sector)
+            p.i16(st.residualX10)
+            p.u16(st.gravityMX1000)
+            p.u16(st.levelerMsX10)
+            p.u16(st.droppedFrames)
+            p.u16(st.sourceWidth)
+            p.u16(st.sourceHeight)
+            p.u16(st.outputWidth)
+            p.u16(st.outputHeight)
+            p.u8(st.flags)
+            p.u8(st.cameraId)
         case let .config(w, h, fps, hvcC):
             p.u16(w)
             p.u16(h)
@@ -277,6 +371,13 @@ public enum IucmCodec {
                                      bitrateKbps: try r.u32()))
         case .stop:
             msg = .stop
+        case .stats:
+            msg = .stats(DeviceStats(continuousAngleX10: try r.i16(), sector: try r.u16(),
+                                     residualX10: try r.i16(), gravityMX1000: try r.u16(),
+                                     levelerMsX10: try r.u16(), droppedFrames: try r.u16(),
+                                     sourceWidth: try r.u16(), sourceHeight: try r.u16(),
+                                     outputWidth: try r.u16(), outputHeight: try r.u16(),
+                                     flags: try r.u8(), cameraId: try r.u8()))
         case .config:
             let w = try r.u16(), h = try r.u16(), fps = try r.u16()
             let len = Int(try r.u32())

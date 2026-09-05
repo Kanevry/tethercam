@@ -108,4 +108,60 @@ final class IucmCodecTests: XCTestCase {
     func testNalSplitRejectsTruncated() {
         XCTAssertNil(HvccNal.split(Data([0, 0, 0, 9, 1, 2])))
     }
+
+    // MARK: - STATS (0x12), PROTOCOL.md 4.8
+
+    func testStatsRoundTripAndWireLayout() throws {
+        let st = DeviceStats(continuousDeg: 12.3, sector: 0, residualDeg: -4.5,
+                             gravityM: 0.87, levelerMs: 3.7, droppedFrames: 2,
+                             sourceWidth: 3840, sourceHeight: 2160,
+                             outputWidth: 1920, outputHeight: 1080,
+                             flags: DeviceStats.flagAutoRotation | DeviceStats.flagHorizonLeveling
+                                 | DeviceStats.flagOversampling,
+                             cameraId: 0)
+        let frame = IucmCodec.encode(.stats(st))
+        XCTAssertEqual(frame[4], 0x12)
+        // 12-byte header + the fixed 22-byte payload
+        XCTAssertEqual(frame.count, Iucm.headerSize + 22)
+        XCTAssertEqual(Array(frame[8..<12]), [22, 0, 0, 0])
+        // first field little-endian: 123 = 0x007B
+        XCTAssertEqual(Array(frame[12..<14]), [0x7B, 0x00])
+        // negative residual as two's complement: -45 = 0xFFD3
+        XCTAssertEqual(Array(frame[16..<18]), [0xD3, 0xFF])
+
+        guard case let .stats(back) = try IucmCodec.decodeFrame(frame) else {
+            return XCTFail("not a stats message")
+        }
+        XCTAssertEqual(back, st)
+        XCTAssertEqual(back.continuousDeg, 12.3, accuracy: 0.001)
+        XCTAssertEqual(back.residualDeg, -4.5, accuracy: 0.001)
+        XCTAssertEqual(back.gravityM, 0.87, accuracy: 0.001)
+        XCTAssertEqual(back.levelerMs, 3.7, accuracy: 0.001)
+    }
+
+    func testStatsSaturatesInsteadOfTrapping() {
+        // Telemetry must never crash the streaming app on an absurd input.
+        let st = DeviceStats(continuousDeg: 9_999_999, sector: 0, residualDeg: -9_999_999,
+                             gravityM: 5, levelerMs: 1e9, droppedFrames: Int.max,
+                             sourceWidth: 100_000, sourceHeight: -5,
+                             outputWidth: 0, outputHeight: 0, flags: 0xFF, cameraId: 255)
+        XCTAssertEqual(st.continuousAngleX10, Int16.max)
+        XCTAssertEqual(st.residualX10, Int16.min)
+        XCTAssertEqual(st.droppedFrames, UInt16.max)
+        XCTAssertEqual(st.sourceHeight, 0)
+    }
+
+    func testStatsRejectsTrailingBytes() {
+        var frame = IucmCodec.encode(.stats(DeviceStats(continuousAngleX10: 0, sector: 0,
+                                                        residualX10: 0, gravityMX1000: 0,
+                                                        levelerMsX10: 0, droppedFrames: 0,
+                                                        sourceWidth: 0, sourceHeight: 0,
+                                                        outputWidth: 0, outputHeight: 0,
+                                                        flags: 0, cameraId: 0)))
+        frame[8] = 23
+        frame.append(0)
+        XCTAssertThrowsError(try IucmCodec.decodeFrame(frame)) { e in
+            XCTAssertEqual(e as? IucmDecodeError, .trailingBytes)
+        }
+    }
 }

@@ -179,6 +179,13 @@ final class Receiver {
                     }
                 case .error(let e):
                     throw RecvError.remote("ERROR \(e.code): \(e.text)")
+                case .stats(let st):
+                    // 0x12, PROTOCOL.md 4.8 — device telemetry, informational only.
+                    logLine(String(format: "STATS   angle=%+.1f sector=%u residual=%+.1f m=%.2f "
+                                   + "leveler=%.1fms drop=%u src=%ux%u out=%ux%u flags=0x%02x cam=%u",
+                                   st.continuousDeg, st.sector, st.residualDeg, st.gravityM,
+                                   st.levelerMs, st.droppedFrames, st.sourceWidth, st.sourceHeight,
+                                   st.outputWidth, st.outputHeight, st.flags, st.cameraId))
                 case .hello:
                     throw RecvError.protocolViolation("second HELLO during streaming")
                 case .start, .stop, .ping:

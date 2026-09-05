@@ -56,32 +56,73 @@ final class OrientationTests: XCTestCase {
         XCTAssertEqual(OrientationMath.quantizeAngle(gx: a.0, gy: a.1, last: 90), 90)
     }
 
-    // MARK: hysteresis
+    // MARK: hysteresis (margin 5 since 2026-09-05, was 15)
+
+    func testSectorIsTheNearestMultipleOf90() {
+        // The pinned pair from the tripod bug report: with a 15-degree margin the
+        // sector stayed put and the leveller had to cover 55+ degrees.
+        let c30 = angleVector(30)
+        XCTAssertEqual(OrientationMath.quantizeAngle(gx: c30.0, gy: c30.1, last: 0), 0)
+        XCTAssertEqual(OrientationMath.quantizeAngle(gx: c30.0, gy: c30.1, last: 90), 0)
+        XCTAssertEqual(LevelerMath.residualAngle(continuous: 30, sector: 0), 30, accuracy: 0.001)
+
+        let c70 = angleVector(70)
+        XCTAssertEqual(OrientationMath.quantizeAngle(gx: c70.0, gy: c70.1, last: 90), 90)
+        XCTAssertEqual(OrientationMath.quantizeAngle(gx: c70.0, gy: c70.1, last: 0), 90)
+        XCTAssertEqual(LevelerMath.residualAngle(continuous: 70, sector: 90), -20, accuracy: 0.001)
+    }
 
     func testBoundaryInsideMarginDoesNotSwitch() {
-        // 50 degrees continuous: 5 degrees past the 45 boundary, inside the 15 margin
-        let v = angleVector(50)
+        // 41 degrees continuous: distance to 90 is 49 <= 45+5, still holds
+        let v = angleVector(41)
         XCTAssertEqual(OrientationMath.quantizeAngle(gx: v.0, gy: v.1, last: 90), 90)
     }
 
     func testBoundaryJustInsideMarginDoesNotSwitch() {
-        // exactly 60 degrees from 90 -> distance 30 <= 45+15, still holds
-        let v = angleVector(30)
+        // exactly 50 degrees from 90 -> distance 40 <= 45+5, holds
+        let v = angleVector(50)
         XCTAssertEqual(OrientationMath.quantizeAngle(gx: v.0, gy: v.1, last: 90), 90)
     }
 
     func testBoundaryBeyondMarginSwitches() {
-        // 29 degrees continuous: distance to 90 is 61 > 60 -> switch to nearest (0)
-        let v = angleVector(29)
+        // 39 degrees continuous: distance to 90 is 51 > 50 -> switch to nearest (0)
+        let v = angleVector(39)
         XCTAssertEqual(OrientationMath.quantizeAngle(gx: v.0, gy: v.1, last: 90), 0)
     }
 
-    func testHysteresisIsSymmetricAcrossTheWrap() {
-        // last = 0, continuous 331 -> distance 29, holds; 299 -> distance 61, switches to 270
-        let hold = angleVector(331)
+    func testHysteresisBandIsFortyToFiftyDegrees() {
+        // The band the boundary can sit in: coming from 0 the sector holds up to
+        // 50, coming from 90 it holds down to 40 — a 10-degree overlap, 2x margin.
+        let hold = angleVector(50)
         XCTAssertEqual(OrientationMath.quantizeAngle(gx: hold.0, gy: hold.1, last: 0), 0)
-        let flip = angleVector(299)
+        let flip = angleVector(51)
+        XCTAssertEqual(OrientationMath.quantizeAngle(gx: flip.0, gy: flip.1, last: 0), 90)
+        let holdDown = angleVector(40)
+        XCTAssertEqual(OrientationMath.quantizeAngle(gx: holdDown.0, gy: holdDown.1, last: 90), 90)
+    }
+
+    func testHysteresisIsSymmetricAcrossTheWrap() {
+        // last = 0, continuous 311 -> distance 49, holds; 309 -> distance 51, switches
+        let hold = angleVector(311)
+        XCTAssertEqual(OrientationMath.quantizeAngle(gx: hold.0, gy: hold.1, last: 0), 0)
+        let flip = angleVector(309)
         XCTAssertEqual(OrientationMath.quantizeAngle(gx: flip.0, gy: flip.1, last: 0), 270)
+    }
+
+    /// The whole reason the margin came down: the residual the leveller is asked
+    /// to absorb must stay inside the clamp for any steady pose.
+    func testResidualNeverExceedsFiftyForAnyPoseAndAnyPreviousSector() {
+        for deg in stride(from: 0.0, to: 360.0, by: 0.5) {
+            let v = angleVector(CGFloat(deg))
+            for last in [CGFloat(0), 90, 180, 270] {
+                let sector = OrientationMath.quantizeAngle(gx: v.0, gy: v.1, last: last)
+                let residual = LevelerMath.residualAngle(continuous: CGFloat(deg), sector: sector)
+                XCTAssertLessThanOrEqual(abs(residual), 50 + 1e-6,
+                                         "cont \(deg) last \(last) -> sector \(sector)")
+                XCTAssertLessThanOrEqual(abs(LevelerMath.clampResidual(residual)),
+                                         LevelerMath.maxResidualDeg + 1e-6)
+            }
+        }
     }
 
     // MARK: flat fallback

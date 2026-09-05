@@ -107,6 +107,10 @@ struct iphone_source {
 	uint64_t bytes_since_report = 0;
 	uint64_t report_deadline_ms = 0;
 	uint8_t active_camera_id = 0;
+	/* STATS (0x12) arrives once a second; LOG_INFO would flood the log, so the
+	 * info line is rate-limited to one per 5 s. Every STATS still goes to
+	 * LOG_DEBUG. 0 = log the first one immediately after connecting. */
+	uint64_t stats_log_deadline_ms = 0;
 	/* Set when the phone closed the socket cleanly (app backgrounded, STOP).
 	 * Reconnecting in the same millisecond just races the listener teardown,
 	 * so the worker waits 250 ms once. */
@@ -393,6 +397,39 @@ int on_message(void *ctx, const struct iucm_msg *msg)
 		}
 		return 0;
 	}
+	case IUCM_MSG_STATS: {
+		struct iucm_stats st = {};
+		if (iucm_parse_stats(msg->payload, msg->length, &st) != IUCM_OK) {
+			obs_log(LOG_DEBUG, "[iphone-cam] bad STATS (%u bytes)", (unsigned) msg->length);
+			return 0;
+		}
+		char flags[32];
+		snprintf(flags, sizeof(flags), "%s%s%s%s",
+			 (st.flags & IUCM_STATS_FLAG_AUTO) ? "auto," : "",
+			 (st.flags & IUCM_STATS_FLAG_LEVEL) ? "level," : "",
+			 (st.flags & IUCM_STATS_FLAG_OVERSAMP) ? "oversample," : "",
+			 (st.flags & IUCM_STATS_FLAG_FLAT_HOLD) ? "flat-hold," : "");
+		size_t fl = strlen(flags);
+		if (fl > 0)
+			flags[fl - 1] = '\0'; /* drop the trailing comma */
+		else
+			snprintf(flags, sizeof(flags), "none");
+
+		/* One format string, two levels: every sample at DEBUG, one per 5 s at
+		 * INFO so a normal log stays readable but still carries the device state. */
+		uint64_t now = now_ms();
+		bool info = now >= s->stats_log_deadline_ms;
+		if (info)
+			s->stats_log_deadline_ms = now + 5000;
+		obs_log(info ? LOG_INFO : LOG_DEBUG,
+			"[iphone-cam] stats: angle=%+.1f sector=%u residual=%+.1f m=%.2f leveler=%.1fms drop=%u src=%ux%u out=%ux%u flags=%s cam=%u",
+			st.continuous_angle_x10 / 10.0, (unsigned) st.sector, st.residual_x10 / 10.0,
+			st.gravity_m_x1000 / 1000.0, st.leveler_ms_x10 / 10.0,
+			(unsigned) st.dropped_frames, (unsigned) st.source_width,
+			(unsigned) st.source_height, (unsigned) st.output_width,
+			(unsigned) st.output_height, flags, (unsigned) st.camera_id);
+		return 0;
+	}
 	case IUCM_MSG_PONG: {
 		uint64_t ts = 0;
 		if (iucm_parse_timestamp(msg->payload, msg->length, &ts) == IUCM_OK) {
@@ -436,6 +473,7 @@ void close_connection(iphone_source *s)
 	s->started = false;
 	s->config_seen = false;
 	s->missed_pongs = 0;
+	s->stats_log_deadline_ms = 0; /* log the first STATS of the next session at once */
 	/* Clear the source so OBS does not keep showing a frozen frame. */
 	obs_source_output_video2(s->source, nullptr);
 }

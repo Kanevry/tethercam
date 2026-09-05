@@ -197,4 +197,29 @@ final class FrameParserTests: XCTestCase {
         }
         XCTAssertEqual(got, expected)
     }
+
+    func testStatsRoundTrip() throws {
+        let m = StatsMessage(continuousAngleX10: 123, sector: 0, residualX10: -45,
+                             gravityMX1000: 870, levelerMsX10: 37, droppedFrames: 2,
+                             sourceWidth: 3840, sourceHeight: 2160,
+                             outputWidth: 1920, outputHeight: 1080,
+                             flags: StatsMessage.flagAutoRotation | StatsMessage.flagHorizonLeveling,
+                             cameraId: 1)
+        let frame = try IucmCodec.encode(.stats(m))
+        XCTAssertEqual(frame[4], 0x12)
+        XCTAssertEqual(frame.count, Iucm.headerSize + 22)
+        let back = try IucmCodec.decodePayload(type: 0x12, flags: 0,
+                                               payload: Array(frame[Iucm.headerSize...]))
+        XCTAssertEqual(back, .stats(m))
+        guard case let .stats(s) = back else { return XCTFail("not stats") }
+        XCTAssertEqual(s.continuousDeg, 12.3, accuracy: 0.001)
+        XCTAssertEqual(s.residualDeg, -4.5, accuracy: 0.001)
+        XCTAssertEqual(s.gravityM, 0.87, accuracy: 0.001)
+        XCTAssertEqual(s.levelerMs, 3.7, accuracy: 0.001)
+    }
+
+    func testStatsRejectsShortPayload() {
+        XCTAssertThrowsError(try IucmCodec.decodePayload(type: 0x12, flags: 0,
+                                                         payload: [UInt8](repeating: 0, count: 21)))
+    }
 }

@@ -94,6 +94,7 @@ public final class UsbServer {
             guard let self else { return }
             self.apply(self.machine.handle(.tick(nowUs: Self.nowUs())))
             self.refreshStats()
+            self.sendStats()
         }
         t.resume()
         tickTimer = t
@@ -234,6 +235,16 @@ public final class UsbServer {
             if case let .send(_, sid) = $0 { return sid == id }
             return false
         }
+    }
+
+    /// STATS (`0x12`) once per second, whenever a receiver is attached — also
+    /// while idle. Orientation and leveller state is exactly what is unreadable
+    /// from the Mac otherwise, and it is most needed *before* streaming starts.
+    /// Fire-and-forget: an old receiver that predates 0x12 skips the unknown type
+    /// per PROTOCOL.md section 2, so this is safe to send unconditionally.
+    private func sendStats() {
+        guard let id = machine.activeConnection else { return }
+        send(.stats(capture.statsSnapshot()), to: id)
     }
 
     private func refreshStats() {

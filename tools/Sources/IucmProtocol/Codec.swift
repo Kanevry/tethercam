@@ -30,6 +30,19 @@ public enum IucmCodec {
             w.u32(m.bitrateKbps)
         case .stop:
             break
+        case .stats(let m):
+            w.i16(m.continuousAngleX10)
+            w.u16(m.sector)
+            w.i16(m.residualX10)
+            w.u16(m.gravityMX1000)
+            w.u16(m.levelerMsX10)
+            w.u16(m.droppedFrames)
+            w.u16(m.sourceWidth)
+            w.u16(m.sourceHeight)
+            w.u16(m.outputWidth)
+            w.u16(m.outputHeight)
+            w.u8(m.flags)
+            w.u8(m.cameraId)
         case .config(let m):
             w.u16(m.width)
             w.u16(m.height)
@@ -103,6 +116,16 @@ public enum IucmCodec {
         case .stop:
             try r.expectEnd()
             return .stop
+
+        case .stats:
+            let m = StatsMessage(continuousAngleX10: try r.i16(), sector: try r.u16(),
+                                 residualX10: try r.i16(), gravityMX1000: try r.u16(),
+                                 levelerMsX10: try r.u16(), droppedFrames: try r.u16(),
+                                 sourceWidth: try r.u16(), sourceHeight: try r.u16(),
+                                 outputWidth: try r.u16(), outputHeight: try r.u16(),
+                                 flags: try r.u8(), cameraId: try r.u8())
+            try r.expectEnd()
+            return .stats(m)
 
         case .config:
             let width = try r.u16()

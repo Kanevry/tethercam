@@ -370,6 +370,45 @@ extension CaptureEngine {
         motionLock.unlock()
     }
 
+    /// Telemetry snapshot for the once-per-second STATS message
+    /// (`protocol/PROTOCOL.md` section 4.8). Safe from any queue.
+    ///
+    /// `residual` is the value the leveller **actually applied** (smoothed and
+    /// clamped), not the geometric `continuous - sector`. The geometric one is
+    /// derivable from the two angles that travel alongside it, so sending the
+    /// applied one makes a clamp hit or a smoothing lag visible instead of
+    /// invisible: `residual != angle - sector` means the leveller is not covering
+    /// the tilt.
+    public func statsSnapshot() -> DeviceStats {
+        motionLock.lock()
+        let m = motion
+        let t = storedTelemetry
+        motionLock.unlock()
+
+        var flags: UInt8 = 0
+        if autoRotation { flags |= DeviceStats.flagAutoRotation }
+        if horizonLeveling { flags |= DeviceStats.flagHorizonLeveling }
+        if oversampling { flags |= DeviceStats.flagOversampling }
+        if m.confidence < OrientationMath.flatThreshold { flags |= DeviceStats.flagFlatHold }
+
+        let src = sourceFormat ?? activeFormat
+        let hasOut = t.outputSize.width > 0 && t.outputSize.height > 0
+        let outW = hasOut ? Int(t.outputSize.width) : Int(activeFormat?.width ?? 0)
+        let outH = hasOut ? Int(t.outputSize.height) : Int(activeFormat?.height ?? 0)
+
+        return DeviceStats(continuousDeg: Double(m.continuous),
+                           sector: Double(m.sector),
+                           residualDeg: Double(t.lastResidualDeg),
+                           gravityM: Double(m.confidence),
+                           levelerMs: t.avgMs,
+                           droppedFrames: t.droppedFrames,
+                           sourceWidth: Int(src?.width ?? 0),
+                           sourceHeight: Int(src?.height ?? 0),
+                           outputWidth: outW, outputHeight: outH,
+                           flags: flags,
+                           cameraId: lastParams?.cameraId ?? 0)
+    }
+
     /// Drops the smoothed residual and the pixel pool. Safe from any queue:
     /// the smoother sits under `motionLock`, the leveller under its own.
     fileprivate func resetLeveling() {

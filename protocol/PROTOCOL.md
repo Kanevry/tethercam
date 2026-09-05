@@ -56,6 +56,7 @@ Jede Nachricht besteht aus einem 12-Byte-Kopf und einer Nutzlast variabler Laeng
 | `0x01` | HELLO   | App → Mac | §4.1, sofort nach Verbindungsaufbau |
 | `0x02` | START   | Mac → App | §4.2                                |
 | `0x03` | STOP    | Mac → App | leer (length = 0)                   |
+| `0x12` | STATS   | App → Mac | §4.8, 1x pro Sekunde solange verbunden |
 | `0x10` | CONFIG  | App → Mac | §4.5                                |
 | `0x11` | VIDEO   | App → Mac | §4.6                                |
 | `0x20` | PING    | Mac → App | §4.3, u64 Zeitstempel               |
@@ -190,6 +191,48 @@ die niemand im Protokoll bemerkt.
 Codes 6 und hoeher sind reserviert. Ein Empfaenger, der einen unbekannten Code sieht,
 protokolliert Code plus Text und behandelt ihn wie einen nicht-fatalen Fehler.
 
+### 4.8 STATS (`0x12`), App → Mac
+
+Ergaenzt 2026-09-05. Geraetetelemetrie, damit der Zustand des Telefons (Lage, Leveller,
+Formate) im OBS-Log lesbar ist, ohne das Telefon in die Hand zu nehmen. Die App sendet
+**jede Sekunde**, solange ein Empfaenger verbunden ist — auch **wenn nicht gestreamt wird**,
+denn genau dann ist der Zustand sonst unsichtbar.
+
+Gesamtlaenge **22 Byte**, dicht gepackt, little-endian:
+
+| Offset | Groesse | Feld                | Inhalt                                            |
+|--------|---------|---------------------|---------------------------------------------------|
+| 0      | 2       | continuous_angle_x10 | i16, kontinuierlicher Rollwinkel in Grad × 10     |
+| 2      | 2       | sector              | u16, quantisierter Sektor: 0, 90, 180 oder 270     |
+| 4      | 2       | residual_x10        | i16, tatsaechlich angewandter Restwinkel × 10      |
+| 6      | 2       | gravity_m_x1000     | u16, Betrag der Schwerkraft in der Bildebene × 1000 |
+| 8      | 2       | leveler_ms_x10      | u16, mittlere Leveller-Zeit je Bild in ms × 10     |
+| 10     | 2       | dropped_frames      | u16, seit Verbindungsbeginn verworfene Bilder      |
+| 12     | 2       | source_width        | u16, Breite, die die Kamera liefert                |
+| 14     | 2       | source_height       | u16                                                |
+| 16     | 2       | output_width        | u16, Breite nach dem Leveller (was der Encoder sieht) |
+| 18     | 2       | output_height       | u16                                                |
+| 20     | 1       | flags               | u8, siehe unten                                    |
+| 21     | 1       | camera_id           | u8, aktive Kamera aus HELLO                        |
+
+| Bit | Bedeutung                                                                 |
+|-----|---------------------------------------------------------------------------|
+| 0   | autoRotation — die Schwerkraft bestimmt den Sektor                        |
+| 1   | horizonLeveling — der Leveller ist eingeschaltet                          |
+| 2   | oversampling — die Kamera laeuft groesser als die Ausgabe (4K → 1080p)     |
+| 3   | flat_hold — das Telefon liegt flach, der Winkel wird gehalten             |
+
+Bits 4-7 sind reserviert und werden als 0 gesendet.
+
+`residual_x10` ist der **angewandte** Restwinkel (geglaettet und geklemmt), nicht die
+geometrische Differenz `continuous - sector`. Letztere ergibt sich aus den beiden
+Nachbarfeldern ohnehin; der angewandte Wert macht dagegen sichtbar, wenn der Leveller die
+Neigung *nicht* deckt. Faustregel beim Lesen des Logs: weicht `residual` deutlich von
+`angle - sector` ab, greift die Klemme (±45°) oder der Sektor haengt hinterher.
+
+Ein Empfaenger, der `0x12` nicht kennt, ueberspringt den Rahmen nach §2 — STATS ist
+rueckwaertskompatibel und darf ohne Aushandlung gesendet werden.
+
 ## 5. Ablauf
 
 ```
@@ -202,6 +245,7 @@ App                                  Mac
  |--- VIDEO ... ---------------------------->|
  |<-- PING (t) --- alle 2 s -----------------|
  |--- PONG (t) ----------------------------->|
+ |--- STATS (Lage, Leveller) --- alle 1 s -->|
  |<-- STOP ----------------------------------|
 ```
 
