@@ -110,6 +110,11 @@ public final class OrientationSensor: ObservableObject {
 
     /// Fired on the main queue whenever `captureAngle` actually changes.
     public var onCaptureAngleChange: ((CGFloat) -> Void)?
+    /// Fired on the main queue for every motion sample with
+    /// (continuous angle, in-plane magnitude). The horizon leveller needs the
+    /// *raw* angle at sensor rate, not just the quantised sector changes, and
+    /// reading the `@Published` properties from the capture queue would race.
+    public var onSample: ((CGFloat, CGFloat) -> Void)?
 
     public var isAvailable: Bool { motion.isDeviceMotionAvailable || motion.isAccelerometerAvailable }
 
@@ -160,6 +165,7 @@ public final class OrientationSensor: ObservableObject {
         let gx = CGFloat(g.x), gy = CGFloat(g.y)
         let m = OrientationMath.magnitude(gx: gx, gy: gy)
         confidence = m
+        defer { onSample?(continuousAngle, confidence) }
         guard m >= OrientationMath.flatThreshold else {
             // Flat: keep the last known angle, drop any pending switch.
             pendingAngle = nil
@@ -192,8 +198,6 @@ public final class OrientationSensor: ObservableObject {
     }
 }
 
-// TODO: optional "Horizont ausrichten (stufenlos)" — rotate the pixel buffer by
-// `continuousAngle` with CoreImage (CIImage transform + crop to the same aspect,
-// rendered into an NV12 pool via CIContext) before handing it to the encoder.
-// Deliberately not implemented: it costs a full per-frame GPU round trip plus a
-// second NV12 pool, and the quantised angle already fixes the reported bug.
+// The continuous part of the levelling ("Horizont begradigen") lives in
+// HorizonLeveler.swift: this sensor supplies the raw angle, the leveller smooths
+// the residual and rotates the pixel buffer on the GPU before the encoder.

@@ -48,6 +48,44 @@ public final class CaptureEngine: NSObject {
     /// coordinator alone is not enough on a steeply tilted tripod.
     public let orientation = OrientationSensor()
 
+    /// Continuous horizon levelling. The connection's `videoRotationAngle` only
+    /// knows 0/90/180/270, so a tripod head that sits 8 degrees off level ships
+    /// an 8-degree-tilted picture. With this on, the residual between the
+    /// continuous gravity angle and the applied sector is rotated away on the GPU
+    /// (`HorizonLeveler`) before the frame reaches the encoder — Continuity-Camera
+    /// behaviour. Only effective in auto-rotation mode: a manually pinned angle is
+    /// a deliberate choice and is left alone.
+    public var horizonLeveling = true {
+        didSet {
+            guard horizonLeveling != oldValue else { return }
+            resetLeveling()
+        }
+    }
+
+    /// Format actually delivered by the camera. Differs from `activeFormat` when
+    /// the leveller oversamples (4K source for a 1080p output).
+    public private(set) var sourceFormat: (width: UInt16, height: UInt16, fps: UInt16)?
+    /// Live leveller telemetry for the diagnostics row. Written on the capture
+    /// queue, read on main — hence the lock.
+    public var levelerTelemetry: HorizonLeveler.Telemetry {
+        motionLock.lock(); defer { motionLock.unlock() }
+        return storedTelemetry
+    }
+    private var storedTelemetry = HorizonLeveler.Telemetry()
+
+    private lazy var leveler: HorizonLeveler? = HorizonLeveler()
+    private var smoother = ResidualSmoother()
+    /// Output size the Mac asked for, in landscape orientation.
+    private var requestedOutput = CGSize(width: 1920, height: 1080)
+    /// Latest raw motion sample, written on main, read on the sample queue.
+    private var motion = (continuous: CGFloat(90), confidence: CGFloat(0), sector: CGFloat(90))
+    private let motionLock = NSLock()
+    private var lastFrameTime: CFAbsoluteTime = 0
+    private var statWindowStart: CFAbsoluteTime = 0
+    private var statFrames = 0
+    private var lastParams: StartParams?
+    private var oversampling = false
+    private var oversamplingDisabled = false
     private let sessionQueue = DispatchQueue(label: "at.gotzendorfer.usbcam.session")
     private let sampleQueue = DispatchQueue(label: "at.gotzendorfer.usbcam.samples")
     private let videoOutput = AVCaptureVideoDataOutput()
@@ -65,6 +103,13 @@ public final class CaptureEngine: NSObject {
         cameras = CaptureEngine.discover()
         super.init()
         orientation.onCaptureAngleChange = { [weak self] _ in self?.applyRotation() }
+        orientation.onSample = { [weak self] cont, m in
+            guard let self else { return }
+            let sector = self.desiredCaptureAngle()
+            self.motionLock.lock()
+            self.motion = (cont, m, sector)
+            self.motionLock.unlock()
+        }
         orientation.start()
     }
 
@@ -115,6 +160,7 @@ public final class CaptureEngine: NSObject {
             completion(.failure(CaptureError.denied))
             return
         }
+        lastParams = params
         sessionQueue.async { [self] in
             do {
                 session.beginConfiguration()
@@ -137,8 +183,19 @@ public final class CaptureEngine: NSObject {
                     videoOutput.setSampleBufferDelegate(self, queue: sampleQueue)
                 }
 
+                motionLock.lock()
+                requestedOutput = CGSize(width: Int(params.width), height: Int(params.height))
+                motionLock.unlock()
+                resetLeveling()
+                statWindowStart = CFAbsoluteTimeGetCurrent()
+                statFrames = 0
                 let chosen = try configureDevice(cam.device, params)
-                activeFormat = chosen
+                sourceFormat = chosen
+                // With oversampling the camera runs at 4K while the encoder still
+                // gets 1080p — CONFIG must announce what leaves the leveller.
+                activeFormat = levelingActive
+                    ? (params.width, params.height, chosen.2)
+                    : chosen
 
                 if let c = videoOutput.connection(with: .video) {
                     c.isVideoMirrored = false
@@ -160,6 +217,8 @@ public final class CaptureEngine: NSObject {
         sessionQueue.async { [self] in
             if session.isRunning { session.stopRunning() }
             activeFormat = nil
+            sourceFormat = nil
+            resetLeveling()
             currentDevice = nil
         }
         DispatchQueue.main.async { [self] in
@@ -234,12 +293,12 @@ public final class CaptureEngine: NSObject {
                                  _ p: StartParams) throws -> (UInt16, UInt16, UInt16) {
         let wantW = Int32(p.width), wantH = Int32(p.height), wantFps = Double(p.fps)
 
-        func score(_ f: AVCaptureDevice.Format) -> Double {
+        func score(_ f: AVCaptureDevice.Format, _ w: Int32, _ h: Int32) -> Double {
             let d = CMVideoFormatDescriptionGetDimensions(f.formatDescription)
             let sub = CMFormatDescriptionGetMediaSubType(f.formatDescription)
             // Prefer NV12 video-range so no pixel conversion is needed.
             let subPenalty = sub == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange ? 0.0 : 1_000_000.0
-            let pixelDelta = abs(Double(d.width - wantW)) + abs(Double(d.height - wantH))
+            let pixelDelta = abs(Double(d.width - w)) + abs(Double(d.height - h))
             let fpsDelta: Double = f.videoSupportedFrameRateRanges.map {
                 if wantFps < $0.minFrameRate { return $0.minFrameRate - wantFps }
                 if wantFps > $0.maxFrameRate { return wantFps - $0.maxFrameRate }
@@ -248,7 +307,33 @@ public final class CaptureEngine: NSObject {
             return pixelDelta + fpsDelta * 100 + subPenalty
         }
 
-        guard let best = device.formats.min(by: { score($0) < score($1) }) else {
+        func pick(_ w: Int32, _ h: Int32) -> AVCaptureDevice.Format? {
+            device.formats.min(by: { score($0, w, h) < score($1, w, h) })
+        }
+        /// A format only counts as an oversampling win when it really is at least
+        /// as large as asked for *and* runs at the requested fps — a 4K format
+        /// capped at 24 fps would silently drop the stream to 24.
+        func covers(_ f: AVCaptureDevice.Format, _ w: Int32, _ h: Int32) -> Bool {
+            let d = CMVideoFormatDescriptionGetDimensions(f.formatDescription)
+            let sub = CMFormatDescriptionGetMediaSubType(f.formatDescription)
+            let fpsOk = f.videoSupportedFrameRateRanges.contains {
+                wantFps >= $0.minFrameRate - 0.01 && wantFps <= $0.maxFrameRate + 0.01
+            }
+            return d.width >= w && d.height >= h && fpsOk
+                && sub == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange
+        }
+
+        var chosen: AVCaptureDevice.Format?
+        oversampling = false
+        if levelingActive, !oversamplingDisabled,
+           let up = Self.oversampledTarget(width: p.width, height: p.height),
+           let candidate = pick(up.0, up.1), covers(candidate, up.0, up.1) {
+            // Level + crop out of a larger source, so the fill zoom costs no
+            // resolution: 1080p out of 4K survives a 1.43x crop at 15 degrees.
+            chosen = candidate
+            oversampling = true
+        }
+        guard let best = chosen ?? pick(wantW, wantH) else {
             throw CaptureError.noSuchCamera(p.cameraId)
         }
 
@@ -266,8 +351,84 @@ public final class CaptureEngine: NSObject {
         device.activeVideoMaxFrameDuration = duration
 
         let d = CMVideoFormatDescriptionGetDimensions(best.formatDescription)
+        NSLog("[usbcam] capture format %dx%d@%.0f oversampling=%d output=%dx%d leveling=%d",
+              Int(d.width), Int(d.height), fps, oversampling ? 1 : 0,
+              Int(p.width), Int(p.height), levelingActive ? 1 : 0)
         return (UInt16(clamping: Int(d.width)), UInt16(clamping: Int(d.height)),
                 UInt16(clamping: Int(fps.rounded())))
+    }
+}
+
+// MARK: - Horizon levelling
+
+extension CaptureEngine {
+
+    /// Hands the latest counters to the UI side under the lock.
+    fileprivate func publish(_ t: HorizonLeveler.Telemetry) {
+        motionLock.lock()
+        storedTelemetry = t
+        motionLock.unlock()
+    }
+
+    /// Drops the smoothed residual and the pixel pool. Safe from any queue:
+    /// the smoother sits under `motionLock`, the leveller under its own.
+    fileprivate func resetLeveling() {
+        motionLock.lock()
+        smoother.reset()
+        motionLock.unlock()
+        leveler?.reset()
+    }
+
+    /// Levelling only runs in auto mode: a manually pinned angle is the user
+    /// overriding the sensor, and rotating on top of that would fight them.
+    var levelingActive: Bool { horizonLeveling && autoRotation && leveler != nil }
+
+    /// One format step up, so the fill zoom crops out of surplus pixels.
+    /// `nil` for anything else — 4K in, 4K out has nothing to oversample from.
+    static func oversampledTarget(width: UInt16, height: UInt16) -> (Int32, Int32)? {
+        let long = max(width, height), short = min(width, height)
+        switch (long, short) {
+        case (1920, 1080): return (3840, 2160)
+        case (1280, 720): return (1920, 1080)
+        default: return nil
+        }
+    }
+
+    /// Rolling delivery log, every 5 seconds. Also the budget watchdog: if the
+    /// leveller cannot hold the frame time while oversampling, the source drops
+    /// back to the requested size rather than starving the encoder.
+    fileprivate func tickStats(levelled: Bool) {
+        statFrames += 1
+        let now = CFAbsoluteTimeGetCurrent()
+        if statWindowStart == 0 { statWindowStart = now; return }
+        let elapsed = now - statWindowStart
+        guard elapsed >= 5 else { return }
+        let fps = Double(statFrames) / elapsed
+        let t = leveler?.snapshot
+        let src = sourceFormat.map { "\($0.width)x\($0.height)" } ?? "-"
+        let out = t.map { "\(Int($0.outputSize.width))x\(Int($0.outputSize.height))" } ?? src
+        NSLog("[usbcam] leveler avg=%.2fms src=%@ out=%@ fps=%.1f dropped=%d residual=%.1f path=%@ leveling=%d",
+              t?.avgMs ?? 0, src as NSString, out as NSString, fps,
+              t?.droppedFrames ?? 0, Double(t?.lastResidualDeg ?? 0),
+              (t?.path.rawValue ?? "-") as NSString, levelled ? 1 : 0)
+        if oversampling, let t, t.avgMs > 12 { downgradeOversampling(avgMs: t.avgMs) }
+        statWindowStart = now
+        statFrames = 0
+    }
+
+    /// 4K in is a nice-to-have; 30 fps is not. Over budget, the source format
+    /// falls back to the requested size and stays there for this session.
+    private func downgradeOversampling(avgMs: Double) {
+        oversamplingDisabled = true
+        oversampling = false
+        NSLog("[usbcam] leveler over budget (%.2f ms/frame) - oversampling disabled", avgMs)
+        guard let device = currentDevice, let p = lastParams else { return }
+        sessionQueue.async { [self] in
+            session.beginConfiguration()
+            if let f = try? configureDevice(device, p) { sourceFormat = f }
+            session.commitConfiguration()
+            leveler?.reset()
+        }
     }
 }
 
@@ -275,6 +436,35 @@ extension CaptureEngine: AVCaptureVideoDataOutputSampleBufferDelegate {
     public func captureOutput(_ output: AVCaptureOutput,
                               didOutput sampleBuffer: CMSampleBuffer,
                               from connection: AVCaptureConnection) {
-        onSampleBuffer?(sampleBuffer)
+        guard levelingActive, let leveler else {
+            onSampleBuffer?(sampleBuffer)
+            tickStats(levelled: false)
+            return
+        }
+        motionLock.lock()
+        let m = motion
+        let target = requestedOutput
+        motionLock.unlock()
+
+        let now = CFAbsoluteTimeGetCurrent()
+        let dt = lastFrameTime == 0 ? 1.0 / 30 : now - lastFrameTime
+        lastFrameTime = now
+
+        let raw = LevelerMath.residualAngle(continuous: m.continuous, sector: m.sector)
+        motionLock.lock()
+        let smoothed = smoother.update(target: raw, dt: dt, confidence: m.confidence)
+        motionLock.unlock()
+
+        // A dropped frame is dropped, not queued and not passed through raw: the
+        // unlevelled buffer has the source geometry (4K when oversampling) and
+        // would make the encoder rebuild its session for one frame.
+        guard let out = leveler.process(sampleBuffer, residualDeg: smoothed,
+                                        target: target) else {
+            publish(leveler.snapshot)
+            return
+        }
+        publish(leveler.snapshot)
+        onSampleBuffer?(out)
+        tickStats(levelled: true)
     }
 }

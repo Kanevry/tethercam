@@ -16,6 +16,13 @@ final class AppModel: ObservableObject {
     @Published var manualRotation: Int = 0 {
         didSet { capture.manualRotationAngle = CGFloat(manualRotation) }
     }
+    /// Continuous levelling on top of the 90-degree sector. Persisted by the
+    /// view via @AppStorage; default on.
+    @Published var horizonLeveling = true {
+        didSet { capture.horizonLeveling = horizonLeveling }
+    }
+    /// Refreshed once per second from the server tick — no extra timer.
+    @Published var leveler = HorizonLeveler.Telemetry()
 
     let capture = CaptureEngine()
     private lazy var server = UsbServer(capture: capture)
@@ -28,7 +35,10 @@ final class AppModel: ObservableObject {
             Task { @MainActor in self?.listenerState = s }
         }
         server.onStats = { [weak self] s in
-            Task { @MainActor in self?.stats = s }
+            Task { @MainActor in
+                self?.stats = s
+                if let c = self?.capture { self?.leveler = c.levelerTelemetry }
+            }
         }
         capture.requestAccess { [weak self] ok in
             guard let self else { return }
@@ -44,6 +54,7 @@ final class AppModel: ObservableObject {
 
 struct ContentView: View {
     @StateObject private var model = AppModel()
+    @AppStorage("horizonLeveling") private var horizonLeveling = true
 
     var body: some View {
         HStack(spacing: 0) {
@@ -75,7 +86,12 @@ struct ContentView: View {
 
                 Toggle("Auto-Rotation", isOn: $model.autoRotation)
 
-                OrientationRow(sensor: model.capture.orientation)
+                Toggle("Horizont begradigen", isOn: $horizonLeveling)
+                    .disabled(!model.autoRotation)
+
+                OrientationRow(sensor: model.capture.orientation,
+                               leveler: model.leveler,
+                               levelingOn: horizonLeveling && model.autoRotation)
 
                 if !model.autoRotation {
                     Picker("Drehung", selection: $model.manualRotation) {
@@ -95,7 +111,11 @@ struct ContentView: View {
             .background(.thinMaterial)
         }
         .ignoresSafeArea(.container, edges: .bottom)
-        .onAppear { model.boot() }
+        .onAppear {
+            model.horizonLeveling = horizonLeveling
+            model.boot()
+        }
+        .onChange(of: horizonLeveling) { _, on in model.horizonLeveling = on }
     }
 
     private var statusLine: some View {
@@ -123,6 +143,8 @@ struct ContentView: View {
 /// without a console attached.
 struct OrientationRow: View {
     @ObservedObject var sensor: OrientationSensor
+    var leveler = HorizonLeveler.Telemetry()
+    var levelingOn = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -132,6 +154,12 @@ struct OrientationRow: View {
                         Double(sensor.continuousAngle),
                         sensor.confidence < OrientationMath.flatThreshold ? "  flach - haelt" : ""))
                 .foregroundStyle(.secondary)
+            if levelingOn {
+                Text(String(format: "Rest %+.1f\u{00B0}  %.1f ms  drop %d",
+                            Double(leveler.lastResidualDeg), leveler.avgMs,
+                            leveler.droppedFrames))
+                    .foregroundStyle(.secondary)
+            }
         }
         .font(.system(.caption2, design: .monospaced))
     }
