@@ -23,6 +23,7 @@ public final class HevcEncoder {
     private var width: UInt16 = 0
     private var height: UInt16 = 0
     private var fps: UInt16 = 30
+    private var bitrateKbps: UInt32 = 0
     private let lock = NSLock()
 
     public init() {}
@@ -31,6 +32,7 @@ public final class HevcEncoder {
         stop()
         lock.lock(); defer { lock.unlock() }
         self.width = width; self.height = height; self.fps = max(fps, 1)
+        self.bitrateKbps = bitrateKbps
         lastHvcC = nil
 
         var s: VTCompressionSession?
@@ -75,10 +77,29 @@ public final class HevcEncoder {
 
     public func encode(_ sampleBuffer: CMSampleBuffer) {
         lock.lock()
-        let s = session
+        var s = session
+        let curW = width, curH = height, curFps = fps, curRate = bitrateKbps
         lock.unlock()
-        guard let session = s,
+        guard s != nil,
               let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+
+        // Rotation changes the buffer geometry (landscape mount 1920x1080 ->
+        // portrait mount 1080x1920). VTCompressionSession is fixed-size, so the
+        // session is rebuilt; the fresh session emits a new hvcC and therefore a
+        // new CONFIG with the correct width/height before the next frame.
+        let bufW = UInt16(clamping: CVPixelBufferGetWidth(pixelBuffer))
+        let bufH = UInt16(clamping: CVPixelBufferGetHeight(pixelBuffer))
+        if bufW != curW || bufH != curH {
+            do {
+                try start(width: bufW, height: bufH, fps: curFps, bitrateKbps: curRate)
+            } catch {
+                onError?(error)
+                return
+            }
+            lock.lock(); s = session; lock.unlock()
+            guard s != nil else { return }
+        }
+        guard let session = s else { return }
         let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
         let duration = CMSampleBufferGetDuration(sampleBuffer)
 

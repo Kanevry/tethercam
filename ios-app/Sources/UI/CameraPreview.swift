@@ -5,11 +5,15 @@ import UIKit
 /// Thin UIViewRepresentable around AVCaptureVideoPreviewLayer.
 struct CameraPreview: UIViewRepresentable {
     let session: AVCaptureSession
+    /// Handed the layer once so the capture engine can attach its
+    /// `AVCaptureDevice.RotationCoordinator` to it.
+    var onLayer: ((AVCaptureVideoPreviewLayer) -> Void)? = nil
 
     func makeUIView(context: Context) -> PreviewView {
         let v = PreviewView()
         v.previewLayer.session = session
         v.previewLayer.videoGravity = .resizeAspect
+        onLayer?(v.previewLayer)
         return v
     }
 

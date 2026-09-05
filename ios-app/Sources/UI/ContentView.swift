@@ -9,6 +9,13 @@ final class AppModel: ObservableObject {
     @Published var selectedCameraId: UInt8 = 0
     @Published var keepScreenOn = true { didSet { applyIdleTimer() } }
     @Published var cameraDenied = false
+    /// Default on: the phone hangs in a tripod mount whose orientation the app
+    /// cannot know, so the horizon-level angle is the only honest source.
+    @Published var autoRotation = true { didSet { capture.autoRotation = autoRotation } }
+    /// Only effective while `autoRotation` is off.
+    @Published var manualRotation: Int = 0 {
+        didSet { capture.manualRotationAngle = CGFloat(manualRotation) }
+    }
 
     let capture = CaptureEngine()
     private lazy var server = UsbServer(capture: capture)
@@ -40,7 +47,9 @@ struct ContentView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            CameraPreview(session: model.capture.session)
+            CameraPreview(session: model.capture.session) { layer in
+                model.capture.previewLayer = layer
+            }
                 .background(Color.black)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
@@ -63,6 +72,17 @@ struct ContentView: View {
                 .frame(maxHeight: 160)
 
                 Toggle("Bildschirm an lassen", isOn: $model.keepScreenOn)
+
+                Toggle("Auto-Rotation", isOn: $model.autoRotation)
+
+                if !model.autoRotation {
+                    Picker("Drehung", selection: $model.manualRotation) {
+                        ForEach([0, 90, 180, 270], id: \.self) { a in
+                            Text("\(a)°").tag(a)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                }
 
                 Spacer()
                 Text("Port \(Int(Iucm.defaultPort)) - Kamera per USB-Kabel")

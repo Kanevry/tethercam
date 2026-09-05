@@ -53,6 +53,7 @@ extern "C" {
 #define S_FPS "fps"
 #define S_BITRATE "bitrate_kbps"
 #define S_DEBUG_TCP "debug_tcp"
+#define S_ROTATION "rotation"
 
 #define IUCM_PORT 7878
 #define IUCM_PARSER_CAP (IUCM_HEADER_SIZE + IUCM_MAX_PAYLOAD + 64u)
@@ -90,6 +91,7 @@ struct iphone_source {
 	int height = 1080;
 	int fps = 30;
 	int bitrate_kbps = 12000;
+	int rotation = 0; /* 0/90/180/270, applied by OBS on the async frame */
 
 	/* camera list cached from the last HELLO, guarded by cfg_mutex */
 	std::vector<camera_entry> cameras;
@@ -102,7 +104,16 @@ struct iphone_source {
 	int missed_pongs = 0;
 	uint64_t last_ping_ts = 0;
 	uint64_t frames_since_report = 0;
+	uint64_t bytes_since_report = 0;
 	uint64_t report_deadline_ms = 0;
+	uint8_t active_camera_id = 0;
+	/* Set when the phone closed the socket cleanly (app backgrounded, STOP).
+	 * Reconnecting in the same millisecond just races the listener teardown,
+	 * so the worker waits 250 ms once. */
+	bool peer_closed = false;
+	/* Consecutive failed connect attempts. A phone that is simply unplugged is
+	 * the normal case, so the first four retries stay at LOG_INFO. */
+	int connect_failures = 0;
 	bool fatal = false; /* close the connection, do not retry immediately */
 
 	float color_matrix[16];
@@ -163,7 +174,7 @@ void wake_worker(iphone_source *s)
 
 /* --- connection setup ------------------------------------------------- */
 
-int connect_tcp(const std::string &hostport)
+int connect_tcp(const std::string &hostport, int loglevel)
 {
 	std::string host = hostport;
 	std::string port = "7878";
@@ -181,7 +192,7 @@ int connect_tcp(const std::string &hostport)
 	struct addrinfo *res = nullptr;
 	int rc = getaddrinfo(host.c_str(), port.c_str(), &hints, &res);
 	if (rc != 0 || !res) {
-		obs_log(LOG_WARNING, "[iphone-cam] debug_tcp: cannot resolve %s: %s", hostport.c_str(),
+		obs_log(loglevel, "[iphone-cam] debug_tcp: cannot resolve %s: %s", hostport.c_str(),
 			gai_strerror(rc));
 		return -1;
 	}
@@ -199,13 +210,13 @@ int connect_tcp(const std::string &hostport)
 	return fd;
 }
 
-int connect_usbmux(const std::string &serial, std::string &out_serial)
+int connect_usbmux(const std::string &serial, std::string &out_serial, int loglevel)
 {
 	struct usbmux_device devices[16];
 	size_t count = 0;
 	int rc = usbmux_list_devices(devices, 16, &count);
 	if (rc != USBMUX_OK) {
-		obs_log(LOG_WARNING, "[iphone-cam] usbmux ListDevices failed: %s", usbmux_strerror(rc));
+		obs_log(loglevel, "[iphone-cam] usbmux ListDevices failed: %s", usbmux_strerror(rc));
 		return -1;
 	}
 	if (count == 0) {
@@ -232,7 +243,7 @@ int connect_usbmux(const std::string &serial, std::string &out_serial)
 	int result = -1;
 	int fd = usbmux_connect(pick->device_id, IUCM_PORT, &result);
 	if (fd < 0) {
-		obs_log(LOG_WARNING, "[iphone-cam] usbmux Connect to %s:%d failed (result %d, errno %d)",
+		obs_log(loglevel, "[iphone-cam] usbmux Connect to %s:%d failed (result %d, errno %d)",
 			pick->serial, IUCM_PORT, result, errno);
 		return -1;
 	}
@@ -323,6 +334,7 @@ int on_message(void *ctx, const struct iucm_msg *msg)
 			return 1;
 		}
 		s->started = true;
+		s->active_camera_id = start.camera_id;
 		obs_log(LOG_INFO, "[iphone-cam] START sent: cam %u, %ux%u@%u, %u kbps", (unsigned) start.camera_id,
 			(unsigned) start.width, (unsigned) start.height, (unsigned) start.fps,
 			(unsigned) start.bitrate_kbps);
@@ -335,8 +347,12 @@ int on_message(void *ctx, const struct iucm_msg *msg)
 			obs_log(LOG_WARNING, "[iphone-cam] bad CONFIG: %s", iucm_strerror(rc));
 			return 1;
 		}
-		obs_log(LOG_INFO, "[iphone-cam] CONFIG received: %ux%u@%u, hvcC %u bytes", (unsigned) cfg.width,
-			(unsigned) cfg.height, (unsigned) cfg.fps, (unsigned) cfg.hvcc_len);
+		/* A rotation on the phone changes the encoded geometry, so CONFIG can
+		 * arrive mid-stream. The decoder is rebuilt unconditionally below and
+		 * OBS resizes the async source from the next frame's dimensions. */
+		obs_log(LOG_INFO, "[iphone-cam] CONFIG received: cam %u, %ux%u@%u, hvcC %u bytes",
+			(unsigned) s->active_camera_id, (unsigned) cfg.width, (unsigned) cfg.height,
+			(unsigned) cfg.fps, (unsigned) cfg.hvcc_len);
 		if (s->dec) {
 			iucm_decoder_destroy(s->dec);
 			s->dec = nullptr;
@@ -362,11 +378,19 @@ int on_message(void *ctx, const struct iucm_msg *msg)
 		const uint8_t *body = msg->payload + 8;
 		uint32_t body_len = msg->length - 8;
 		bool keyframe = (msg->flags & IUCM_FLAG_KEYFRAME) != 0;
+		s->bytes_since_report += body_len;
 		uint64_t before = iucm_decoder_frames(s->dec);
 		iucm_decoder_decode(s->dec, body, body_len, it.pts_us, keyframe);
-		if (before == 0 && iucm_decoder_frames(s->dec) > 0)
+		if (before == 0 && iucm_decoder_frames(s->dec) > 0) {
 			obs_log(LOG_INFO, "[iphone-cam] first frame decoded (pts %llu us)",
 				(unsigned long long) it.pts_us);
+			/* Start the window here: the seconds spent connecting and waiting
+			 * for the first keyframe would otherwise be counted as dropped
+			 * frames and make the first report look broken. */
+			s->frames_since_report = 0;
+			s->bytes_since_report = 0;
+			s->report_deadline_ms = now_ms() + 5000;
+		}
 		return 0;
 	}
 	case IUCM_MSG_PONG: {
@@ -428,6 +452,7 @@ void run_session(iphone_source *s, std::vector<uint8_t> &parse_buf)
 	s->last_ping_ts = now_ms();
 	s->report_deadline_ms = now_ms() + 5000;
 	s->frames_since_report = 0;
+	s->bytes_since_report = 0;
 
 	while (s->running.load() && !s->restart.load() && !s->fatal) {
 		struct pollfd pfd[2];
@@ -452,6 +477,7 @@ void run_session(iphone_source *s, std::vector<uint8_t> &parse_buf)
 			ssize_t n = recv(s->fd, rx, sizeof(rx), 0);
 			if (n == 0) {
 				obs_log(LOG_INFO, "[iphone-cam] peer closed the connection");
+				s->peer_closed = true;
 				return;
 			}
 			if (n < 0) {
@@ -485,9 +511,11 @@ void run_session(iphone_source *s, std::vector<uint8_t> &parse_buf)
 		}
 		if (t >= s->report_deadline_ms) {
 			if (s->frames_since_report > 0)
-				obs_log(LOG_INFO, "[iphone-cam] %.1f frames/s",
-					(double) s->frames_since_report * 1000.0 / 5000.0);
+				obs_log(LOG_INFO, "[iphone-cam] %.1f frames/s, %.2f Mbit/s",
+					(double) s->frames_since_report * 1000.0 / 5000.0,
+					(double) s->bytes_since_report * 8.0 / 5.0 / 1e6);
 			s->frames_since_report = 0;
+			s->bytes_since_report = 0;
 			s->report_deadline_ms = t + 5000;
 		}
 	}
@@ -512,20 +540,25 @@ void worker_main(iphone_source *s)
 			debug_tcp = s->debug_tcp;
 		}
 
+		const int loglevel = s->connect_failures >= 5 ? LOG_WARNING : LOG_INFO;
 		int fd = -1;
 		if (!debug_tcp.empty()) {
-			fd = connect_tcp(debug_tcp);
+			fd = connect_tcp(debug_tcp, loglevel);
 			if (fd >= 0)
 				obs_log(LOG_INFO, "[iphone-cam] connected via debug_tcp %s", debug_tcp.c_str());
 		} else {
 			std::string used;
-			fd = connect_usbmux(serial, used);
+			fd = connect_usbmux(serial, used, loglevel);
 			if (fd >= 0)
 				obs_log(LOG_INFO, "[iphone-cam] connected via usbmux to %s:%d", used.c_str(),
 					IUCM_PORT);
 		}
 
 		if (fd < 0) {
+			s->connect_failures++;
+			obs_log(s->connect_failures >= 5 ? LOG_WARNING : LOG_INFO,
+				"[iphone-cam] connect attempt %d failed — retrying in %d ms",
+				s->connect_failures, backoff_ms);
 			for (int slept = 0; slept < backoff_ms && s->running.load(); slept += 100)
 				std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			backoff_ms = backoff_ms >= 5000 ? 5000 : backoff_ms + 1000;
@@ -540,9 +573,16 @@ void worker_main(iphone_source *s)
 		setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &sndto, sizeof(sndto));
 		s->fd = fd;
 		backoff_ms = 1000;
+		s->connect_failures = 0;
 
 		run_session(s, parse_buf);
 		close_connection(s);
+
+		if (s->peer_closed) {
+			s->peer_closed = false;
+			for (int slept = 0; slept < 250 && s->running.load(); slept += 50)
+				std::this_thread::sleep_for(std::chrono::milliseconds(50));
+		}
 
 		if (s->fatal && s->running.load()) {
 			for (int slept = 0; slept < 5000 && s->running.load(); slept += 100)
@@ -566,6 +606,7 @@ void read_settings(iphone_source *s, obs_data_t *settings)
 	s->camera_id = (int) obs_data_get_int(settings, S_CAMERA);
 	s->fps = (int) obs_data_get_int(settings, S_FPS);
 	s->bitrate_kbps = (int) obs_data_get_int(settings, S_BITRATE);
+	s->rotation = (int) obs_data_get_int(settings, S_ROTATION);
 	int w = 1920, h = 1080;
 	if (res && sscanf(res, "%dx%d", &w, &h) == 2 && w > 0 && h > 0) {
 		s->width = w;
@@ -586,6 +627,7 @@ void source_get_defaults(obs_data_t *settings)
 	obs_data_set_default_int(settings, S_FPS, 30);
 	obs_data_set_default_int(settings, S_BITRATE, 12000);
 	obs_data_set_default_string(settings, S_DEBUG_TCP, "");
+	obs_data_set_default_int(settings, S_ROTATION, 0);
 }
 
 void *source_create(obs_data_t *settings, obs_source_t *source)
@@ -595,6 +637,7 @@ void *source_create(obs_data_t *settings, obs_source_t *source)
 	video_format_get_parameters_for_format(VIDEO_CS_709, VIDEO_RANGE_PARTIAL, VIDEO_FORMAT_NV12, s->color_matrix,
 					       s->color_min, s->color_max);
 	read_settings(s, settings);
+	obs_source_set_async_rotation(source, (long) obs_data_get_int(settings, S_ROTATION));
 
 	int wake[2] = {-1, -1};
 	if (pipe(wake) == 0) {
@@ -643,6 +686,7 @@ void source_update(void *data, obs_data_t *settings)
 {
 	auto *s = static_cast<iphone_source *>(data);
 	read_settings(s, settings);
+	obs_source_set_async_rotation(s->source, (long) obs_data_get_int(settings, S_ROTATION));
 	s->restart.store(true);
 	wake_worker(s); /* see source_destroy: s->fd is the worker's, not ours */
 	obs_log(LOG_INFO, "[iphone-cam] settings updated — reconnecting");
@@ -704,6 +748,16 @@ obs_properties_t *source_get_properties(void *data)
 	obs_property_list_add_int(fps, "60", 60);
 
 	obs_properties_add_int(props, S_BITRATE, obs_module_text("Bitrate"), 1000, 50000, 500);
+
+	/* Manual override. The app rotates to horizon level on its own, so 0 is the
+	 * right answer in the normal case; this exists for mounts the phone cannot
+	 * sense (mirror rigs, phone lying flat). */
+	obs_property_t *rot = obs_properties_add_list(props, S_ROTATION, obs_module_text("Rotation"),
+						      OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+	obs_property_list_add_int(rot, "0", 0);
+	obs_property_list_add_int(rot, "90", 90);
+	obs_property_list_add_int(rot, "180", 180);
+	obs_property_list_add_int(rot, "270", 270);
 
 	obs_property_t *tcp = obs_properties_add_text(props, S_DEBUG_TCP, obs_module_text("DebugTcp"), OBS_TEXT_DEFAULT);
 	obs_property_set_long_description(tcp, obs_module_text("DebugTcp.Description"));

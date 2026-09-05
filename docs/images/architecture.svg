@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="330" viewBox="0 0 980 330" role="img" aria-label="iPhone app sends HEVC over the USB cable through usbmuxd to the OBS plugin">
+  <title>obs-iphone-usb-cam data path</title>
+  <desc>iPhone app captures and encodes HEVC in hardware, sends IUCM frames over the USB cable through usbmuxd on TCP port 7878, the OBS plugin decodes with VideoToolbox and outputs an NV12 source.</desc>
+
+  <style>
+    .box   { fill: none; stroke: #7aa2f7; stroke-width: 2; rx: 10; }
+    .box2  { fill: none; stroke: #9ece6a; stroke-width: 2; rx: 10; }
+    .box3  { fill: none; stroke: #e0af68; stroke-width: 2; rx: 10; }
+    .head  { font: 600 17px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #7aa2f7; }
+    .head2 { font: 600 17px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #9ece6a; }
+    .head3 { font: 600 17px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #e0af68; }
+    .txt   { font: 13px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #8b93a7; }
+    .lbl   { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #8b93a7; }
+    .arrow { stroke: #8b93a7; stroke-width: 2; fill: none; }
+  </style>
+
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#8b93a7"/>
+    </marker>
+  </defs>
+
+  <!-- iPhone -->
+  <rect class="box" x="20" y="60" width="270" height="180"/>
+  <text class="head" x="40" y="92">iPhone, UsbCam app</text>
+  <text class="txt"  x="40" y="120">AVCaptureSession, NV12, BT.709</text>
+  <text class="txt"  x="40" y="144">HEVC hardware encode</text>
+  <text class="txt"  x="40" y="168">(VTCompressionSession, realtime)</text>
+  <text class="txt"  x="40" y="200">TCP listener on port 7878</text>
+  <text class="txt"  x="40" y="224">IUCM framing, one receiver</text>
+
+  <!-- cable -->
+  <path class="arrow" d="M 300 150 L 400 150" marker-end="url(#a)"/>
+  <text class="lbl" x="302" y="128">USB cable</text>
+  <text class="lbl" x="302" y="182">usbmuxd</text>
+
+  <!-- middle -->
+  <rect class="box3" x="412" y="85" width="180" height="130"/>
+  <text class="head3" x="430" y="117">/var/run/usbmuxd</text>
+  <text class="txt"   x="430" y="145">plist Connect,</text>
+  <text class="txt"   x="430" y="167">port 7878 in</text>
+  <text class="txt"   x="430" y="189">network byte order</text>
+
+  <path class="arrow" d="M 602 150 L 700 150" marker-end="url(#a)"/>
+  <text class="lbl" x="604" y="128">~13 Mbit/s HEVC</text>
+  <text class="lbl" x="604" y="182">~1 ms ping RTT</text>
+
+  <!-- Mac -->
+  <rect class="box2" x="712" y="60" width="248" height="180"/>
+  <text class="head2" x="732" y="92">Mac, OBS plugin</text>
+  <text class="txt"   x="732" y="120">usbmux + IUCM parser (C)</text>
+  <text class="txt"   x="732" y="144">VideoToolbox decode</text>
+  <text class="txt"   x="732" y="168">(VTDecompressionSession)</text>
+  <text class="txt"   x="732" y="200">obs_source_output_video2</text>
+  <text class="txt"   x="732" y="224">source "iPhone USB Camera"</text>
+
+  <text class="lbl" x="20" y="290">No Wi-Fi, no cloud, no Continuity Camera. Wire protocol: protocol/PROTOCOL.md</text>
+  <text class="lbl" x="20" y="312">Control path back to the phone: START, STOP, PING every 2 s.</text>
+</svg>

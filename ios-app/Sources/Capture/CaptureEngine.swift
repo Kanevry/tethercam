@@ -27,10 +27,28 @@ public final class CaptureEngine: NSObject {
     public let cameras: [Camera]
     public let session = AVCaptureSession()
 
+    /// Rotation source of truth. `true` (default) follows the device's horizon
+    /// via `AVCaptureDevice.RotationCoordinator`, so the encoded frame is upright
+    /// no matter how the phone sits in the tripod mount. `false` pins the angle
+    /// to `manualRotationAngle`.
+    public var autoRotation = true { didSet { applyRotation() } }
+    /// Manual angle in degrees, one of 0/90/180/270. Only read when
+    /// `autoRotation` is false.
+    public var manualRotationAngle: CGFloat = 0 { didSet { applyRotation() } }
+
+    /// Set by the SwiftUI preview so the coordinator can also keep the on-screen
+    /// preview level. Weak: the layer belongs to the view hierarchy.
+    public weak var previewLayer: AVCaptureVideoPreviewLayer? {
+        didSet { rebuildRotationCoordinator() }
+    }
+
     private let sessionQueue = DispatchQueue(label: "at.gotzendorfer.usbcam.session")
     private let sampleQueue = DispatchQueue(label: "at.gotzendorfer.usbcam.samples")
     private let videoOutput = AVCaptureVideoDataOutput()
     private var currentInput: AVCaptureDeviceInput?
+    private var currentDevice: AVCaptureDevice?
+    private var rotationCoordinator: AVCaptureDevice.RotationCoordinator?
+    private var rotationObservation: NSKeyValueObservation?
 
     /// Called on `sampleQueue` for every delivered frame.
     public var onSampleBuffer: ((CMSampleBuffer) -> Void)?
@@ -115,17 +133,13 @@ public final class CaptureEngine: NSObject {
                 activeFormat = chosen
 
                 if let c = videoOutput.connection(with: .video) {
-                    // Landscape-right: the sensor's native orientation on iPhone
-                    // already matches, so 0 degrees. Kept explicit so a future
-                    // portrait mode has an obvious hook.
-                    if #available(iOS 17.0, *), c.isVideoRotationAngleSupported(0) {
-                        c.videoRotationAngle = 0
-                    }
                     c.isVideoMirrored = false
                 }
 
                 session.commitConfiguration()
                 session.startRunning()
+                currentDevice = cam.device
+                DispatchQueue.main.async { [self] in rebuildRotationCoordinator() }
                 completion(.success(()))
             } catch {
                 session.commitConfiguration()
@@ -138,7 +152,62 @@ public final class CaptureEngine: NSObject {
         sessionQueue.async { [self] in
             if session.isRunning { session.stopRunning() }
             activeFormat = nil
+            currentDevice = nil
         }
+        DispatchQueue.main.async { [self] in
+            rotationObservation = nil
+            rotationCoordinator = nil
+        }
+    }
+
+    // MARK: - Rotation
+
+    /// Angle that should be written to the video-data-output connection.
+    /// Rotating there (rather than after the fact in the receiver) means the
+    /// encoder sees an upright buffer, so a portrait mount legitimately yields a
+    /// portrait 1080x1920 stream — the encoder notices the changed dimensions
+    /// and sends a fresh CONFIG.
+    private func desiredCaptureAngle() -> CGFloat {
+        guard autoRotation else { return manualRotationAngle }
+        return rotationCoordinator?.videoRotationAngleForHorizonLevelCapture ?? manualRotationAngle
+    }
+
+    /// Recreates the coordinator for the currently running device. Must run on
+    /// the main queue because it touches the preview layer.
+    private func rebuildRotationCoordinator() {
+        rotationObservation = nil
+        rotationCoordinator = nil
+        guard let device = currentDevice else { return }
+        let coordinator = AVCaptureDevice.RotationCoordinator(device: device,
+                                                              previewLayer: previewLayer)
+        rotationCoordinator = coordinator
+        rotationObservation = coordinator.observe(
+            \.videoRotationAngleForHorizonLevelCapture,
+            options: [.initial, .new]) { [weak self] _, _ in
+                DispatchQueue.main.async { self?.applyRotation() }
+            }
+        applyRotation()
+    }
+
+    /// Writes the current angle to both connections. Safe to call repeatedly —
+    /// AVFoundation ignores a write of the value already in place.
+    private func applyRotation() {
+        let apply = { [self] in
+            let angle = desiredCaptureAngle()
+            if let c = videoOutput.connection(with: .video),
+               c.isVideoRotationAngleSupported(angle) {
+                c.videoRotationAngle = angle
+            }
+            NSLog("[usbcam] rotation angle=%.0f auto=%d coordinator=%d",
+                  Double(angle), autoRotation ? 1 : 0, rotationCoordinator != nil ? 1 : 0)
+            if let pc = previewLayer?.connection {
+                let pa = autoRotation
+                    ? (rotationCoordinator?.videoRotationAngleForHorizonLevelPreview ?? angle)
+                    : angle
+                if pc.isVideoRotationAngleSupported(pa) { pc.videoRotationAngle = pa }
+            }
+        }
+        if Thread.isMainThread { apply() } else { DispatchQueue.main.async(execute: apply) }
     }
 
     /// Picks the format whose dimensions and frame-rate range are nearest to the

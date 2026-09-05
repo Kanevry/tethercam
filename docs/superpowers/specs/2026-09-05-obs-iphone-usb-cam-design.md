@@ -90,6 +90,21 @@ Typen:
   Einheiten: Protokoll-pts Mikrosekunden, `obs_source_frame.timestamp` Nanosekunden
   (Faktor 1000 im Plugin).
 
+  **Korrektur 2026-09-05 (Welle 3/5, am Geraet gemessen).** Der Satz „ausschliesslich
+  VCL-NAL-Einheiten" beschreibt nicht, was VideoToolbox liefert. Der Hardware-Encoder
+  stellt jedem VCL-NAL ein Prefix-SEI-NAL (Typ 39) voran; ein 3-Sekunden-Mitschnitt mit
+  86 Frames enthielt 172 NALs, also exakt zwei pro Frame. Die App reicht den
+  CMBlockBuffer unveraendert weiter, folglich stehen diese SEI-NALs in der VIDEO-Nutzlast.
+  Verbindlich ist deshalb: **Empfaenger reichen ALLE NALs der Nutzlast durch** und
+  validieren nicht auf „nur VCL" — ein VCL-only-Filter verwirft die SEI und ein
+  Empfaenger, der bei einem Nicht-VCL-NAL die Nutzlast als kaputt einstuft, bricht am
+  ersten Frame ab. In-band-Parametersaetze (VPS/SPS/PPS) bleiben weiterhin
+  ausgeschlossen; die kommen nur ueber CONFIG.
+
+  Ebenfalls gemessen: die Laenge des `hvcC`-Records ist nicht konstant. Beobachtet wurden
+  109 und 110 Bytes fuer dieselbe 1920x1080-Konfiguration. Empfaenger duerfen also weder
+  eine feste Laenge annehmen noch zwei CONFIGs anhand der Laenge als „gleich" behandeln.
+
 Farbkonvention (fix, nicht verhandelbar in Version 1): Pixelformat NV12 Video-Range
 (`kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange`), Farbraum BT.709 (Primaries, Transfer,
 Matrix). Die App setzt das am Capture-Output und am Encoder, das Plugin setzt
