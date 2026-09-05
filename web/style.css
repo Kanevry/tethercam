@@ -918,6 +918,10 @@ pre code { font-size: inherit; }
   .facts { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 560px) {
+  .site-header nav { flex-wrap: wrap; row-gap: 0; padding-block: 0.25rem; }
+  .site-header ul { flex-basis: 100%; flex-wrap: wrap; overflow: visible; margin-left: 0; gap: 0 0.35rem; }
+  .site-header ul a { min-height: 40px; font-size: 0.875rem; padding-inline: 0.3rem; }
+
   .proof { grid-template-columns: minmax(0, 1fr); }
   .btn { width: 100%; }
   .actions { flex-direction: column; align-items: stretch; }
