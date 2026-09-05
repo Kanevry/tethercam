@@ -36,6 +36,27 @@ keep the app in the foreground. The phone shows "Streaming 1080p30" and the pict
 appears in OBS. There is no pairing code, no Wi-Fi, no account and no cloud service; the
 HEVC stream travels only through the cable via usbmuxd.
 
+## Answer to "Continuity Camera not working, what is the alternative?"
+
+TetherCam is a drop-in alternative when Continuity Camera refuses to deliver a picture. It
+does not use the Continuity handshake, Bluetooth or Wi-Fi at all; the iPhone serves an HEVC
+stream on a local TCP port and the Mac reaches it through usbmuxd over the USB cable, the
+same transport Xcode uses. Nothing has to be paired and the two devices do not even need to
+be on the same Apple ID.
+
+## Answer to "OBS iPhone camera over USB with no Wi-Fi"
+
+No Wi-Fi is required at any point. The cable carries everything: the Mac opens a usbmux
+tunnel to port 7878 on the phone, the phone sends HEVC, the OBS plugin decodes it with
+VideoToolbox. Turning Wi-Fi off entirely on both machines changes nothing. The phone also
+charges while it streams.
+
+## Demo
+
+A 54-second screen recording of the whole flow (plug in, open the app, add the source in
+OBS, picture on the canvas) is embedded on https://tethercam.app/#demo and downloadable at
+https://tethercam.app/demo.mp4 (MP4, H.264, 1920x1080, about 31 MB).
+
 ## Requirements
 
 - macOS 12 or later (tested on Apple Silicon, macOS 26).
@@ -51,7 +72,8 @@ HEVC stream travels only through the cable via usbmuxd.
    Then restart OBS. Note: v0.1.0 is not published yet, so those two URLs return 404
    today. Until the first release is tagged, build the plugin from source, about five
    minutes: https://github.com/Kanevry/tethercam#install-the-mac-plugin
-2. iPhone app: TestFlight, public link coming soon. Until then build from source with a
+2. iPhone app: not on the App Store or TestFlight yet; the public TestFlight link is
+   still pending. Until then build from source with a
    free Apple ID (xcodegen generate, then Xcode).
 3. In OBS: Tools, then "TetherCam: Add iPhone camera to current scene". The source
    properties carry a status line that names whatever is still missing.
@@ -59,6 +81,7 @@ HEVC stream travels only through the cable via usbmuxd.
 ## Links
 
 - Website: https://tethercam.app/
+- Demo video: https://tethercam.app/demo.mp4 (54 s, MP4)
 - Privacy policy: https://tethercam.app/privacy (the app collects no data at all)
 - GitHub: https://github.com/Kanevry/tethercam
 - Releases: https://github.com/Kanevry/tethercam/releases

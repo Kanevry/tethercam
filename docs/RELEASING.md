@@ -77,6 +77,50 @@ including how to obtain and rotate each, is in [SECRETS.md](SECRETS.md).
 
 ---
 
+## Status 2026-09-05
+
+Verified on this Mac and against the App Store Connect API on 2026-09-05.
+
+**Set as GitHub secrets on `Kanevry/tethercam`** (names only): `ASC_KEY_P8`,
+`ASC_KEY_ID`, `ASC_ISSUER_ID`, `NOTARY_KEY_P8`, `NOTARY_KEY_ID`, `NOTARY_ISSUER_ID`.
+
+All six point at **one** App Store Connect key, which is also in use by the
+WalkAITalkie project and holds the **Admin** role. That is more authority than either
+job needs and it couples two products to one credential: revoking it for one breaks
+the other. It works today (Admin can both upload builds and notarize) and it is
+deliberately temporary. Replace it with a dedicated **App Manager** key for
+`ASC_*` and a dedicated **Developer** key for `NOTARY_*`, per the split argued in
+[SECRETS.md](SECRETS.md), before anything ships publicly.
+
+**Done:** the App ID `at.gotzendorfer.tethercam` is registered (`2G7A77TNZ6`,
+platform UNIVERSAL). Step 1d.1 is complete.
+
+**Still blocking, both owner-only — no API key can do either:**
+
+- **App Store Connect app record** (step 1d.2). The API can register bundle ids but
+  cannot create app records. Until someone creates it at appstoreconnect.apple.com →
+  Apps → `+` → New App (platform iOS, bundle id `at.gotzendorfer.tethercam`, a
+  globally unique name, any SKU), every upload fails with *"No suitable application
+  records were found"*.
+- **Developer ID Installer certificate** (step 1b). `security find-identity -v` still
+  shows none. The `.pkg` therefore ships unsigned and unnotarized: Gatekeeper blocks
+  it everywhere except the build host.
+
+**Local alternative to the CI upload:** `scripts/appstore-upload.sh` runs the same
+archive/export/upload flow on this Mac using the key at
+`~/.appstoreconnect/private_keys/` (path only — the key never enters the repository).
+`scripts/appstore-upload.sh --dry-run` exports a signed `.ipa` without uploading and
+was verified green on 2026-09-05: `Authority=Apple Distribution: Bernhard
+Goetzendorfer (G3QZ66475M)`, profile *iOS Team Store Provisioning Profile:
+at.gotzendorfer.tethercam*, `get-task-allow=false`. Use it for the first real upload
+once the app record exists — its errors are far more legible than a CI log.
+`scripts/asc-api.sh` queries the API directly (`apps`, `bundle-ids`,
+`builds <appId>`, `raw`) to check what actually exists on Apple's side.
+
+The full runbook lives in `.claude/skills/distribute/SKILL.md`.
+
+---
+
 ## 2. One-time TestFlight distribution setup
 
 TestFlight is the only free public distribution channel Apple offers for an iOS app

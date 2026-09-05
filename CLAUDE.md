@@ -47,6 +47,25 @@ Signing-Angaben und bricht im Agent-Kontext ab. Installiert wird das Bundle nach
 `~/Library/Application Support/obs-studio/plugins/obs-iphone-usb-cam.plugin`; OBS liest es
 erst beim naechsten Start. **Nie einen laufenden OBS-Prozess beenden.**
 
+### Distribution
+
+`.claude/skills/distribute/SKILL.md` ist der Runbook fuer beide Artefakte. Kurzform:
+
+```bash
+scripts/appstore-upload.sh --dry-run   # iOS: archivieren + .ipa exportieren, kein Upload
+scripts/appstore-upload.sh             # iOS: Upload nach App Store Connect / TestFlight
+scripts/asc-api.sh apps                # App-Records/Bundle-Ids/Builds bei Apple abfragen
+```
+
+Der App-Store-Connect-Key liegt unter `~/.appstoreconnect/private_keys/` und niemals
+im Repo; `.p8`-Inhalte und JWTs werden nie ausgegeben. Logs landen in
+`build/appstore-*.log` (gitignored). Das `.pkg` des OBS-Plugins baut ausschliesslich
+`release-plugin.yml` auf dem `v*`-Tag; danach muss der Draft-Release **veroeffentlicht**
+werden, sonst liefert `releases/latest/download/...` 404 (docs/RELEASING.md, Teil 3).
+Offene Owner-Schritte Stand 2026-09-05: App-Store-Connect-App-Record und
+Developer-ID-Installer-Zertifikat fehlen.
+
+
 ## Konventionen
 
 - **`protocol/PROTOCOL.md` ist der Vertrag.** Wer das Wire-Format aendert, aendert zuerst

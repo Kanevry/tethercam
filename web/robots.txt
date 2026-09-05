@@ -27,3 +27,6 @@ User-agent: Applebot-Extended
 Allow: /
 
 Sitemap: https://tethercam.app/sitemap.xml
+
+# Plain-text summary for language models:
+# https://tethercam.app/llms.txt

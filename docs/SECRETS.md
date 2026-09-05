@@ -37,6 +37,41 @@ base64 -i cert.p12 | pbcopy      # macOS, no trailing newline issues
 Two separate keys rather than one shared key with the wider role: the notarization key
 then cannot upload builds, and revoking one does not break the other.
 
+## Status 2026-09-05: what is actually set
+
+| Secret | Set on `Kanevry/tethercam`? |
+|---|---|
+| `ASC_KEY_P8`, `ASC_KEY_ID`, `ASC_ISSUER_ID` | yes |
+| `NOTARY_KEY_P8`, `NOTARY_KEY_ID`, `NOTARY_ISSUER_ID` | yes |
+| `MACOS_CERT_P12`, `MACOS_CERT_PASSWORD` | no |
+| `MACOS_INSTALLER_CERT_P12`, `MACOS_INSTALLER_CERT_PASSWORD` | no — the certificate does not exist yet (docs/RELEASING.md §1b) |
+| `MACOS_CODESIGN_IDENT` | no (optional) |
+
+**The two-key split above is not yet in effect.** All six `ASC_*`/`NOTARY_*` secrets
+currently carry the *same* App Store Connect key — an **Admin**-role team key that is
+also used by the WalkAITalkie project. Admin covers both jobs, so releases work, but
+it violates two rules this document argues for: least privilege (notarization needs
+only Developer) and blast radius (revoking the key for one product breaks the other).
+
+Treat it as a known, dated exception, not as the design:
+
+1. Issue a dedicated **App Manager** key for this team → replace `ASC_KEY_P8` /
+   `ASC_KEY_ID`.
+2. Issue a dedicated **Developer** key → replace `NOTARY_KEY_P8` / `NOTARY_KEY_ID`.
+3. `ASC_ISSUER_ID` and `NOTARY_ISSUER_ID` stay as they are; the issuer id is a team
+   identifier shared by every key.
+
+Do this before the first public release, and certainly before granting anyone else
+access to either repository.
+
+**Local use of the same key.** `scripts/appstore-upload.sh` and `scripts/asc-api.sh`
+read it from `~/.appstoreconnect/private_keys/AuthKey_<KEYID>.p8` — a path outside the
+repository. Override with `ASC_KEY_PATH` in the environment or in a git-ignored
+`.env.local`. The key id and issuer id are defaulted in both scripts on purpose: they
+are identifiers, not credentials, and hard-coding them keeps the `.p8` as the single
+secret. `.gitignore` already refuses `*.p8`, `*.p12`, `.env*` and `AuthKey_*`; never
+weaken that.
+
 ## Minimum set per outcome
 
 - **Fork, just wants to build**: none. `ci-plugin.yml` runs with ad-hoc signing.

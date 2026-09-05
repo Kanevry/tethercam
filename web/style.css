@@ -943,3 +943,15 @@ pre code { font-size: inherit; }
   .ar-g { opacity: 1 !important; transform: none !important; }
   .signal-dot { opacity: 1 !important; }
 }
+
+/* ---------- demo video ---------- */
+.video-figure { margin: 2.5rem 0 1.25rem; }
+.video-figure .frame { background: #000; }
+.video-figure video {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  background: #000;
+}
+.video-figure figcaption { max-width: var(--prose); }

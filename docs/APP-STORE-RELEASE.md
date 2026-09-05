@@ -545,3 +545,69 @@ https://developer.apple.com/app-store/categories/
 
 Name collision check performed against the iTunes Search API, US and AT storefronts,
 September 2026: https://itunes.apple.com/search?term=tethercam&entity=software
+
+---
+
+## Update 2026-09-05
+
+Nothing above is retracted. This section records what was produced since, and the three
+places where the drafts above are now superseded by files under `docs/app-store/`.
+
+**Paste-ready metadata now lives in `docs/app-store/`.** Section 4 stays as the reasoning
+record; the files are what gets pasted.
+
+- `docs/app-store/en-US.md`: name, subtitle, keywords, promotional text, description,
+  what's new, URLs, categories, copyright `2026 Bernhard Goetzendorfer`, the age-rating
+  answer table and the App Privacy answer table.
+- `docs/app-store/de-DE.md`: the German localization. Neutral phrasing throughout, neither
+  "du" nor "Sie", which reads correctly in Austria and in Germany. Register it as German
+  (de-DE); there is no de-AT slot.
+- `docs/app-store/review-notes.md`: the Notes for Review, 4.2.3 defence first.
+- `docs/app-store/checklist.md`: the App Store Connect click path, 34 steps, each marked
+  OWNER or AUTOMATED, cross-referenced back into this document.
+- `docs/app-store/validate.sh`: checks every character limit in both localizations and the
+  dimensions and duration of the media. `bash docs/app-store/validate.sh` exits 0 today.
+
+**Correction to section 4.7: the demo video is 54 seconds, not 90.** It is live at
+https://tethercam.app/demo.mp4 and owner-approved. The review notes now quote 54 seconds
+and add per-scene timestamps (0:00 standalone, 0:13 cable, 0:22 source added in OBS, 0:30
+picture arriving), which is what 2.3.1(a) means by specificity.
+
+**Correction to section 3.5 on screenshot size.** The existing device shots in
+`docs/images/` are 2796 x 1290, not 2736 x 1260. Both are accepted for the iPhone 6.9"
+landscape slot, so no re-capture is needed. Four shots, no alpha, staged for upload at
+`~/Desktop/TetherCam-AppStore/screenshots-6.9/`:
+
+| File | Source in `docs/images/` | Purpose |
+|---|---|---|
+| `01-live-preview.png` | `app-live.png` | The 4.2.3 defence, must stay first |
+| `02-camera-lens-picker.png` | `app-settings-sheet.png` | Camera and lens picker |
+| `03-rotation-leveling.png` | `app-settings-advanced.png` | Auto rotation, horizon levelling |
+| `04-diagnostics.png` | `app-diagnostics.png` | Listener, fps, kbps, residual |
+
+No device frames and no caption overlays were added: plain screenshots are allowed and a
+fake frame risks 2.3.3. A separate 6.5" set was deliberately not produced. Apple auto-scales
+from the 6.9" set, and 2796 x 1290 and 2778 x 1284 are not the same aspect ratio, so scaling
+would distort rather than convert.
+
+**New: an App Preview.** Section 3.5 did not plan one; it is worth having, because a
+30-second video answers 4.2.3 before a reviewer has to read anything.
+`~/Desktop/TetherCam-AppStore/app-preview-6.9-landscape.mp4` is a cut of the demo recording
+from **0:05.0 to 0:34.5**, 29.5 seconds, 1920 x 886, H.264 High, yuv420p, 30 fps, stereo
+AAC, faststart, 32 MB. The cut runs settings and lens picker, advanced settings and
+diagnostics, the cable going into the Mac, the TetherCam source being added in OBS, and
+five seconds of the live picture as the payoff.
+
+Two decisions inside that encode are worth recording. The source recording is a 1920 x 1080
+screen capture whose phone content occupies exactly the middle 1920 x 886, so a centred crop
+would have been pixel-perfect. It was **not** used, because the source has no audio at all
+(measured mean volume -91 dB) and the burned-in captions in the lower bar are therefore the
+only explanation channel in the video. The full frame is scaled to 1576 x 886 and pillarboxed
+to 1920 x 886 instead, which keeps the captions at the cost of black bars at the sides.
+`app-preview-poster.png` (1920 x 886) is the intended poster frame, the OBS window with the
+TetherCam source live; the poster is picked in the App Store Connect editor, not uploaded.
+
+**Open owner decisions.** Whether to accept the pillarboxed preview or prefer a
+caption-free full-bleed crop; whether to record a German-captioned variant later; and
+whether to upload a German screenshot set once the interface is captured in German. None of
+these blocks submission.

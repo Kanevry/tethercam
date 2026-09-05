@@ -31,6 +31,7 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="manifest" href="/site.webmanifest">
 <link rel="preload" href="/fonts/space-grotesk-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt: plain-text summary for language models">
 <link rel="stylesheet" href="/style.css">
 <script src="/main.js" defer></script>
 </head>
@@ -41,6 +42,7 @@
   <nav aria-label="Primary">
     <a class="brand" href="#top"><picture><source type="image/webp" srcset="/img/wordmark-56.webp"><img src="/img/icon-192.png" alt="" width="28" height="28"></picture> TetherCam</a>
     <ul>
+      <li><a href="#demo">Demo</a></li>
       <li><a href="#quick-start">Quick start</a></li>
       <li><a href="#how-it-works">How it works</a></li>
       <li><a href="#download">Download</a></li>
@@ -60,9 +62,9 @@
       <h1 class="rise-lcp">Your iPhone as an OBS camera, <span class="hl">over the cable</span></h1>
       <p class="lede rise d1">TetherCam sends the iPhone camera into OBS Studio on macOS through the USB cable, with no Wi-Fi, no cloud and no pairing code.</p>
       <p class="actions rise d2">
-        <a class="btn btn-primary btn--stack" href="https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-obs-plugin.pkg">
-          <span>Download the OBS plugin <span class="arw" aria-hidden="true">&rarr;</span></span>
-          <span class="btn-sub">v0.1.0, coming shortly</span>
+        <a class="btn btn-primary btn--stack" href="#download">
+          <span>Get the OBS plugin <span class="arw" aria-hidden="true">&rarr;</span></span>
+          <span class="btn-sub">v0.1.0, not released yet</span>
         </a>
         <a class="btn btn-secondary btn--stack" href="#quick-start">
           <span>Read the quick start <span class="arw" aria-hidden="true">&rarr;</span></span>
@@ -131,6 +133,28 @@
       <li><span class="pv">0</span><span class="pl">Frames buffered in the plugin</span></li>
     </ul>
     <p class="meta proof-note" data-reveal>Measured on one setup, an iPhone 15 Pro Max with an M4 Pro Mac and OBS 32.2.2. Yours will differ.</p>
+  </div>
+</section>
+
+<section id="demo" class="section">
+  <div class="wrap">
+    <p class="eyebrow" data-reveal>Demo</p>
+    <h2 data-reveal>Fifty-four seconds, cable to canvas</h2>
+    <p class="lede" data-reveal>One take, no cuts: the iPhone goes on the cable, the app says <em>Streaming 1080p30</em>, and the picture lands on the OBS canvas.</p>
+
+    <figure class="video-figure" data-reveal>
+      <div class="frame">
+        <video controls playsinline preload="none" poster="/img/demo-poster.webp"
+               width="1920" height="1080"
+               aria-describedby="demo-desc">
+          <source src="/demo.mp4" type="video/mp4">
+          <p>Your browser cannot play this video. <a href="/demo.mp4">Download the demo file (MP4, 31&nbsp;MB)</a>.</p>
+        </video>
+      </div>
+      <figcaption id="demo-desc">What the video shows, in order: the iPhone is plugged into the Mac with a data cable and the TetherCam app is opened; the app switches to a full-screen preview with the status line <em>Streaming 1080p30</em>; in OBS the <strong>Tools</strong> menu entry adds the TetherCam source to the current scene; the live 1080p picture appears on the canvas within about a second, already levelled to the horizon. Nothing is spoken, the on-screen captions carry the commentary.</figcaption>
+    </figure>
+
+    <p class="meta" data-reveal>54 seconds, 1080p, about 31&nbsp;MB. Nothing downloads until you press play. <a href="/demo.mp4">Open the file directly</a>. Recorded on an earlier build, where the OBS source still carried its working name.</p>
   </div>
 </section>
 
@@ -311,11 +335,11 @@
         <p class="actions" data-reveal>
           <a class="btn btn-primary btn--stack" href="https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-obs-plugin.pkg">
             <span>TetherCam-obs-plugin.pkg <span class="arw" aria-hidden="true">&rarr;</span></span>
-            <span class="btn-sub">v0.1.0, coming shortly</span>
+            <span class="btn-sub">v0.1.0, not released yet</span>
           </a>
           <a class="btn btn-secondary btn--stack" href="https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-obs-plugin.zip">
             <span>TetherCam-obs-plugin.zip <span class="arw" aria-hidden="true">&rarr;</span></span>
-            <span class="btn-sub">v0.1.0, coming shortly</span>
+            <span class="btn-sub">v0.1.0, not released yet</span>
           </a>
         </p>
         <p class="notice" data-reveal>Until the first release is published, <a href="https://github.com/Kanevry/tethercam#install-the-mac-plugin">build from source (5 minutes)</a>. The two links above point at the final release URLs and will start working the moment v0.1.0 is tagged.</p>
@@ -360,12 +384,16 @@
 
     <div class="faq-list prose">
       <details class="faq" data-reveal>
-        <summary>Is this an alternative to Continuity Camera?</summary>
-        <div class="answer"><p>Yes, and that is why it exists. Continuity Camera broke with iOS 26.6 against macOS 26.5.2: the handshake succeeded, the picture stayed black. TetherCam takes a different path that does not depend on that handshake.</p></div>
+        <summary>How do I use an iPhone as a webcam for OBS over USB?</summary>
+        <div class="answer"><p>Install the TetherCam plugin for OBS on the Mac, install the TetherCam app on the iPhone, then connect the two with a data cable. In OBS choose Tools, then &ldquo;TetherCam: Add iPhone camera to current scene&rdquo;. Unlock the phone and leave the app in the foreground; it shows &ldquo;Streaming 1080p30&rdquo; and the picture appears on the OBS canvas. No Wi-Fi, no pairing code, no account and no cloud service are involved, because the HEVC stream travels only through the USB cable.</p></div>
+      </details>
+      <details class="faq" data-reveal>
+        <summary>Continuity Camera is not working. Is this an alternative?</summary>
+        <div class="answer"><p>Yes, and that is why it exists. Continuity Camera broke with iOS 26.6 against macOS 26.5.2: the handshake succeeded, the picture stayed black. TetherCam is a Continuity Camera alternative that takes a different path entirely, over the USB cable and usbmuxd, so none of the Continuity handshake, Bluetooth or Wi-Fi machinery has to work for it.</p></div>
       </details>
       <details class="faq" data-reveal>
         <summary>Why USB and not Wi-Fi?</summary>
-        <div class="answer"><p>The cable is the shortest path. No network to configure, no dropouts on a busy conference Wi-Fi, no pairing code, and the video never leaves the machine. The phone also charges while it streams.</p></div>
+        <div class="answer"><p>The cable is the shortest path. TetherCam needs no Wi-Fi at all: there is no network to configure, no dropouts on a busy conference Wi-Fi, no pairing code, and the video never leaves the machine. The phone also charges while it streams.</p></div>
       </details>
       <details class="faq" data-reveal>
         <summary>How much latency is there?</summary>
@@ -464,13 +492,18 @@
   "mainEntity": [
     {
       "@type": "Question",
-      "name": "Is this an alternative to Continuity Camera?",
-      "acceptedAnswer": {"@type": "Answer", "text": "Yes, and that is why it exists. Continuity Camera broke with iOS 26.6 against macOS 26.5.2: the handshake succeeded, the picture stayed black. TetherCam takes a different path that does not depend on that handshake."}
+      "name": "How do I use an iPhone as a webcam for OBS over USB?",
+      "acceptedAnswer": {"@type": "Answer", "text": "Install the TetherCam plugin for OBS on the Mac, install the TetherCam app on the iPhone, then connect the two with a data cable. In OBS choose Tools, then \u201cTetherCam: Add iPhone camera to current scene\u201d. Unlock the phone and leave the app in the foreground; it shows \u201cStreaming 1080p30\u201d and the picture appears on the OBS canvas. No Wi-Fi, no pairing code, no account and no cloud service are involved, because the HEVC stream travels only through the USB cable."}
+    },
+    {
+      "@type": "Question",
+      "name": "Continuity Camera is not working. Is this an alternative?",
+      "acceptedAnswer": {"@type": "Answer", "text": "Yes, and that is why it exists. Continuity Camera broke with iOS 26.6 against macOS 26.5.2: the handshake succeeded, the picture stayed black. TetherCam is a Continuity Camera alternative that takes a different path entirely, over the USB cable and usbmuxd, so none of the Continuity handshake, Bluetooth or Wi-Fi machinery has to work for it."}
     },
     {
       "@type": "Question",
       "name": "Why USB and not Wi-Fi?",
-      "acceptedAnswer": {"@type": "Answer", "text": "The cable is the shortest path. No network to configure, no dropouts on a busy conference Wi-Fi, no pairing code, and the video never leaves the machine. The phone also charges while it streams."}
+      "acceptedAnswer": {"@type": "Answer", "text": "The cable is the shortest path. TetherCam needs no Wi-Fi at all: there is no network to configure, no dropouts on a busy conference Wi-Fi, no pairing code, and the video never leaves the machine. The phone also charges while it streams."}
     },
     {
       "@type": "Question",
@@ -526,6 +559,20 @@
       "name": "TetherCam",
       "inLanguage": "en",
       "description": "TetherCam turns an iPhone into an OBS camera on macOS over the USB cable.",
+      "publisher": {"@id": "https://tethercam.app/#organization"}
+    },
+    {
+      "@type": "VideoObject",
+      "@id": "https://tethercam.app/#demo-video",
+      "name": "TetherCam demo: iPhone as an OBS camera over the USB cable",
+      "description": "A 54-second screen recording of the whole flow: the iPhone is plugged into the Mac with a data cable, the TetherCam app reports Streaming 1080p30, the OBS Tools menu adds the TetherCam source, and the live 1080p picture appears on the canvas.",
+      "thumbnailUrl": "https://tethercam.app/img/og.png",
+      "contentUrl": "https://tethercam.app/demo.mp4",
+      "encodingFormat": "video/mp4",
+      "duration": "PT54S",
+      "uploadDate": "2026-09-05",
+      "inLanguage": "en",
+      "isFamilyFriendly": true,
       "publisher": {"@id": "https://tethercam.app/#organization"}
     }
   ]
