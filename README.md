@@ -123,6 +123,8 @@ To confirm it loaded, open the newest log under `~/Library/Application Support/o
 
 Apple does not allow free distribution of iOS apps outside the App Store and TestFlight, so there is no `.ipa` to download here and there cannot be one. If you would rather not use TestFlight, or want to change the code, build and install the app yourself. That is free with any Apple ID, and the resulting build expires after 7 days unless you have a paid developer account.
 
+The full install guide, including troubleshooting, is at [tethercam.app/install](https://tethercam.app/install).
+
 ```sh
 brew install xcodegen
 cd ios-app
@@ -256,4 +258,4 @@ swift build -c release --package-path tools
 
 ---
 
-Kurz auf Deutsch: Dieses Projekt bringt das iPhone-Kamerabild ueber das USB-Kabel in OBS, ohne Continuity Camera, ohne WLAN und ohne Cloud. Website und Downloads: https://tethercam.app. Die Dokumentation ist auf Englisch, die Detaildokumente unter `protocol/`, `ios-app/`, `obs-plugin/` und `tools/` sind auf Deutsch. Fragen und Fehlerberichte bitte als Issue auf GitHub.
+Kurz auf Deutsch: Dieses Projekt bringt das iPhone-Kamerabild ueber das USB-Kabel in OBS, ohne Continuity Camera, ohne WLAN und ohne Cloud. Website und Downloads: https://tethercam.app. Die Dokumentation ist auf Englisch, die Detaildokumente unter `protocol/`, `ios-app/`, `obs-plugin/` und `tools/` sind auf Deutsch. Fragen und Fehlerberichte bitte als Issue auf GitHub. Deutsch: https://tethercam.app/de/.

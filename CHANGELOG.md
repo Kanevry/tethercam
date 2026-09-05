@@ -23,11 +23,49 @@ plugin (`obs-plugin/`, GPL-2.0-or-later) and the iOS app (`ios-app/`, MIT). A ta
 - **Website**: demo video embedded with poster, gallery carousel of the App Store frames,
   TestFlight button, FAQ answers for the USB and Continuity Camera queries, VideoObject schema,
   `llms.txt` discoverable.
+- **iPhone app: camera switching while streaming** no longer stops and restarts the stream.
+  The capture session swaps the lens or camera in a single configuration transaction and
+  re-applies the last capture angle on the fresh input.
+- **iPhone app: localized camera names** in the camera picker (English/German); the names
+  sent over the wire protocol stay English so the OBS side is unaffected.
+- **OBS plugin: two new link states**, "incompatible" (the phone app uses an unsupported
+  protocol version) and "busy" (another receiver is already connected to the phone), each
+  with its own status message.
+- **Website**: an `/install` guide with a troubleshooting FAQ, a `/changelog` page, and a full
+  German landing page at `/de/` (with `hreflang` links for en/de/x-default), plus
+  release-aware download labels that query the GitHub releases API.
 
 ### Changed
 
 - The App Preview video was withdrawn from the listing (it showed the owner). 0.1.0 ships
   without an App Preview.
+- **OBS plugin: connection deadlines.** A 5 second timeout from connect to HELLO and another
+  from HELLO to CONFIG make the plugin reconnect instead of hanging indefinitely in
+  "Starting" when a phone connection stalls.
+- **OBS plugin: quieter logging.** The "no USB device attached" line is throttled to once
+  every 30 seconds, and each retry now issues one usbmuxd query instead of several.
+- **OBS plugin: fewer decoder rebuilds.** An identical CONFIG message (for example after a
+  camera switch that does not change geometry) keeps the existing decoder session instead of
+  tearing it down and rebuilding it.
+- **OBS plugin: first-run hint.** The Tools-menu hint about adding the TetherCam source now
+  also fires when the active scene collection changes, not only at OBS startup. The hint text
+  moved into the plugin's locale files and is available in English and German, both pointing
+  at https://tethercam.app/#quick-start.
+- Store listing docs in `docs/listings/` corrected against verified channel rules; the
+  Homebrew cask draft now packages a zip artifact instead of the raw plugin bundle
+  (see `docs/listings/homebrew-decision.md`).
+
+### Fixed
+
+- **iPhone app: camera switch could transpose the next frame's orientation.** Switching the
+  camera while streaming could send a CONFIG message with the wrong rotation and briefly drop
+  to a 720p preview; the encoder now keeps the correct capture angle across the switch and
+  skips the preview drop when a restart is already queued.
+- **iPhone app: failed camera switch left the capture session inconsistent.** A camera switch
+  that fails now restores the previous input, or clears the current input, instead of leaving
+  stale state behind.
+- **OBS plugin: socket warnings now include the errno text**, making connection failures
+  easier to diagnose from the OBS log.
 
 ## [0.1.0] - 2026-09-05
 

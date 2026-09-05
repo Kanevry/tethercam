@@ -119,6 +119,23 @@ once the app record exists — its errors are far more legible than a CI log.
 
 The full runbook lives in `.claude/skills/distribute/SKILL.md`.
 
+### Stand 2026-09-05 abends
+
+CSR und privater Schluessel fuer das Developer ID Installer Zertifikat liegen
+vorbereitet unter `~/.appstoreconnect/certs/developer-id-installer.certSigningRequest`
+und `~/.appstoreconnect/certs/developer-id-installer.key` (nur Pfade, keine Inhalte
+in diesem Dokument oder im Repository). Es fehlen weiterhin zwei owner-only Schritte:
+die signierte `.cer`-Datei von developer.apple.com (aus der CSR) und der Export des
+Developer ID Application Zertifikats als `.p12`. Solange beide fehlen, bleibt das Taggen
+von `v0.1.0` blockiert, denn `productbuild --sign` und die Notarisierung brauchen die
+Installer-Identitaet.
+
+Ein lokaler `.pkg`-Testlauf wurde durchgefuehrt und verifiziert: das Paket ist
+unsigniert (kein Installer-Zertifikat vorhanden), `spctl` weist es erwartungsgemaess
+zurueck, das Installationsziel (`~/Library/Application Support/obs-studio/plugins/`)
+ist korrekt gesetzt, und die enthaltene Plugin-Binary ist ein Universal Binary
+(`x86_64` und `arm64`, verifiziert mit `lipo -info`).
+
 ---
 
 ## 2. One-time TestFlight distribution setup
@@ -233,12 +250,24 @@ TestFlight public link.
 
 ### 5. Erstlauf-Hinweis verifizieren
 
-Das Plugin schreibt beim ersten OBS-Start ohne TetherCam-Quelle genau eine Hinweiszeile
-ins OBS-Log (`obs-plugin/src/tools_menu.c`, `hint_if_no_source`, ausgeloest von
-`OBS_FRONTEND_EVENT_FINISHED_LOADING`) und merkt sich das pro Szenensammlung in
-`first-run.json` unter `obs_module_config_path`. Der Hinweis erscheint also nur, wenn die
-aktive Szenensammlung keine TetherCam-Quelle enthaelt. Eine Entwicklermaschine, auf der
-immer eine Quelle liegt, sieht ihn nie. So wird er belegt:
+Das Plugin schreibt genau eine Hinweiszeile ins OBS-Log, wenn die aktive
+Szenensammlung keine TetherCam-Quelle enthaelt (`obs-plugin/src/tools_menu.c`,
+`hint_if_no_source`), ausgeloest sowohl bei `OBS_FRONTEND_EVENT_FINISHED_LOADING`
+(Programmstart) als auch bei `OBS_FRONTEND_EVENT_SCENE_COLLECTION_CHANGED`
+(Wechsel der Szenensammlung waehrend OBS laeuft, kein Neustart noetig). Merkt sich das
+pro Szenensammlung in `first-run.json` unter `obs_module_config_path`. Enthaelt die
+Sammlung bereits eine TetherCam-Quelle, loggt das Plugin stattdessen die
+unterdrueckte Zeile `first-run hint: TetherCam source present in collection '<name>',
+nothing to do` und setzt kein Flag. Eine Entwicklermaschine, auf der immer eine Quelle
+liegt, sieht den eigentlichen Hinweis daher nie, wohl aber die unterdrueckte Zeile.
+
+Der Hinweistext selbst steht nicht mehr im C-Code, sondern im Locale-Schluessel
+`ToolsMenu.HintNoSource` (`obs-plugin/data/locale/en-US.ini` bzw. `de-DE.ini`), mit der
+Anleitungs-URL `https://tethercam.app/#quick-start` in beiden Sprachen eingebettet. Der
+englische Text beginnt mit Grossbuchstaben ("No TetherCam source in scene collection
+'%s'. ..."), der deutsche mit "Keine TetherCam-Quelle in der Szenensammlung '%s'. ...".
+Ein Log-Grep auf einen der beiden Wortlaute greift also nur bei der jeweiligen
+OBS-Sprache; robust gegen beide ist ein Grep auf die URL. So wird der Hinweis belegt:
 
 ```bash
 CFG="$HOME/Library/Application Support/obs-studio/plugin_config/obs-iphone-usb-cam"
@@ -249,26 +278,37 @@ mv "$CFG/first-run.json" "$CFG/first-run.json.bak" 2>/dev/null || true
 
 # 2. OBS mit einer Szenensammlung OHNE TetherCam-Quelle starten
 #    (Szenensammlung -> Neu, z. B. "leer"), dann OBS wieder beenden.
+#    Alternativ, ohne Neustart: waehrend OBS laeuft auf eine leere Sammlung
+#    wechseln, das feuert OBS_FRONTEND_EVENT_SCENE_COLLECTION_CHANGED.
 
-# 3. Die Zeile muss im neuesten Log stehen, genau einmal.
-grep -h "no TetherCam source" "$LOGS/$(ls -t "$LOGS" | head -1)"
-#   erwartet: <Zeit>: [obs-iphone-usb-cam] [iphone-cam] no TetherCam source in scene collection 'leer'. Use Tools -> ...
+# 3. Die Zeile muss im neuesten Log stehen, genau einmal, in jeder OBS-Sprache.
+grep -h "tethercam.app/#quick-start" "$LOGS/$(ls -t "$LOGS" | head -1)"
+#   erwartet (en-US): <Zeit>: [obs-iphone-usb-cam] [iphone-cam] No TetherCam source in scene collection 'leer'. Use Tools -> 'TetherCam: Add iPhone camera to current scene', then open TetherCam on the iPhone. Guide: https://tethercam.app/#quick-start
+#   erwartet (de-DE): <Zeit>: [obs-iphone-usb-cam] [iphone-cam] Keine TetherCam-Quelle in der Szenensammlung 'leer'. Ueber Tools -> 'TetherCam: iPhone zur aktuellen Szene hinzufuegen' hinzufuegen, dann TetherCam am iPhone oeffnen. Anleitung: https://tethercam.app/#quick-start
 
 # 4. Das Flag ist gesetzt.
 cat "$CFG/first-run.json"
 #   erwartet: {"leer":true}
 
-# 5. OBS mit derselben Sammlung ein zweites Mal starten und beenden:
-#    das neueste Log darf die Zeile NICHT mehr enthalten.
-grep -c "no TetherCam source" "$LOGS/$(ls -t "$LOGS" | head -1)"
+# 5. OBS mit derselben Sammlung ein zweites Mal starten (oder erneut dorthin
+#    wechseln) und beenden: das neueste Log darf die Zeile NICHT mehr enthalten.
+grep -c "tethercam.app/#quick-start" "$LOGS/$(ls -t "$LOGS" | head -1)"
 #   erwartet: 0
 ```
 
-Stand 2026-09-05: nicht live belegt. Das installierte Plugin enthaelt den Hinweis-String
-(`strings .../obs-iphone-usb-cam | grep -c "no TetherCam source"` liefert 2), aber kein
+Stand 2026-09-05: nicht live belegt, und die vorherige Fassung dieses Abschnitts
+behauptete faelschlich, das *installierte* Plugin enthalte den Hinweis-String. Tatsaechlich
+laeuft OBS seit heute Nachmittag ununterbrochen (siehe "Nie einen laufenden
+OBS-Prozess beenden" oben) und haelt daher weiter die alte Plugin-Binary aus
+`~/Library/Application Support/obs-studio/plugins/`, gebaut 16:11 Uhr, **vor** dem
+Erstlauf-Hinweis-Feature: `strings ".../obs-iphone-usb-cam" | grep -c
+"ToolsMenu.HintNoSource"` liefert dort `0`. Die frisch gebaute Binary unter
+`obs-plugin/build_macos/RelWithDebInfo/obs-iphone-usb-cam.plugin` (20:44 Uhr) enthaelt
+den Schluessel dagegen wie erwartet zweimal (`grep -c "ToolsMenu.HintNoSource"` liefert
+`2`, einmal aus dem C-Code-Literal, einmal aus der eingebetteten `.ini`-Ressource). Kein
 Log unter `logs/` enthaelt die Zeile und `plugin_config/obs-iphone-usb-cam/` existiert
-nicht, weil jede bisherige Sammlung eine TetherCam-Quelle hatte. Das Rezept oben ist vor
-dem naechsten Release einmal durchzulaufen.
+nicht, weil bislang jede Sammlung eine TetherCam-Quelle hatte. Das Rezept oben ist nach
+dem naechsten OBS-Neustart mit der neuen Plugin-Version einmal durchzulaufen.
 
 ---
 

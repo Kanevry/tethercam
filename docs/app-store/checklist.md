@@ -10,8 +10,8 @@ API, so the record itself is unavoidably manual (section 2.1, step O4).
 | # | Step | Who | Reference |
 |---|---|---|---|
 | 1 | developer.apple.com > Account > Membership details: membership active, team G3QZ66475M, note the renewal date | OWNER | 6.1 |
-| 2 | App Store Connect > Business > Trader Status: declare EU trader status, submit address, phone, mail, wait for verification. Do this first, it gates EU distribution and takes days | OWNER | 2.1 O2, 6.2 |
-| 3 | App Store Connect > Business > Agreements: accept the current Apple Developer Program License Agreement. Skip Paid Applications, the app is free | OWNER | 2.1 O3, 6.3 |
+| 2 | App Store Connect > Business > Trader Status: declare EU trader status, submit address, phone, mail, wait for verification. Do this first, it gates EU distribution and takes days | check Compliance row "Gesetz ueber digitale Dienste" | 2.1 O2, 6.2 |
+| 3 | App Store Connect > Business > Agreements: accept the current Apple Developer Program License Agreement. Skip Paid Applications, the app is free | DONE (both contracts active, seen in App Store Connect > Business on 2026-09-05) | 2.1 O3, 6.3 |
 | 4 | developer.apple.com > Certificates, Identifiers & Profiles > Identifiers: confirm `at.gotzendorfer.tethercam` exists as an explicit App ID, not a wildcard | DONE 2026-09-05 (registered via API, id 2G7A77TNZ6) | 6.4 |
 | 5 | `INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO` in `ios-app/project.yml` | AUTOMATED (done, commit 581a800) | 2.2 C1, risk 4 |
 | 6 | In-app privacy policy link in the settings sheet | AUTOMATED (done, commit 581a800) | 2.2 C2, risk 3 |
@@ -74,3 +74,14 @@ API, so the record itself is unavoidably manual (section 2.1, step O4).
 `bash docs/app-store/validate.sh` checks the character limits in `en-US.md` and `de-DE.md`
 and the dimensions, colour depth and duration of every file in
 `~/Desktop/TetherCam-AppStore/`. Run it before step 22.
+
+## Nach der Einreichung (2026-09-05 abends)
+
+Offene Owner-Schritte, gesammelt nach dem Einreichen des iOS-Listings:
+
+| # | Step | Who | Reference |
+|---|---|---|---|
+| 35 | Developer ID Installer Zertifikat: `.cer` von developer.apple.com holen (aus der CSR unter `~/.appstoreconnect/certs/developer-id-installer.certSigningRequest`) und Developer ID Application Zertifikat als `.p12` exportieren, beides nach `~/.appstoreconnect/certs/` | OWNER | RELEASING.md 1b |
+| 36 | GitHub-Secrets `MACOS_CERT_P12`, `MACOS_CERT_PASSWORD`, `MACOS_CODESIGN_IDENT`, `MACOS_INSTALLER_CERT_P12`, `MACOS_INSTALLER_CERT_PASSWORD` setzen, sobald die Dateien aus Schritt 35 vorliegen | AUTOMATED sobald Dateien existieren (Agent setzt sie) | RELEASING.md 1a, 1b |
+| 37 | Der leere macOS-Review-Submission-Entwurf `776750a6-a640-4696-92bf-c53cb4d21a14` (Plattform MAC_OS, Status READY_FOR_REVIEW laut API am 2026-09-05; die iOS-Einreichung ist `0e749dcd-74bb-43c1-a597-2d64408dfc87`, WAITING_FOR_REVIEW) in App Store Connect verwerfen; per API weder loeschbar noch abbrechbar. Blockiert nichts | OWNER | 3.13 |
+| 38 | GitHub Social Preview hochladen: Settings > General > Social preview, Bilddatei `web/img/og.png` | OWNER | n/a |

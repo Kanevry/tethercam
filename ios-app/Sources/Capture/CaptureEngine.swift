@@ -338,8 +338,14 @@ public final class CaptureEngine: NSObject {
                 // Put the old lens back so the fallback stop/start has a sane
                 // session to work from.
                 if let input = currentInput, input !== previous { session.removeInput(input) }
-                if let old = previous, session.canAddInput(old) { session.addInput(old) }
-                currentInput = previous
+                if let old = previous, session.canAddInput(old) {
+                    session.addInput(old)
+                    currentInput = old
+                } else {
+                    // The old input could not be re-attached: say so, or a later
+                    // start() would believe the right input is still present.
+                    currentInput = nil
+                }
                 session.commitConfiguration()
                 completion(.failure(error))
             }

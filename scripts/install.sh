@@ -34,7 +34,7 @@ while [ $# -gt 0 ]; do
         --pkg)     MODE="pkg"; shift ;;
         --version) VERSION="${2:-}"; shift 2 ;;
         --keep)    KEEP=1; shift ;;
-        -h|--help) sed -n '2,14p' "$0"; exit 0 ;;
+        -h|--help) sed -n '2,15p' "$0"; exit 0 ;;
         *)         die "unknown argument: $1" ;;
     esac
 done

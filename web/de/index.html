@@ -49,9 +49,11 @@
       <li><a href="#quick-start">Schnellstart</a></li>
       <li><a href="#how-it-works">Funktionsweise</a></li>
       <li><a href="#download">Download</a></li>
+      <li><a href="/install">Installation</a></li>
+      <li><a href="/changelog">Changelog</a></li>
       <li><a href="#faq">FAQ</a></li>
       <li><a href="#source">Quelltext</a></li>
-      <li><a href="/">English</a></li>
+      <li><a href="/">EN</a></li>
     </ul>
   </nav>
 </header>
@@ -68,7 +70,7 @@
       <p class="actions rise d2">
         <a class="btn btn-primary btn--stack" href="#download">
           <span>OBS-Plugin holen <span class="arw" aria-hidden="true">&rarr;</span></span>
-          <span class="btn-sub">v0.1.0, noch nicht veröffentlicht</span>
+          <span class="btn-sub" data-release="pkg">v0.1.0, noch nicht veröffentlicht</span>
         </a>
         <a class="btn btn-secondary btn--stack" href="#quick-start">
           <span>Schnellstart lesen <span class="arw" aria-hidden="true">&rarr;</span></span>
@@ -382,11 +384,11 @@
         <p class="actions" data-reveal>
           <a class="btn btn-primary btn--stack" href="https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-obs-plugin.pkg">
             <span>TetherCam-obs-plugin.pkg <span class="arw" aria-hidden="true">&rarr;</span></span>
-            <span class="btn-sub">v0.1.0, noch nicht veröffentlicht</span>
+            <span class="btn-sub" data-release="pkg">v0.1.0, noch nicht veröffentlicht</span>
           </a>
           <a class="btn btn-secondary btn--stack" href="https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-obs-plugin.zip">
             <span>TetherCam-obs-plugin.zip <span class="arw" aria-hidden="true">&rarr;</span></span>
-            <span class="btn-sub">v0.1.0, noch nicht veröffentlicht</span>
+            <span class="btn-sub" data-release="zip">v0.1.0, noch nicht veröffentlicht</span>
           </a>
         </p>
         <p class="notice" data-reveal>Bis die erste Version veröffentlicht ist, <a href="https://github.com/Kanevry/tethercam#install-the-mac-plugin">selbst aus dem Quelltext bauen (5 Minuten)</a>. Die beiden Links oben zeigen bereits auf die endgültigen Release-Adressen und funktionieren, sobald v0.1.0 getaggt ist.</p>
@@ -592,15 +594,37 @@
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "WebPage",
-  "@id": "https://tethercam.app/de/",
-  "url": "https://tethercam.app/de/",
-  "name": "TetherCam: iPhone als USB-Kamera für OBS am Mac",
-  "inLanguage": "de",
-  "description": "TetherCam macht aus einem iPhone eine OBS-Kamera unter macOS, über das USB-Kabel.",
-  "isPartOf": {"@id": "https://tethercam.app/#website"},
-  "publisher": {"@id": "https://tethercam.app/#organization"},
-  "translationOfWork": {"@id": "https://tethercam.app/#website"}
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://tethercam.app/#organization",
+      "name": "TetherCam",
+      "url": "https://tethercam.app/",
+      "logo": "https://tethercam.app/favicon.png",
+      "founder": {"@type": "Person", "name": "Bernhard Goetzendorfer", "url": "https://gotzendorfer.at"},
+      "sameAs": ["https://github.com/Kanevry/tethercam", "https://gotzendorfer.at"]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://tethercam.app/#website",
+      "url": "https://tethercam.app/",
+      "name": "TetherCam",
+      "inLanguage": "en",
+      "description": "TetherCam turns an iPhone into an OBS camera on macOS over the USB cable.",
+      "publisher": {"@id": "https://tethercam.app/#organization"}
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://tethercam.app/de/",
+      "url": "https://tethercam.app/de/",
+      "name": "TetherCam: iPhone als USB-Kamera für OBS am Mac",
+      "inLanguage": "de",
+      "description": "TetherCam macht aus einem iPhone eine OBS-Kamera unter macOS, über das USB-Kabel.",
+      "isPartOf": {"@id": "https://tethercam.app/#website"},
+      "publisher": {"@id": "https://tethercam.app/#organization"},
+      "translationOfWork": {"@id": "https://tethercam.app/#website"}
+    }
+  ]
 }
 </script>
 
