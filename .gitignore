@@ -33,3 +33,4 @@ shared/build-*/
 .orchestrator/runtime/
 .claude/wave-scope.json
 .claude/STATE.md
+.orchestrator/wave-dispatch-scopes.json
