@@ -495,12 +495,11 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 2.5rem 0; }
 
 /* ---------- reveal ---------- */
 [data-reveal] {
-  opacity: 0;
-  transform: translateY(18px);
   transition: opacity var(--dur-entrance) var(--ease), transform var(--dur-entrance) var(--ease);
   transition-delay: var(--d, 0ms);
 }
-[data-reveal].is-in { opacity: 1; transform: none; }
+html.js [data-reveal] { opacity: 0; transform: translateY(18px); }
+html.js [data-reveal].is-in { opacity: 1; transform: none; }
 .s1 { --d: 80ms; }
 .s2 { --d: 160ms; }
 .s3 { --d: 240ms; }
@@ -654,7 +653,8 @@ figcaption {
 .ar-head { font-family: var(--font-display); font-size: 17px; font-weight: 600; fill: var(--fg); }
 .ar-txt { font-family: var(--font-body); font-size: 13px; fill: var(--fg-muted); }
 .ar-lbl { font-family: var(--font-mono); font-size: 12px; fill: var(--fg-muted); }
-.ar-arrow { stroke: var(--border-strong); stroke-width: 2; fill: none; stroke-dasharray: 1; stroke-dashoffset: 1; }
+.ar-arrow { stroke: var(--border-strong); stroke-width: 2; fill: none; }
+html.js .ar-arrow { stroke-dasharray: 1; stroke-dashoffset: 1; }
 .ar-pulse {
   stroke: var(--signal);
   stroke-width: 3;
@@ -664,7 +664,7 @@ figcaption {
   stroke-dashoffset: 1;
   opacity: 0;
 }
-.ar-g { opacity: 0; transform: translateY(14px); }
+html.js .ar-g { opacity: 0; transform: translateY(14px); }
 .arch.is-playing .ar-g { animation: rise var(--dur-entrance) var(--ease) both; }
 .arch.is-playing #ar-g2 { animation-delay: 120ms; }
 .arch.is-playing #ar-g3 { animation-delay: 240ms; }
@@ -744,9 +744,8 @@ figcaption {
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
 }
+html.js .tick { stroke-dasharray: 1; stroke-dashoffset: 1; }
 [data-reveal].is-in .tick { animation: draw 520ms var(--ease) 260ms forwards; }
 .reqs b { font-family: var(--font-mono); font-size: 0.875rem; font-weight: 600; letter-spacing: 0.02em; }
 

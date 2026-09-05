@@ -329,6 +329,9 @@ struct SettingsSheet: View {
                     Link(destination: URL(string: "https://tethercam.app")!) {
                         Label("link.installPlugin", systemImage: "arrow.down.circle")
                     }
+                    Link(destination: URL(string: "https://tethercam.app/privacy")!) {
+                        Label("link.privacy", systemImage: "hand.raised")
+                    }
                 }
             }
             .navigationTitle(Text("settings.title"))

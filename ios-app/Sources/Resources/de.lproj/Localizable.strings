@@ -21,6 +21,7 @@
 "settings.horizonLeveling" = "Horizont begradigen";
 "settings.manualAngle" = "Winkel von Hand";
 "settings.diagnostics" = "Diagnose";
+"link.privacy" = "Datenschutz";
 "link.installPlugin" = "Mac-Plugin installieren";
 
 "diag.listener" = "Listener";

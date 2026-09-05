@@ -21,6 +21,7 @@
 "settings.horizonLeveling" = "Level the horizon";
 "settings.manualAngle" = "Manual angle";
 "settings.diagnostics" = "Diagnostics";
+"link.privacy" = "Privacy policy";
 "link.installPlugin" = "Install the Mac plugin";
 
 "diag.listener" = "Listener";
