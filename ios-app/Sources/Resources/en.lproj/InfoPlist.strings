@@ -1,0 +1,2 @@
+"NSCameraUsageDescription" = "The camera picture is sent to the Mac over the USB cable.";
+"NSLocalNetworkUsageDescription" = "Local listener on TCP 7878 for the USB connection to the Mac.";

@@ -67,6 +67,16 @@ struct camera_entry {
 	std::string name;
 };
 
+/* What the properties dialog tells the user. The worker owns the transitions,
+ * the UI thread only reads. Deliberately coarse: the dialog is opened by hand,
+ * so a state that is a second stale is still the right answer. */
+enum class link_state {
+	no_device,  /* usbmuxd lists no USB device */
+	waiting,    /* device attached, but nothing listening on 7878 (app closed or backgrounded) */
+	starting,   /* socket open, no CONFIG yet */
+	streaming,
+};
+
 struct iphone_source {
 	obs_source_t *source = nullptr;
 
@@ -96,6 +106,14 @@ struct iphone_source {
 	/* camera list cached from the last HELLO, guarded by cfg_mutex */
 	std::vector<camera_entry> cameras;
 
+	/* status snapshot for the properties dialog, guarded by cfg_mutex */
+	link_state status_state = link_state::no_device;
+	std::string status_serial;
+	int status_width = 0;
+	int status_height = 0;
+	int status_fps = 0;
+	double status_measured_fps = 0.0;
+
 	/* per-connection state, worker thread only */
 	int fd = -1;
 	iucm_decoder_t *dec = nullptr;
@@ -124,6 +142,14 @@ struct iphone_source {
 	float color_min[3];
 	float color_max[3];
 };
+
+void set_status(iphone_source *s, link_state st)
+{
+	std::lock_guard<std::mutex> lock(s->cfg_mutex);
+	s->status_state = st;
+	if (st != link_state::streaming)
+		s->status_measured_fps = 0.0;
+}
 
 uint64_t now_ms(void)
 {
@@ -367,6 +393,13 @@ int on_message(void *ctx, const struct iucm_msg *msg)
 			return 1;
 		}
 		s->config_seen = true;
+		{
+			std::lock_guard<std::mutex> lock(s->cfg_mutex);
+			s->status_state = link_state::streaming;
+			s->status_width = (int) cfg.width;
+			s->status_height = (int) cfg.height;
+			s->status_fps = (int) cfg.fps;
+		}
 		return 0;
 	}
 	case IUCM_MSG_VIDEO: {
@@ -474,6 +507,9 @@ void close_connection(iphone_source *s)
 	s->config_seen = false;
 	s->missed_pongs = 0;
 	s->stats_log_deadline_ms = 0; /* log the first STATS of the next session at once */
+	/* The device is usually still attached, only the app is gone. The next
+	 * failed connect attempt corrects this to no_device if the cable went. */
+	set_status(s, link_state::waiting);
 	/* Clear the source so OBS does not keep showing a frozen frame. */
 	obs_source_output_video2(s->source, nullptr);
 }
@@ -548,10 +584,13 @@ void run_session(iphone_source *s, std::vector<uint8_t> &parse_buf)
 			}
 		}
 		if (t >= s->report_deadline_ms) {
-			if (s->frames_since_report > 0)
-				obs_log(LOG_INFO, "[iphone-cam] %.1f frames/s, %.2f Mbit/s",
-					(double) s->frames_since_report * 1000.0 / 5000.0,
+			if (s->frames_since_report > 0) {
+				double measured = (double) s->frames_since_report * 1000.0 / 5000.0;
+				obs_log(LOG_INFO, "[iphone-cam] %.1f frames/s, %.2f Mbit/s", measured,
 					(double) s->bytes_since_report * 8.0 / 5.0 / 1e6);
+				std::lock_guard<std::mutex> lock(s->cfg_mutex);
+				s->status_measured_fps = measured;
+			}
 			s->frames_since_report = 0;
 			s->bytes_since_report = 0;
 			s->report_deadline_ms = t + 5000;
@@ -582,17 +621,34 @@ void worker_main(iphone_source *s)
 		int fd = -1;
 		if (!debug_tcp.empty()) {
 			fd = connect_tcp(debug_tcp, loglevel);
-			if (fd >= 0)
+			if (fd >= 0) {
 				obs_log(LOG_INFO, "[iphone-cam] connected via debug_tcp %s", debug_tcp.c_str());
+				std::lock_guard<std::mutex> lock(s->cfg_mutex);
+				s->status_serial = debug_tcp;
+				s->status_state = link_state::starting;
+			}
 		} else {
 			std::string used;
 			fd = connect_usbmux(serial, used, loglevel);
-			if (fd >= 0)
+			if (fd >= 0) {
 				obs_log(LOG_INFO, "[iphone-cam] connected via usbmux to %s:%d", used.c_str(),
 					IUCM_PORT);
+				std::lock_guard<std::mutex> lock(s->cfg_mutex);
+				s->status_serial = used;
+				s->status_state = link_state::starting;
+			}
 		}
 
 		if (fd < 0) {
+			/* Split "cable/phone missing" from "app not in the foreground".
+			 * One usbmuxd list per retry, and the retry is 1-5 s apart. */
+			struct usbmux_device attached[16];
+			size_t attached_count = 0;
+			bool have_device = debug_tcp.empty()
+						   ? (usbmux_list_devices(attached, 16, &attached_count) == USBMUX_OK &&
+						      attached_count > 0)
+						   : true;
+			set_status(s, have_device ? link_state::waiting : link_state::no_device);
 			s->connect_failures++;
 			obs_log(s->connect_failures >= 5 ? LOG_WARNING : LOG_INFO,
 				"[iphone-cam] connect attempt %d failed — retrying in %d ms",
@@ -745,6 +801,51 @@ obs_properties_t *source_get_properties(void *data)
 	auto *s = static_cast<iphone_source *>(data);
 	obs_properties_t *props = obs_properties_create();
 
+	/* Read-only first line. It answers the only question a first-time user has
+	 * when the picture stays black: is it the cable, the app, or the settings?
+	 * Refreshed when the dialog is opened, which is when it is read. */
+	char status[512];
+	{
+		link_state st = link_state::no_device;
+		std::string serial;
+		int w = 0, h = 0, f = 0;
+		double measured = 0.0;
+		if (s) {
+			std::lock_guard<std::mutex> lock(s->cfg_mutex);
+			st = s->status_state;
+			serial = s->status_serial;
+			w = s->status_width;
+			h = s->status_height;
+			f = s->status_fps;
+			measured = s->status_measured_fps;
+		}
+		switch (st) {
+		case link_state::streaming:
+/* The format string comes from the locale file, so the compiler cannot check
+ * it. The argument list is fixed here and the .ini is shipped with the plugin. */
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wformat-nonliteral"
+#pragma clang diagnostic ignored "-Wformat-security"
+			snprintf(status, sizeof(status), obs_module_text("Status.Connected"),
+				 serial.empty() ? "?" : serial.c_str(), (unsigned) w, (unsigned) h, (unsigned) f,
+				 measured);
+#pragma clang diagnostic pop
+			break;
+		case link_state::starting:
+			snprintf(status, sizeof(status), "%s", obs_module_text("Status.Starting"));
+			break;
+		case link_state::waiting:
+			snprintf(status, sizeof(status), "%s", obs_module_text("Status.Waiting"));
+			break;
+		default:
+			snprintf(status, sizeof(status), "%s", obs_module_text("Status.NoDevice"));
+			break;
+		}
+	}
+	obs_property_t *status_prop =
+		obs_properties_add_text(props, "status_line", obs_module_text("Status"), OBS_TEXT_INFO);
+	obs_property_set_description(status_prop, status);
+
 	obs_property_t *devices = obs_properties_add_list(props, S_DEVICE, obs_module_text("Device"),
 							  OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
 	obs_property_list_add_string(devices, obs_module_text("Device.Auto"), "");
@@ -799,6 +900,9 @@ obs_properties_t *source_get_properties(void *data)
 
 	obs_property_t *tcp = obs_properties_add_text(props, S_DEBUG_TCP, obs_module_text("DebugTcp"), OBS_TEXT_DEFAULT);
 	obs_property_set_long_description(tcp, obs_module_text("DebugTcp.Description"));
+
+	/* No clickable link without Qt, so the URL is plain text the user can copy. */
+	obs_properties_add_text(props, "help_line", obs_module_text("Help"), OBS_TEXT_INFO);
 
 	return props;
 }

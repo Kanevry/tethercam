@@ -20,6 +20,9 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 #include <plugin-support.h>
 
 #include "iphone_source.h"
+#ifdef ENABLE_FRONTEND_API
+#include "tools_menu.h"
+#endif
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE(PLUGIN_NAME, "en-US")
@@ -31,7 +34,19 @@ bool obs_module_load(void)
 	return true;
 }
 
+#ifdef ENABLE_FRONTEND_API
+/* The frontend does not exist yet during obs_module_load(), so the Tools menu
+ * entry is registered here. */
+void obs_module_post_load(void)
+{
+	iucm_tools_menu_init();
+}
+#endif
+
 void obs_module_unload(void)
 {
+#ifdef ENABLE_FRONTEND_API
+	iucm_tools_menu_shutdown();
+#endif
 	obs_log(LOG_INFO, "[iphone-cam] plugin unloaded");
 }

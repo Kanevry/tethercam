@@ -1,0 +1,35 @@
+/* TetherCam — Deutsch */
+
+"app.name" = "TetherCam";
+
+"status.waiting" = "Warte auf OBS am Mac";
+"status.connected" = "Verbunden mit OBS";
+"status.streaming" = "Streamt %@";
+
+"hint.firstRun" = "Öffne OBS am Mac, die Kamera erscheint als TetherCam.";
+"banner.foreground" = "Die App muss im Vordergrund bleiben.";
+
+"perm.denied.title" = "Kamerazugriff verweigert";
+"perm.denied.body" = "Ohne Kamera kann TetherCam kein Bild senden.";
+"perm.openSettings" = "Einstellungen öffnen";
+
+"settings.title" = "Einstellungen";
+"settings.done" = "Fertig";
+"settings.camera" = "Kamera";
+"settings.advanced" = "Erweitert";
+"settings.autoRotation" = "Auto-Rotation";
+"settings.horizonLeveling" = "Horizont begradigen";
+"settings.manualAngle" = "Winkel von Hand";
+"settings.diagnostics" = "Diagnose";
+"link.installPlugin" = "Mac-Plugin installieren";
+
+"diag.listener" = "Listener";
+"diag.connected" = "Verbunden";
+"diag.streaming" = "Streamt";
+"diag.fps" = "fps";
+"diag.kbps" = "kbit/s";
+"diag.port" = "Port";
+"diag.angle" = "Lage";
+"diag.residual" = "Rest";
+"diag.yes" = "ja";
+"diag.no" = "nein";

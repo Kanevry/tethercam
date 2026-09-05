@@ -14,6 +14,12 @@ public final class UsbServer {
         public var streaming = false
         public var fps: Double = 0
         public var kbps: Double = 0
+        /// Format the camera actually delivers, 0 while nothing is running.
+        /// The checklist card in the UI shows this, so it must not be the
+        /// requested format but the one in effect.
+        public var width: Int = 0
+        public var height: Int = 0
+        public var targetFps: Int = 0
     }
 
     private let queue = DispatchQueue(label: "at.gotzendorfer.usbcam.server")
@@ -256,6 +262,11 @@ public final class UsbServer {
         }
         stats.connected = machine.activeConnection != nil
         stats.streaming = machine.isStreaming
+        if let f = capture.activeFormat {
+            stats.width = Int(f.width); stats.height = Int(f.height); stats.targetFps = Int(f.fps)
+        } else {
+            stats.width = 0; stats.height = 0; stats.targetFps = 0
+        }
         let s = stats
         DispatchQueue.main.async { [weak self] in self?.onStats?(s) }
     }

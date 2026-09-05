@@ -6,9 +6,37 @@ iPhone camera into OBS over the USB cable. No Continuity Camera, no Wi-Fi, no cl
 
 <br clear="left">
 
-![The OBS source "TetherCam (iPhone USB Camera)" showing a live 1080p picture from an iPhone 15 Pro Max over the USB cable](docs/images/obs-iphone-live.png)
+![The OBS source "TetherCam (iPhone via USB)" showing a live 1080p picture from an iPhone 15 Pro Max over the USB cable](docs/images/obs-iphone-live.png)
 
 *Live 1080p from an iPhone 15 Pro Max, decoded in OBS. The stream never leaves the cable.*
+
+## Quick start
+
+Three steps, about five minutes. The long version of each is further down.
+
+**1. Install the OBS plugin, then restart OBS.**
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Kanevry/tethercam/main/scripts/install.sh | bash
+```
+
+Prefer a click? Download `TetherCam-obs-plugin.pkg` from [Releases](https://github.com/Kanevry/tethercam/releases) and open it. It installs into your own home, nothing system-wide. Details and the build-from-source path: [Install the Mac plugin](#install-the-mac-plugin).
+
+![The OBS Tools menu with the entry "TetherCam: Add iPhone camera to current scene"](docs/images/obs-iphone-live.png)
+
+**2. Get the iPhone app.**
+
+TestFlight: `TESTFLIGHT_URL` *(placeholder, no public build yet)*. Until then you build it yourself with a free Apple ID, which takes one `xcodegen generate` and one Xcode run: [Install the iPhone app](#install-the-iphone-app).
+
+![TetherCam on the iPhone: full-screen preview with a single status line](docs/images/obs-simulator.png)
+
+**3. In OBS: Tools, then "TetherCam: Add iPhone camera to current scene".**
+
+The menu entry creates the source, names it `TetherCam iPhone` and fits it to your canvas. Then plug the phone in, open TetherCam on it and leave it in the foreground. The status line on the phone turns green and says `Streaming 1080p30`.
+
+![Live 1080p from an iPhone in OBS](docs/images/obs-iphone-live.png)
+
+There is no pairing, no code to type and no network setup. If the picture stays black, the source properties carry a status line at the top that says which of the three steps is missing.
 
 ## Why
 
@@ -111,13 +139,14 @@ More detail: [ios-app/README.md](ios-app/README.md).
 
 1. Connect the iPhone to the Mac with a cable and unlock it.
 2. Open TetherCam on the phone and leave it in the foreground. iOS suspends the listener as soon as the app goes to the background, so the app keeps the screen on while streaming.
-3. In OBS, add a source of type **TetherCam (iPhone USB Camera)**.
-4. Pick the device, the camera, the resolution, the frame rate and the bitrate. Changing any property reconnects immediately.
+3. In OBS: **Tools -> "TetherCam: Add iPhone camera to current scene"**. That creates a source named `TetherCam iPhone` in the current scene and fits it to the canvas. If a TetherCam source is already in the scene, the entry does nothing rather than adding a second one. The manual route still works: **Sources -> + -> TetherCam (iPhone via USB)**.
+4. The defaults are the ones that work: automatic device, back wide camera, 1920x1080, 30 fps, 12000 kbit/s, no rotation. Changing any property reconnects immediately.
 
 The source properties are:
 
 | Property | Meaning |
 |---|---|
+| Status | Read-only. Says whether a phone is attached, whether the app is in the foreground, and the live format and frame rate once it streams. Refreshed each time the dialog is opened |
 | iPhone (USB) | Device list from usbmuxd, USB only. Empty means the first attached device. Entries are labelled with the serial number, because iOS shortens the reported device name to "iPhone" |
 | Camera | Back Wide, Back Ultra Wide, Back Tele, Front. Replaced by the real camera list once the phone has said HELLO |
 | Resolution | 1280x720 or 1920x1080 |

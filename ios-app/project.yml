@@ -4,6 +4,7 @@ options:
   deploymentTarget:
     iOS: "17.0"
   createIntermediateGroups: true
+  developmentLanguage: en
   # xcodegen 2.46 / XcodeProj always writes objectVersion = 77 (its
   # preferredProjectObjectVersion); `options.objectVersion` and
   # `options.compatibilityVersion` are silently ignored — verified by generating with
@@ -33,8 +34,8 @@ targets:
         SWIFT_VERSION: "5.0"
         TARGETED_DEVICE_FAMILY: "1"
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_NSCameraUsageDescription: "Das Kamerabild wird per USB-Kabel an den Mac uebertragen."
-        INFOPLIST_KEY_NSLocalNetworkUsageDescription: "Lokaler Listener auf TCP 7878 fuer die USB-Verbindung zum Mac."
+        INFOPLIST_KEY_NSCameraUsageDescription: "The camera picture is sent to the Mac over the USB cable."
+        INFOPLIST_KEY_NSLocalNetworkUsageDescription: "Local listener on TCP 7878 for the USB connection to the Mac."
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIRequiresFullScreen: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationLandscapeRight UIInterfaceOrientationLandscapeLeft"

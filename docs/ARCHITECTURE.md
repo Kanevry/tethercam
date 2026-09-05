@@ -146,3 +146,25 @@ means the OBS plugin and the virtual camera cannot both be connected to the same
 the same time. The likely resolution is that the CMIO extension becomes the single
 receiver and the OBS plugin consumes the virtual camera like any other source. That is a
 decision for its own spec, not something to prejudge here.
+
+## Frontend integration (obs-frontend-api)
+
+`src/tools_menu.c` is the only file that touches the OBS frontend. It is compiled
+only when `ENABLE_FRONTEND_API` is ON, which is the default since the Tools menu
+entry is the one-click setup path for a first-time user. `ENABLE_QT` stays OFF:
+the plugin links `obs-frontend-api` for the menu registration and the
+`FINISHED_LOADING` event, and nothing else. That is a deliberate ceiling, and it
+has one visible consequence: the first-run hint is a log line, not a dialog,
+because a dialog would require Qt and with it the whole Qt build and version
+matrix.
+
+The menu callback is the entire onboarding step that used to be manual: it takes
+the current scene, refuses to add a second TetherCam source to it, creates the
+source with the id `iphone_usb_camera` under the name `TetherCam iPhone`, and
+sets bounds `OBS_BOUNDS_SCALE_INNER` to the canvas from `obs_get_video_info`, so
+the first frame arrives framed rather than as a corner thumbnail.
+
+The once-per-scene-collection flag for the hint lives in
+`obs_module_config_path("first-run.json")`, keyed by the collection name. Per
+collection rather than per install, because a user with a streaming collection
+and a scratch collection has two setups, not one.

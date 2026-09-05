@@ -13,6 +13,37 @@ plugin (`obs-plugin/`, GPL-2.0-or-later) and the iOS app (`ios-app/`, MIT). A ta
 
 ### Added
 
+- **Tools menu entry** "TetherCam: Add iPhone camera to current scene" (obs-frontend-api,
+  no Qt): creates the source in the current scene, names it `TetherCam iPhone`, fits it to
+  the canvas (`OBS_BOUNDS_SCALE_INNER`) and does nothing if the scene already has one.
+  Removes the step where a first-time user has to find the right entry in the source list.
+- **First-run hint**: if no scene in the collection contains a TetherCam source, the plugin
+  logs the Tools-menu path once per scene collection at `FINISHED_LOADING` (flag persisted
+  in `obs_module_config_path`). Log only, because a dialog would pull in Qt.
+- **Status line in the source properties**: read-only first row saying whether a phone is
+  attached, whether the app is in the foreground, and the live format plus measured frame
+  rate while streaming. Plus a plain-text link to the setup guide.
+- **German plugin locale** (`data/locale/de-DE.ini`).
+- **German and English app localisation** (`ios-app/Sources/Resources/{de,en}.lproj`),
+  including the Info.plist purpose strings.
+- **Homebrew cask draft** (`packaging/homebrew/`), unpublished, with the open question about
+  the install domain written down.
+- **README quick start**: three numbered steps at the top, before the background story.
+
+### Changed
+
+- **iOS app reduced to one screen**: full-screen preview with a single status line and a
+  traffic-light dot ("Waiting for OBS on the Mac" / "Connected to OBS" / "Streaming 1080p30").
+  Camera choice, auto rotation, horizon levelling, manual angle and the diagnostics moved
+  behind one gear icon; the camera list is plain rows with a checkmark instead of a picker,
+  which was unreadable with four lenses. Keep-screen-on is now always on and no longer a switch.
+- **Camera permission** is requested on first launch without an intermediate onboarding page;
+  a denial shows a card with a button into Settings.
+- **Source display name** is now "TetherCam (iPhone via USB)". The source id
+  (`iphone_usb_camera`) and the module name are unchanged, so existing scenes keep working.
+- **ENABLE_FRONTEND_API** defaults to ON in `obs-plugin/CMakeLists.txt` and the CMake presets.
+
+
 - **IUCM wire protocol** (`protocol/PROTOCOL.md`) as the contract between both sides:
   framing, message types (CONFIG, VIDEO, PING/PONG), error codes.
 - **Shared C core** (`shared/`, MIT): incremental frame parser and usbmux client,
