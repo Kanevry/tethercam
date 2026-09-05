@@ -10,7 +10,7 @@ API, so the record itself is unavoidably manual (section 2.1, step O4).
 | # | Step | Who | Reference |
 |---|---|---|---|
 | 1 | developer.apple.com > Account > Membership details: membership active, team G3QZ66475M, note the renewal date | OWNER | 6.1 |
-| 2 | App Store Connect > Business > Trader Status: declare EU trader status, submit address, phone, mail, wait for verification. Do this first, it gates EU distribution and takes days | check Compliance row "Gesetz ueber digitale Dienste" | 2.1 O2, 6.2 |
+| 2 | App Store Connect > Business > Trader Status: declare EU trader status, submit address, phone, mail, wait for verification. Do this first, it gates EU distribution and takes days | DONE 2026-09-05: Compliance row "Gesetz ueber digitale Dienste" Aktiv since 2026-03-11, DAC7 activated 2026-09-05 | 2.1 O2, 6.2 |
 | 3 | App Store Connect > Business > Agreements: accept the current Apple Developer Program License Agreement. Skip Paid Applications, the app is free | DONE (both contracts active, seen in App Store Connect > Business on 2026-09-05) | 2.1 O3, 6.3 |
 | 4 | developer.apple.com > Certificates, Identifiers & Profiles > Identifiers: confirm `at.gotzendorfer.tethercam` exists as an explicit App ID, not a wildcard | DONE 2026-09-05 (registered via API, id 2G7A77TNZ6) | 6.4 |
 | 5 | `INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO` in `ios-app/project.yml` | AUTOMATED (done, commit 581a800) | 2.2 C1, risk 4 |
