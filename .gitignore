@@ -24,3 +24,12 @@ xcuserdata/
 *.hevc
 dist/
 shared/build-*/
+
+# session-orchestrator runtime (host-local, never committed)
+.orchestrator/session.lock
+.orchestrator/current-session.json
+.orchestrator/host.json
+.orchestrator/metrics/
+.orchestrator/runtime/
+.claude/wave-scope.json
+.claude/STATE.md
