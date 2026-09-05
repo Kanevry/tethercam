@@ -22,3 +22,4 @@ xcuserdata/
 *.o
 *.a
 *.hevc
+dist/

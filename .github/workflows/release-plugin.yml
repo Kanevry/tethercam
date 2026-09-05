@@ -1,0 +1,269 @@
+name: release-plugin
+
+# Builds, signs, notarizes and publishes the macOS OBS plugin.
+#
+# Fork-friendly: without the signing secrets the build still runs and produces an
+# ad-hoc-signed artifact; only the notarization and release-publish steps are skipped.
+# See docs/SECRETS.md for the secret table and docs/RELEASING.md for the runbook.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Create a GitHub release (off for dry runs)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+env:
+  PLUGIN_NAME: obs-iphone-usb-cam
+  ASSET_BASENAME: TetherCam-obs-plugin
+  CODESIGN_TEAM: G3QZ66475M
+
+jobs:
+  build:
+    # macos-14 is the Apple-silicon runner image, free for public repositories.
+    runs-on: macos-14
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: version
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version="$(python3 -c 'import json;print(json.load(open("obs-plugin/buildspec.json"))["version"])')"
+          fi
+          echo "version=$version" >>"$GITHUB_OUTPUT"
+          echo "Version: $version"
+
+      - name: Check secret availability
+        id: secrets
+        env:
+          MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+          NOTARY_KEY_P8: ${{ secrets.NOTARY_KEY_P8 }}
+          MACOS_INSTALLER_CERT_P12: ${{ secrets.MACOS_INSTALLER_CERT_P12 }}
+        run: |
+          set -euo pipefail
+          # Presence only. Never echo a secret value: workflow logs are public on a
+          # public repo and are retained after the run.
+          have() { test -n "${1:-}" && echo true || echo false; }
+          {
+            echo "signing=$(have "$MACOS_CERT_P12")"
+            echo "installer_signing=$(have "$MACOS_INSTALLER_CERT_P12")"
+            echo "notarize=$(have "$NOTARY_KEY_P8")"
+          } >>"$GITHUB_OUTPUT"
+
+      - name: Import signing certificates
+        if: steps.secrets.outputs.signing == 'true'
+        env:
+          MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          MACOS_INSTALLER_CERT_P12: ${{ secrets.MACOS_INSTALLER_CERT_P12 }}
+          MACOS_INSTALLER_CERT_PASSWORD: ${{ secrets.MACOS_INSTALLER_CERT_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN="$RUNNER_TEMP/build.keychain-db"
+          # Random per-run password. The keychain lives only in RUNNER_TEMP and the
+          # runner VM is destroyed after the job.
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+
+          import_p12() {
+            b64="$1"; pass="$2"; label="$3"
+            [ -n "$b64" ] || { echo "no $label certificate provided, skipping"; return 0; }
+            file="$RUNNER_TEMP/$label.p12"
+            printf %s "$b64" | base64 --decode >"$file"
+            security import "$file" -k "$KEYCHAIN" -P "$pass" \
+              -T /usr/bin/codesign -T /usr/bin/productbuild -T /usr/bin/security
+            rm -f "$file"
+          }
+          import_p12 "$MACOS_CERT_P12" "${MACOS_CERT_PASSWORD:-}" application
+          import_p12 "${MACOS_INSTALLER_CERT_P12:-}" "${MACOS_INSTALLER_CERT_PASSWORD:-}" installer
+
+          # Without set-key-partition-list, codesign blocks on a GUI prompt that no
+          # one can answer on a headless runner, and the job hangs until timeout.
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" >/dev/null
+
+          # Prepend to the search list so codesign finds these identities. The
+          # unquoted command substitution is deliberate: list-keychains -s takes one
+          # argument per keychain, so the existing list must word-split.
+          # shellcheck disable=SC2046
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+          security default-keychain -s "$KEYCHAIN"
+
+          echo "Identities in the build keychain:"
+          security find-identity -v -p codesigning "$KEYCHAIN" | sed 's/[0-9A-F]\{40\}/<sha1>/'
+
+      - name: Resolve codesign identity
+        id: identity
+        env:
+          MACOS_CODESIGN_IDENT: ${{ secrets.MACOS_CODESIGN_IDENT }}
+        run: |
+          set -euo pipefail
+          if [ "${{ steps.secrets.outputs.signing }}" != "true" ]; then
+            # "-" is ad-hoc signing: good enough to load locally on the build machine,
+            # useless for distribution. Forks and dry runs land here.
+            echo "ident=-" >>"$GITHUB_OUTPUT"
+            echo "installer_ident=" >>"$GITHUB_OUTPUT"
+            echo "Ad-hoc signing (no MACOS_CERT_P12)."
+            exit 0
+          fi
+          ident="${MACOS_CODESIGN_IDENT:-}"
+          if [ -z "$ident" ]; then
+            # Derive from the imported certificate rather than requiring a ninth secret.
+            ident="$(security find-identity -v -p codesigning \
+                     | sed -n 's/.*"\(Developer ID Application: .*\)"/\1/p' | head -1)"
+          fi
+          [ -n "$ident" ] || { echo "::error::no Developer ID Application identity found"; exit 1; }
+          installer_ident="$(security find-identity -v \
+                     | sed -n 's/.*"\(Developer ID Installer: .*\)"/\1/p' | head -1)"
+          echo "ident=$ident" >>"$GITHUB_OUTPUT"
+          echo "installer_ident=$installer_ident" >>"$GITHUB_OUTPUT"
+          echo "Application identity: $ident"
+          echo "Installer identity:   ${installer_ident:-<none — the .pkg will be unsigned and cannot be notarized>}"
+
+      - name: Cache obs-deps
+        uses: actions/cache@v4
+        with:
+          # The configure step downloads the obs-studio sources and the prebuilt
+          # obs-deps here (~50 s cold). The key is the buildspec hash, so a dependency
+          # bump invalidates the cache automatically.
+          path: obs-plugin/.deps
+          key: obs-deps-macos-14-${{ hashFiles('obs-plugin/buildspec.json') }}
+          restore-keys: obs-deps-macos-14-
+
+      - name: Configure
+        working-directory: obs-plugin
+        env:
+          # CI=1 is mandatory: without it the obs plugin template prompts interactively
+          # for signing details and the job hangs.
+          CI: 1
+          CODESIGN_IDENT: ${{ steps.identity.outputs.ident }}
+          CODESIGN_TEAM: ${{ env.CODESIGN_TEAM }}
+        run: cmake --preset macos
+
+      - name: Build
+        working-directory: obs-plugin
+        env:
+          CI: 1
+          CODESIGN_IDENT: ${{ steps.identity.outputs.ident }}
+          CODESIGN_TEAM: ${{ env.CODESIGN_TEAM }}
+        run: cmake --build --preset macos
+
+      - name: Inspect the built bundle
+        run: |
+          set -euo pipefail
+          BUNDLE="obs-plugin/build_macos/RelWithDebInfo/${PLUGIN_NAME}.plugin"
+          [ -d "$BUNDLE" ] || { echo "::error::$BUNDLE not found"; exit 1; }
+          lipo -info "$BUNDLE/Contents/MacOS/${PLUGIN_NAME}"
+          codesign -dv --verbose=2 "$BUNDLE" 2>&1 | sed 's/[0-9a-f]\{40\}/<hash>/'
+          # Hardened Runtime (flag 0x10000) is a notarization prerequisite; catching a
+          # regression here is cheaper than a rejected notarization ticket.
+          if [ "${{ steps.secrets.outputs.signing }}" = "true" ]; then
+            codesign -d --verbose=2 "$BUNDLE" 2>&1 | grep -q 'flags=.*runtime' \
+              || { echo "::error::bundle is not built with Hardened Runtime"; exit 1; }
+          fi
+
+      - name: Package
+        run: |
+          set -euo pipefail
+          args=(--plugin "obs-plugin/build_macos/RelWithDebInfo/${PLUGIN_NAME}.plugin"
+                --version "${{ steps.version.outputs.version }}"
+                --out dist)
+          if [ -n "${{ steps.identity.outputs.installer_ident }}" ]; then
+            args+=(--sign-identity "${{ steps.identity.outputs.installer_ident }}")
+          fi
+          bash packaging/build-pkg.sh "${args[@]}"
+
+      - name: Notarize and staple
+        if: steps.secrets.outputs.notarize == 'true' && steps.secrets.outputs.installer_signing == 'true'
+        env:
+          NOTARY_KEY_P8: ${{ secrets.NOTARY_KEY_P8 }}
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          KEY="$RUNNER_TEMP/notary.p8"
+          printf %s "$NOTARY_KEY_P8" | base64 --decode >"$KEY"
+          chmod 600 "$KEY"
+          trap 'rm -f "$KEY"' EXIT
+
+          for asset in "dist/${ASSET_BASENAME}.pkg" "dist/${ASSET_BASENAME}.zip"; do
+            echo "== notarizing $asset"
+            xcrun notarytool submit "$asset" \
+              --key "$KEY" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID" \
+              --wait --timeout 30m
+          done
+
+          # A .pkg can be stapled directly. A .zip cannot: the ticket attaches to the
+          # bundle inside, so unpack, staple the .plugin, and repack.
+          xcrun stapler staple "dist/${ASSET_BASENAME}.pkg"
+
+          workdir="$RUNNER_TEMP/staple"
+          mkdir -p "$workdir"
+          ditto -x -k "dist/${ASSET_BASENAME}.zip" "$workdir"
+          bundle="$(find "$workdir" -maxdepth 2 -name '*.plugin' -print -quit)"
+          xcrun stapler staple "$bundle"
+          rm -f "dist/${ASSET_BASENAME}.zip"
+          ditto -c -k --keepParent --sequesterRsrc "$bundle" "dist/${ASSET_BASENAME}.zip"
+
+          # Checksums must be recomputed: stapling rewrote both files.
+          ( cd dist && for f in "${ASSET_BASENAME}.pkg" "${ASSET_BASENAME}.zip"; do
+              shasum -a 256 "$f" >"$f.sha256"; cat "$f.sha256"
+            done )
+
+      - name: Gatekeeper verdict
+        run: |
+          set -euo pipefail
+          echo "== spctl -a -t install (pkg)"
+          spctl -a -t install -vv "dist/${ASSET_BASENAME}.pkg" 2>&1 || true
+          echo "== pkgutil --check-signature"
+          pkgutil --check-signature "dist/${ASSET_BASENAME}.pkg" 2>&1 | head -20 || true
+          if [ "${{ steps.secrets.outputs.notarize }}" != "true" ]; then
+            echo "::warning::Notarization skipped — NOTARY_KEY_P8 is not set. This artifact will be blocked by Gatekeeper on other machines."
+          elif [ "${{ steps.secrets.outputs.installer_signing }}" != "true" ]; then
+            echo "::warning::Notarization skipped — no Developer ID Installer certificate (MACOS_INSTALLER_CERT_P12). Apple rejects unsigned .pkg submissions."
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tethercam-plugin-${{ steps.version.outputs.version }}
+          path: dist/
+          if-no-files-found: error
+
+      - name: Extract release notes
+        if: github.ref_type == 'tag'
+        id: notes
+        run: |
+          set -euo pipefail
+          python3 scripts/changelog-section.py "${{ steps.version.outputs.version }}" >"$RUNNER_TEMP/notes.md"
+          echo "path=$RUNNER_TEMP/notes.md" >>"$GITHUB_OUTPUT"
+          cat "$RUNNER_TEMP/notes.md"
+
+      - name: Publish release
+        if: github.ref_type == 'tag' || inputs.publish
+        uses: softprops/action-gh-release@v2
+        with:
+          name: TetherCam ${{ github.ref_name }}
+          body_path: ${{ steps.notes.outputs.path }}
+          draft: true
+          fail_on_unmatched_files: true
+          files: |
+            dist/${{ env.ASSET_BASENAME }}.pkg
+            dist/${{ env.ASSET_BASENAME }}.pkg.sha256
+            dist/${{ env.ASSET_BASENAME }}.zip
+            dist/${{ env.ASSET_BASENAME }}.zip.sha256

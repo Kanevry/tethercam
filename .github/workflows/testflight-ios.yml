@@ -1,0 +1,162 @@
+name: testflight-ios
+
+# Archives the iOS app and uploads it to App Store Connect / TestFlight.
+#
+# Preconditions the workflow cannot create for you (see docs/RELEASING.md):
+#   1. An App Store Connect app record must already exist for IOS_BUNDLE_ID.
+#      xcodebuild -allowProvisioningUpdates creates certificates and provisioning
+#      profiles on demand, but it does not create the app record. Without it the
+#      upload fails with "No suitable application records were found".
+#   2. Internal TestFlight testers (up to 100, on your team) get the build within
+#      minutes. A PUBLIC TestFlight link requires an EXTERNAL group, and every
+#      external group needs a one-time Beta App Review per major version — expect
+#      a day or two for the first submission.
+#   3. The bundle id must match the app record exactly.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      bundle_id:
+        description: "Override the bundle id for this run"
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+env:
+  # Current bundle id. At the TetherCam rename this becomes
+  # at.gotzendorfer.tethercam — which requires a NEW App Store Connect app record
+  # and a new TestFlight beta review; a bundle id cannot be renamed in place once a
+  # build has been uploaded. Change it here, in ios-app/project.yml, and in the
+  # xcrun devicectl invocations in CLAUDE.md at the same time.
+  IOS_BUNDLE_ID: at.gotzendorfer.usbcam
+  TEAM_ID: G3QZ66475M
+  SCHEME: UsbCam
+
+jobs:
+  testflight:
+    runs-on: macos-14
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 16 or newer
+        run: |
+          set -euo pipefail
+          ls -d /Applications/Xcode*.app 2>/dev/null || true
+          # method=app-store-connect and destination=upload in ExportOptions.plist
+          # need Xcode 15.3+; pin to 16 so the behaviour is not image-dependent.
+          if [ -d /Applications/Xcode_16.app ]; then
+            sudo xcode-select -s /Applications/Xcode_16.app
+          fi
+          xcodebuild -version
+
+      - name: Resolve version
+        id: version
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            echo "version=${GITHUB_REF_NAME#v}" >>"$GITHUB_OUTPUT"
+          else
+            echo "version=dispatch" >>"$GITHUB_OUTPUT"
+          fi
+
+      - name: Resolve bundle id
+        id: bundle
+        run: |
+          set -euo pipefail
+          bundle_id="${{ inputs.bundle_id || env.IOS_BUNDLE_ID }}"
+          echo "id=$bundle_id" >>"$GITHUB_OUTPUT"
+          echo "Bundle id: $bundle_id"
+
+      - name: Install xcodegen
+        run: brew install xcodegen
+
+      - name: Generate the Xcode project
+        working-directory: ios-app
+        run: |
+          set -euo pipefail
+          xcodegen generate
+          # project.yml is the source of truth for the bundle id; this only overrides
+          # it when the workflow was dispatched with an explicit value.
+          grep -n 'PRODUCT_BUNDLE_IDENTIFIER\|MARKETING_VERSION\|CURRENT_PROJECT_VERSION' project.yml
+
+      - name: Write the App Store Connect API key
+        id: asc
+        env:
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          set -euo pipefail
+          if [ -z "${ASC_KEY_P8:-}" ]; then
+            echo "::error::ASC_KEY_P8 is not set. A TestFlight upload cannot run without it."
+            exit 1
+          fi
+          KEY="$RUNNER_TEMP/AuthKey.p8"
+          printf %s "$ASC_KEY_P8" | base64 --decode >"$KEY"
+          chmod 600 "$KEY"
+          # Presence check only — never print the key or its length-derived content.
+          test -s "$KEY" || { echo "::error::decoded API key is empty"; exit 1; }
+          echo "path=$KEY" >>"$GITHUB_OUTPUT"
+
+      - name: Archive
+        working-directory: ios-app
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          xcodebuild archive \
+            -project UsbCam.xcodeproj \
+            -scheme "${{ env.SCHEME }}" \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/UsbCam.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "${{ steps.asc.outputs.path }}" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            DEVELOPMENT_TEAM="${{ env.TEAM_ID }}" \
+            PRODUCT_BUNDLE_IDENTIFIER="${{ steps.bundle.outputs.id }}"
+
+      - name: Export and upload to TestFlight
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          # ExportOptions.plist carries destination=upload, so this single command
+          # exports the .ipa and hands it to App Store Connect.
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/UsbCam.xcarchive" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -exportOptionsPlist packaging/ExportOptions.plist \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "${{ steps.asc.outputs.path }}" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+
+      - name: Remove the API key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/AuthKey.p8"
+
+      - name: Upload the archive logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: testflight-export-${{ steps.version.outputs.version }}
+          path: |
+            ${{ runner.temp }}/export/*.plist
+            ${{ runner.temp }}/export/*.log
+          if-no-files-found: ignore
+
+      - name: What happens next
+        run: |
+          echo "Build uploaded. App Store Connect still needs to process it (usually 5-30 min)."
+          echo "Internal testers see it as soon as processing finishes."
+          echo "For the PUBLIC link: TestFlight > External group > submit for Beta App Review once,"
+          echo "then enable the public link and share it."

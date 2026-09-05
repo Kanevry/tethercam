@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!--
+      Export options for the TestFlight upload.
+
+      method=app-store-connect is the modern spelling of the old "app-store" value
+      (Xcode 15.3+). destination=upload makes xcodebuild -exportArchive hand the
+      build to App Store Connect directly, so no separate altool/Transporter step
+      and no second authentication are needed.
+
+      Authentication is NOT configured here: the API key is passed on the
+      xcodebuild command line via -authenticationKeyPath / -authenticationKeyID /
+      -authenticationKeyIssuerID, so no credential ever lands in a committed file.
+    -->
+    <key>method</key>
+    <string>app-store-connect</string>
+    <key>destination</key>
+    <string>upload</string>
+    <key>teamID</key>
+    <string>G3QZ66475M</string>
+    <key>uploadSymbols</key>
+    <true/>
+    <key>manageAppVersionAndBuildNumber</key>
+    <false/>
+    <key>signingStyle</key>
+    <string>automatic</string>
+    <key>testFlightInternalTestingOnly</key>
+    <false/>
+</dict>
+</plist>

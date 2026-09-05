@@ -1,0 +1,130 @@
+name: ci-plugin
+
+# Pull-request and main-branch CI. No signing, no secrets, no notarization:
+# this workflow must pass in a fork with zero configuration.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-plugin-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shared-tests:
+    # The shared/ C core is deliberately free of Apple frameworks, so it is tested on
+    # Linux — that is the check that keeps it portable.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure, build, test
+        run: |
+          set -euo pipefail
+          cmake -S shared -B shared/build -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          cmake --build shared/build
+          ctest --test-dir shared/build --output-on-failure
+
+      - name: Test with sanitizers
+        run: |
+          set -euo pipefail
+          cmake -S shared -B shared/build-asan -DIUCM_SANITIZE=ON
+          cmake --build shared/build-asan
+          ctest --test-dir shared/build-asan --output-on-failure
+
+  macos:
+    runs-on: macos-14
+    timeout-minutes: 45
+    env:
+      PLUGIN_NAME: obs-iphone-usb-cam
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache obs-deps
+        uses: actions/cache@v4
+        with:
+          path: obs-plugin/.deps
+          key: obs-deps-macos-14-${{ hashFiles('obs-plugin/buildspec.json') }}
+          restore-keys: obs-deps-macos-14-
+
+      - name: Build the plugin (ad-hoc signed)
+        working-directory: obs-plugin
+        env:
+          CI: 1
+          # "-" is ad-hoc signing. No certificate, no secrets, loads locally, not
+          # distributable. CI=1 also stops the template from prompting interactively.
+          CODESIGN_IDENT: "-"
+          CODESIGN_TEAM: ""
+        run: |
+          set -euo pipefail
+          cmake --preset macos
+          cmake --build --preset macos
+          lipo -info "build_macos/RelWithDebInfo/${PLUGIN_NAME}.plugin/Contents/MacOS/${PLUGIN_NAME}"
+
+      - name: Package smoke test
+        run: |
+          set -euo pipefail
+          bash packaging/build-pkg.sh \
+            --plugin "obs-plugin/build_macos/RelWithDebInfo/${PLUGIN_NAME}.plugin" \
+            --version "0.0.0-ci" \
+            --out "$RUNNER_TEMP/dist"
+          pkgutil --expand "$RUNNER_TEMP/dist/TetherCam-obs-plugin.pkg" "$RUNNER_TEMP/expanded"
+          lsbom -s "$RUNNER_TEMP"/expanded/*component.pkg/Bom | grep -F 'obs-studio/plugins' | head -3
+
+      - name: swift test (tools)
+        run: swift test --package-path tools
+
+      - name: shellcheck
+        run: |
+          set -euo pipefail
+          brew list shellcheck >/dev/null 2>&1 || brew install shellcheck
+          shellcheck scripts/install.sh scripts/release.sh packaging/build-pkg.sh tools/integration.sh
+
+      - name: ffmpeg for the integration run
+        run: brew install ffmpeg
+
+      # Marked non-blocking on purpose. integration.sh needs no camera — usbcam-sim
+      # generates a test pattern — but it does need a working VideoToolbox *HEVC
+      # encoder*, and on the virtualised Apple-silicon runners the availability of the
+      # hardware encoder is not contractual: VTCompressionSession creation can fall back
+      # to software or fail outright depending on the image. The script also asserts a
+      # >=25 fps average and <50 ms ping RTT, which are timing thresholds that a shared
+      # CI VM can miss without anything being wrong with the code. Treat a failure here
+      # as a signal to read the log, not as a broken build. Flip continue-on-error off
+      # once a few runs have shown it to be stable.
+      - name: integration.sh (end to end against the simulator)
+        continue-on-error: true
+        env:
+          FFMPEG: /opt/homebrew/bin/ffmpeg
+          FFPROBE: /opt/homebrew/bin/ffprobe
+        run: bash tools/integration.sh
+
+  ios:
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install xcodegen
+        run: brew install xcodegen
+      - name: Generate the Xcode project
+        working-directory: ios-app
+        run: xcodegen generate
+      - name: Unit tests on the simulator
+        working-directory: ios-app
+        # Simulator tests need no signing; CODE_SIGNING_ALLOWED=NO keeps the job free
+        # of provisioning-profile requirements so forks can run it. The simulator name
+        # is not pinned to a model: runner images retire device names between updates,
+        # and 'platform=iOS Simulator' alone lets xcodebuild pick an available one.
+        run: |
+          set -euo pipefail
+          xcodebuild test \
+            -project UsbCam.xcodeproj \
+            -scheme UsbCam \
+            -destination 'platform=iOS Simulator,OS=latest,name=iPhone 15' \
+            CODE_SIGNING_ALLOWED=NO

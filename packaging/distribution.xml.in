@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!--
+  productbuild distribution definition for the TetherCam OBS plugin.
+
+  Placeholders (@NAME@) are substituted by packaging/build-pkg.sh.
+
+  Install-domain note: the payload is built by pkgbuild with an install location of
+  "/" and contains the RELATIVE path "Library/Application Support/obs-studio/plugins".
+  Combined with the domains element below (enable_currentUserHome true,
+  enable_localSystem false) the installer resolves that relative path against the
+  installing user's home, i.e. ~/Library/Application Support/obs-studio/plugins,
+  which is where OBS looks for user plugins on macOS. No postinstall script is
+  required for this; the upstream obs-plugintemplate uses the identical
+  construction in obs-plugin/cmake/macos/resources/ (create-package.cmake.in plus
+  distribution.in).
+-->
+<installer-gui-script minSpecVersion="1.0">
+    <options
+        hostArchitectures="arm64,x86_64"
+        customize="never"
+        allow-external-scripts="no" />
+    <domains enable_currentUserHome="true" enable_anywhere="false" enable_localSystem="false" />
+    <title>@PRODUCT_TITLE@</title>
+    <organization>@ORGANIZATION@</organization>
+    <choices-outline>
+        <line choice="obs-plugin" />
+    </choices-outline>
+    <choice id="obs-plugin" title="@PRODUCT_TITLE@" description="@PRODUCT_DESCRIPTION@">
+        <pkg-ref id="@BUNDLE_ID@" />
+    </choice>
+    <pkg-ref id="@BUNDLE_ID@" version="@VERSION@">#@COMPONENT_PKG@</pkg-ref>
+    <installation-check script="installCheck();" />
+    <script>
+        function installCheck() {
+            var macOSVersion = system.version.ProductVersion;
+
+            if (system.compareVersions(macOSVersion, '@MIN_MACOS@') == -1) {
+                my.result.title = 'Incompatible macOS version';
+                my.result.message = '@PRODUCT_TITLE@ requires macOS @MIN_MACOS@ or newer.';
+                my.result.type = 'Fatal';
+                return false;
+            }
+            return true;
+        }
+    </script>
+</installer-gui-script>

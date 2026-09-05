@@ -1,0 +1,32 @@
+# GitLab CI — deliberately minimal.
+#
+# GitLab is the primary remote (gitlab.gotzendorfer.at:agents/obs-iphone-usb-cam),
+# but every macOS-dependent job lives on GitHub Actions instead: the plugin needs
+# Xcode, VideoToolbox and a macOS runner, and GitHub's macos-14 runners are free for
+# public repositories, whereas this GitLab instance has Linux runners only.
+#
+# What runs here: the shared/ C core, which is intentionally free of Apple frameworks.
+# If this job goes red, the portability promise in shared/CMakeLists.txt is broken.
+#
+# What runs on GitHub (.github/workflows/):
+#   ci-plugin.yml       plugin build, packaging smoke test, swift test, integration.sh
+#   release-plugin.yml  signed + notarized .pkg on tag v*
+#   testflight-ios.yml  TestFlight upload on tag v*
+
+stages:
+  - test
+
+shared-ctest:
+  stage: test
+  image: gcc:14
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq cmake >/dev/null
+    - cmake --version
+  script:
+    - cmake -S shared -B shared/build -DCMAKE_BUILD_TYPE=RelWithDebInfo
+    - cmake --build shared/build
+    - ctest --test-dir shared/build --output-on-failure
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
