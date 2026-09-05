@@ -1,0 +1,5 @@
+UsbCam.xcodeproj/
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/

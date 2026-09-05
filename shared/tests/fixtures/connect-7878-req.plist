@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>ClientVersionString</key>
+	<string>usbmux-probe-1.0</string>
+	<key>DeviceID</key>
+	<integer>623</integer>
+	<key>MessageType</key>
+	<string>Connect</string>
+	<key>PortNumber</key>
+	<integer>50718</integer>
+	<key>ProgName</key>
+	<string>usbmux_probe</string>
+	<key>kLibUSBMuxVersion</key>
+	<integer>3</integer>
+</dict>
+</plist>

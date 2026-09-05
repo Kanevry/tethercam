@@ -1,0 +1,24 @@
+# Build-Ausgaben
+build/
+*/build/
+shared/build/
+DerivedData/
+.build/
+.deps/
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+Testing/
+
+# Xcode
+xcuserdata/
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+
+# macOS
+.DS_Store
+
+# Werkzeuge
+*.o
+*.a
+*.hevc
