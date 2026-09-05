@@ -1,4 +1,4 @@
-# obs-iphone-usb-cam — OBS source plugin (GPL-2.0-or-later).
+# obs-iphone-usb-cam: OBS source plugin (GPL-2.0-or-later).
 # Based on obs-plugintemplate. Links the MIT-licensed C core from ../shared
 # by compiling its sources directly into the module (no add_subdirectory, so the
 # shared/ ctest targets do not leak into the Xcode project).

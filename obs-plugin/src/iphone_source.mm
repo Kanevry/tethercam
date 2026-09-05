@@ -1,5 +1,5 @@
 /*
-obs-iphone-usb-cam — OBS source "TetherCam (iPhone USB Camera)"
+obs-iphone-usb-cam: OBS source "TetherCam (iPhone via USB)"
 Copyright (C) 2026 Bernhard Goetzendorfer <venturestudio@ai-at.eu>
 SPDX-License-Identifier: GPL-2.0-or-later
 

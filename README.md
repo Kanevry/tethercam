@@ -24,11 +24,15 @@ Three steps, about five minutes. The long version of each is further down.
 
 **1. Install the OBS plugin, then restart OBS.**
 
+From v0.1.0 on:
+
 ```sh
 curl -fsSL https://raw.githubusercontent.com/Kanevry/tethercam/main/scripts/install.sh | bash
 ```
 
-Prefer a click? Download `TetherCam-obs-plugin.pkg` from [Releases](https://github.com/Kanevry/tethercam/releases/latest) and open it. It installs into your own home, nothing system wide. Details and the build from source path: [Install the Mac plugin](#install-the-mac-plugin).
+Prefer a click? Download `TetherCam-obs-plugin.pkg` from [Releases](https://github.com/Kanevry/tethercam/releases/latest) and open it. It installs into your own home, nothing system wide.
+
+Until v0.1.0 is published, both links 404: build the plugin from source instead, see [Install the Mac plugin](#install-the-mac-plugin).
 
 **2. Get the iPhone app.**
 
@@ -88,7 +92,7 @@ The wire format is documented well enough to write your own receiver: [protocol/
 
 ### Option A: release bundle
 
-Prebuilt bundles will appear under Releases. They are not signed and notarized yet, so for now build from source.
+From v0.1.0 on, `TetherCam-obs-plugin.pkg` is on [Releases](https://github.com/Kanevry/tethercam/releases/latest). It is signed and notarized only if the Apple signing secrets were configured when that release was built; otherwise the `.pkg` is unsigned and macOS will ask you to allow it once (right-click, then Open). Until v0.1.0 is published, there is nothing there yet, use Option B.
 
 ### Option B: build from source
 
@@ -151,6 +155,8 @@ More detail: [ios-app/README.md](ios-app/README.md).
 
 ![TetherCam's settings sheet on the iPhone: camera and lens picker, resolution](docs/images/app-settings-sheet.png)
 
+<img src="docs/images/app-settings-advanced.png" width="720" alt="TetherCam's advanced settings on the iPhone: Auto rotation and Level the horizon toggles">
+
 The source properties are:
 
 | Property | Meaning |
@@ -169,6 +175,10 @@ The source properties are:
 Open the source's Properties dialog first. The status line at the top says which step is missing, before you read the table below.
 
 ![The TetherCam source Properties dialog with the status line at the top](docs/images/obs-plugin-properties.png)
+
+The app's own gear icon has a matching Diagnostics sheet, useful when the phone side is the unknown: listener ready, connected yes/no, streaming yes/no, live fps and kbit/s, the port in use, the current angle and the residual after levelling.
+
+<img src="docs/images/app-diagnostics.png" width="720" alt="TetherCam's Diagnostics sheet on the iPhone: Listener ready, Connected yes, Streaming yes, fps, kbit/s, Port, Angle, Residual">
 
 | Symptom | Likely cause |
 |---|---|
@@ -205,7 +215,8 @@ swift test --package-path tools
 # End to end without a phone: simulator plus CLI receiver plus ffmpeg check
 bash tools/integration.sh
 
-# iOS unit tests, no device and no camera needed
+# iOS unit tests, no device and no camera needed (or any available simulator,
+# e.g. UsbCam-Test-iPhone17 on the maintainer machine)
 cd ios-app && xcodebuild test -project TetherCam.xcodeproj -scheme TetherCam \
   -destination 'platform=iOS Simulator,name=iPhone 17'
 ```

@@ -101,6 +101,21 @@ enterprise distribution requires a different, non-free program membership.
 
 ## 3. Cutting a release
 
+**Release order:** bump, commit, `--tag`, push origin and github, the workflow builds a
+draft release, then PUBLISH the draft. Skipping the publish step leaves
+`releases/latest/download/...` on the website returning 404, because GitHub only serves
+assets from a published release. Verify with:
+
+```bash
+curl -sI https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-obs-plugin.pkg
+```
+
+Expect `302` (redirect to the asset). A `404` means the draft is still unpublished.
+
+TestFlight is the distribution path for the iOS app until an App Store release; there is
+no equivalent "publish" step to forget there, App Store Connect processing does that on
+its own once a build is uploaded.
+
 ```bash
 # 1. Make sure the working tree is clean and the CHANGELOG Unreleased section
 #    actually describes this release.

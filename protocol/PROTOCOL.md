@@ -1,4 +1,4 @@
-# IUCM — iPhone USB Camera Message Protocol, Version 1.0
+# IUCM: iPhone USB Camera Message Protocol, Version 1.0
 
 Stand: 2026-09-05. Normativ fuer `shared/frame_parser.c`, die iOS-App und jeden weiteren
 Empfaenger. Wer sich an dieses Dokument haelt, kann eine Swift- und eine C-Implementierung
@@ -195,7 +195,7 @@ protokolliert Code plus Text und behandelt ihn wie einen nicht-fatalen Fehler.
 
 Ergaenzt 2026-09-05. Geraetetelemetrie, damit der Zustand des Telefons (Lage, Leveller,
 Formate) im OBS-Log lesbar ist, ohne das Telefon in die Hand zu nehmen. Die App sendet
-**jede Sekunde**, solange ein Empfaenger verbunden ist — auch **wenn nicht gestreamt wird**,
+**jede Sekunde**, solange ein Empfaenger verbunden ist, auch **wenn nicht gestreamt wird**,
 denn genau dann ist der Zustand sonst unsichtbar.
 
 Gesamtlaenge **22 Byte**, dicht gepackt, little-endian:
@@ -217,10 +217,10 @@ Gesamtlaenge **22 Byte**, dicht gepackt, little-endian:
 
 | Bit | Bedeutung                                                                 |
 |-----|---------------------------------------------------------------------------|
-| 0   | autoRotation — die Schwerkraft bestimmt den Sektor                        |
-| 1   | horizonLeveling — der Leveller ist eingeschaltet                          |
-| 2   | oversampling — die Kamera laeuft groesser als die Ausgabe (4K → 1080p)     |
-| 3   | flat_hold — das Telefon liegt flach, der Winkel wird gehalten             |
+| 0   | autoRotation: die Schwerkraft bestimmt den Sektor                        |
+| 1   | horizonLeveling: der Leveller ist eingeschaltet                          |
+| 2   | oversampling: die Kamera laeuft groesser als die Ausgabe (4K → 1080p)     |
+| 3   | flat_hold: das Telefon liegt flach, der Winkel wird gehalten             |
 
 Bits 4-7 sind reserviert und werden als 0 gesendet.
 
@@ -230,7 +230,7 @@ Nachbarfeldern ohnehin; der angewandte Wert macht dagegen sichtbar, wenn der Lev
 Neigung *nicht* deckt. Faustregel beim Lesen des Logs: weicht `residual` deutlich von
 `angle - sector` ab, greift die Klemme (±45°) oder der Sektor haengt hinterher.
 
-Ein Empfaenger, der `0x12` nicht kennt, ueberspringt den Rahmen nach §2 — STATS ist
+Ein Empfaenger, der `0x12` nicht kennt, ueberspringt den Rahmen nach §2: STATS ist
 rueckwaertskompatibel und darf ohne Aushandlung gesendet werden.
 
 ## 5. Ablauf
@@ -304,7 +304,7 @@ ist der bytevertauschte Port.
 **Die Falle:** Ein Port in Host-Order wird mit **demselben** `Result` `Number 3` beantwortet
 wie ein geschlossener Port. Es gibt kein eigenes Fehlersignal. `connect-62078-hostorder-req`
 schickt `PortNumber 62078` an denselben lockdown-Port, der mit korrekter Byte-Order `Number 0`
-liefert — und bekommt `Number 3`. Wer die Byte-Order falsch hat, sucht den Fehler in der App.
+liefert, und bekommt `Number 3`. Wer die Byte-Order falsch hat, sucht den Fehler in der App.
 Deshalb wird `htons()` in dieser Codebasis **innerhalb** von `usbmux_connect()` angewandt und
 ist nie ein Parameter: `usbmux_connect(device_id, 7878)`.
 
@@ -315,7 +315,7 @@ ist nie ein Parameter: `usbmux_connect(device_id, 7878)`.
 | 0      | OK                                                            |
 | 2      | Geraet unbekannt (Bad Device)                                 |
 | 3      | Verbindung abgelehnt: Port zu, App laeuft nicht, **oder** Port in falscher Byte-Order |
-| 6      | Bad Version — `version` im Kopf ist nicht 1                   |
+| 6      | Bad Version: `version` im Kopf ist nicht 1                   |
 
 ### 6.5 Ein Telefon erscheint zweimal
 
@@ -348,7 +348,7 @@ Geraet eine Tunnel-Verbindung.
 | `listen-req`                     | Listen-Anfrage, tag 2                                                     |
 | `listen-resp-1`                  | Result Number 0 auf Listen, tag 2                                         |
 | `listen-resp-1-2`                | Attached-Ereignis DeviceID 623 (USB), **tag 0**                           |
-| `listen-resp-1-3`                | Attached-Ereignis DeviceID 622 (Network), tag 0 — wird gefiltert           |
+| `listen-resp-1-3`                | Attached-Ereignis DeviceID 622 (Network), tag 0: wird gefiltert           |
 | `connect-7878-req` / `-resp`     | Connect auf App-Port 7878 (PortNumber 50718) → **Number 3**, App lief nicht |
 | `connect-62078-req` / `-resp`    | Connect auf lockdown 62078 (PortNumber 32498) → **Number 0**              |
 | `connect-62078-hostorder-req`/`-resp` | derselbe Port in Host-Order (62078) → **Number 3**, der Beleg fuer §6.3 |

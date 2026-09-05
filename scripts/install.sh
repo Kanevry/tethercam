@@ -4,8 +4,10 @@
 #   curl -fsSL https://raw.githubusercontent.com/Kanevry/tethercam/main/scripts/install.sh | bash
 #
 # Two install paths:
-#   pkg  (default) hands the signed+notarized installer to /usr/sbin/installer,
-#        target CurrentUserHomeDirectory. Nothing is written outside your home.
+#   pkg  (default) hands the installer .pkg to /usr/sbin/installer, target
+#        CurrentUserHomeDirectory. Signed and notarized when the release was built
+#        with the Apple signing secrets, otherwise unsigned (macOS will ask you to
+#        allow it once). Nothing is written outside your home.
 #   zip  unpacks the .plugin bundle straight into
 #        ~/Library/Application Support/obs-studio/plugins/.
 #
@@ -77,6 +79,10 @@ echo "   ok  $ACTUAL"
 
 if [ "$MODE" = "pkg" ]; then
     info "installing into $PLUGIN_DIR"
+    # Downloaded archives carry com.apple.quarantine; left in place, Gatekeeper
+    # blocks the installer with no visible error.
+    xattr -d com.apple.quarantine "$WORK/$ASSET" 2>/dev/null || true
+    pkgutil --check-signature "$WORK/$ASSET" || echo "note: package is not signed"
     /usr/sbin/installer -pkg "$WORK/$ASSET" -target CurrentUserHomeDirectory \
         || die "installer failed. Retry with --zip, or open the .pkg in Finder to read the error."
 else

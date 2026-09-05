@@ -1,4 +1,4 @@
-# tools — Werkzeuge fuer TetherCam (Repo obs-iphone-usb-cam)
+# tools: Werkzeuge fuer TetherCam (Repo obs-iphone-usb-cam)
 
 Swift-Paket (macOS 13+, swift-tools-version 5.9) mit dem Protokoll-Codec und dem
 Sender-Simulator. Damit laesst sich der Empfaenger und spaeter das OBS-Plugin ohne
@@ -57,7 +57,7 @@ ERROR 1 BUSY, STOP beendet den Strom und laesst die Verbindung offen. Pro Sekund
 geht eine Statuszeile (fps, kbps, Keyframes) nach stderr.
 
 Farbkonvention fix laut Spec: NV12 Video-Range, BT.709 in Primaries, Transfer und
-Matrix — am Pixelpuffer und am Encoder gesetzt.
+Matrix, am Pixelpuffer und am Encoder gesetzt.
 
 **Totlink:** Die 6-Sekunden-Regel wird erst scharf, nachdem der Empfaenger den
 ersten PING geschickt hat. Ein Empfaenger, der noch gar nicht pingt, wird also
@@ -75,7 +75,7 @@ usbcam-recv [--tcp HOST:PORT | --serial UDID] [--port N] [--camera N]
   laeuft die Verbindung durch `/var/run/usbmuxd`.
 - `--serial UDID` waehlt das iPhone per Seriennummer; ohne Angabe das erste
   USB-Geraet aus `usbmux_list_devices()`. Die `DeviceID` wechselt nach jedem
-  Neustart des Telefons, die Seriennummer nicht — deshalb ist `--serial` der
+  Neustart des Telefons, die Seriennummer nicht, deshalb ist `--serial` der
   stabile Weg. Netzwerkgeraete werden nie ausgewaehlt (PROTOCOL.md 6.5).
 - `--port` ist der Geraeteport im Tunnel, Vorgabe 7878. `htons()` passiert in
   `usbmux_connect()`, nie hier (PROTOCOL.md 6.3).
@@ -116,7 +116,7 @@ umstellbar), laesst `usbcam-recv` 5 s in `/tmp/iucm-int.hevc` aufzeichnen und
 prueft die JSON-Zusammenfassung gegen `fps_avg >= 25`, `keyframes >= 4`,
 `first_frame_ms < 1500` und `ping_rtt_ms_avg < 50`. Danach dekodiert `ffmpeg`
 einen Frame nach `/tmp/iucm-int.png` und `ffprobe` muss `1280x720` melden.
-Beendet wird nur der selbst gestartete Simulator, per gemerkter PID — nie per
+Beendet wird nur der selbst gestartete Simulator, per gemerkter PID, nie per
 `pkill`. Pfade zu ffmpeg/ffprobe ueber `FFMPEG=`/`FFPROBE=` ueberschreibbar.
 
 ```sh
@@ -140,7 +140,7 @@ python3 tools/scripts/probe_sim.py --seconds 3
 Python-stdlib und direkt gegen `/var/run/usbmuxd`: ListDevices, Filter auf
 `ConnectionType == "USB"`, Connect mit `htons(7878)`, danach der Handshake aus
 `probe_sim.py`. Der Rueckfallweg fuer das echte Telefon, falls der Swift-Wrapper
-um `shared/usbmux.c` sich seltsam verhaelt — beide Wege koennen so gegeneinander
+um `shared/usbmux.c` sich seltsam verhaelt, beide Wege koennen so gegeneinander
 gehalten werden, ohne dass ein Fehler in einer Schicht die andere verdeckt.
 
 ```sh

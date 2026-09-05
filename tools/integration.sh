@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# integration.sh — End-zu-End-Abnahme ohne iPhone.
+# integration.sh: End-zu-End-Abnahme ohne iPhone.
 #
 # Baut das Paket, startet usbcam-sim auf einem freien Port, laesst usbcam-recv
 # 5 s aufzeichnen, prueft die Kennzahlen und dekodiert einen Frame mit ffmpeg.

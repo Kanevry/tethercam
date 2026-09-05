@@ -1,4 +1,4 @@
-# GitLab CI — deliberately minimal.
+# GitLab CI: deliberately minimal.
 #
 # GitLab is the primary remote (gitlab.gotzendorfer.at:agents/obs-iphone-usb-cam),
 # but every macOS-dependent job lives on GitHub Actions instead: the plugin needs

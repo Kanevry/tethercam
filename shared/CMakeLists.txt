@@ -1,4 +1,4 @@
-# shared/ — MIT-licensed C core shared by obs-plugin/ and tools/.
+# shared/: MIT-licensed C core shared by obs-plugin/ and tools/.
 # Deliberately free of Apple frameworks so it builds and tests on Linux CI.
 cmake_minimum_required(VERSION 3.16)
 project(iucm_shared C)
