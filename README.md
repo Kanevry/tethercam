@@ -32,7 +32,7 @@ curl -fsSL https://raw.githubusercontent.com/Kanevry/tethercam/main/scripts/inst
 
 Prefer a click? Download `TetherCam-obs-plugin.pkg` from [Releases](https://github.com/Kanevry/tethercam/releases/latest) and open it. It installs into your own home, nothing system wide.
 
-Until v0.1.0 is published, both links 404: build the plugin from source instead, see [Install the Mac plugin](#install-the-mac-plugin).
+v0.1.0 is published, signed and notarized. Prefer to build from source? See [Install the Mac plugin](#install-the-mac-plugin).
 
 **2. Get the iPhone app.**
 
@@ -92,7 +92,7 @@ The wire format is documented well enough to write your own receiver: [protocol/
 
 ### Option A: release bundle
 
-From v0.1.0 on, `TetherCam-obs-plugin.pkg` is on [Releases](https://github.com/Kanevry/tethercam/releases/latest). It is signed and notarized only if the Apple signing secrets were configured when that release was built; otherwise the `.pkg` is unsigned and macOS will ask you to allow it once (right-click, then Open). Until v0.1.0 is published, there is nothing there yet, use Option B.
+From v0.1.0 on, `TetherCam-obs-plugin.pkg` is on [Releases](https://github.com/Kanevry/tethercam/releases/latest). It is signed with a Developer ID Installer certificate and notarized by Apple, so macOS opens it without a warning. It installs into your own home, no admin rights needed.
 
 ### Option B: build from source
 
