@@ -5,5 +5,6 @@ Location: Austria
 
 /* SITE */
 Standards: HTML5, CSS3
-Components: none, hand written static HTML and CSS
+Components: none, hand written static HTML, CSS and one 2 KB vanilla JS file
+Fonts: Space Grotesk and JetBrains Mono, self hosted, SIL Open Font License
 Source: https://github.com/Kanevry/tethercam

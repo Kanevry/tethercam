@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TetherCam: iPhone as USB camera for OBS on Mac</title>
-<meta name="description" content="TetherCam turns an iPhone into an OBS camera on macOS over the USB cable. Open source, no Wi-Fi, no cloud, no pairing code. 1080p30 HEVC, low latency.">
+<meta name="description" content="TetherCam turns an iPhone into an OBS camera on macOS over the USB cable. Open source, no Wi-Fi, no cloud, no pairing code, 1080p30 HEVC.">
 <link rel="canonical" href="https://tethercam.app/">
 <link rel="alternate" hreflang="en" href="https://tethercam.app/">
 <meta name="author" content="Bernhard Goetzendorfer">
-<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
-<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0B0C10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#F7F6F3" media="(prefers-color-scheme: light)">
 
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="TetherCam">
@@ -19,7 +19,7 @@
 <meta property="og:image" content="https://tethercam.app/img/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="The OBS source TetherCam showing a live 1080p picture from an iPhone over USB">
+<meta property="og:image:alt" content="TetherCam: your iPhone as an OBS camera, over the cable. An iPhone and an OBS window joined by a USB-C cable.">
 <meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="TetherCam: iPhone as USB camera for OBS on Mac">
@@ -30,18 +30,20 @@
 <link rel="icon" href="/favicon.png" type="image/png" sizes="512x512">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="manifest" href="/site.webmanifest">
+<link rel="preload" href="/fonts/space-grotesk-var.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/style.css">
+<script src="/main.js" defer></script>
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
 
 <header class="site-header">
   <nav aria-label="Primary">
-    <a class="brand" href="#top"><img src="/img/icon-192.png" alt="" width="28" height="28"> TetherCam</a>
+    <a class="brand" href="#top"><picture><source type="image/webp" srcset="/img/wordmark-56.webp"><img src="/img/icon-192.png" alt="" width="28" height="28"></picture> TetherCam</a>
     <ul>
-      <li><a href="#download">Download</a></li>
       <li><a href="#quick-start">Quick start</a></li>
       <li><a href="#how-it-works">How it works</a></li>
+      <li><a href="#download">Download</a></li>
       <li><a href="#faq">FAQ</a></li>
       <li><a href="#source">Source</a></li>
     </ul>
@@ -51,134 +53,378 @@
 <main id="main">
 
 <section id="top" class="hero">
-  <h1>Your iPhone as an OBS camera, over the cable</h1>
-  <p class="lede">TetherCam sends the iPhone camera into OBS Studio on macOS through the USB cable, with no Wi-Fi, no cloud and no pairing code.</p>
-  <p class="actions">
-    <a class="btn btn-primary" href="https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-obs-plugin.pkg">Download the OBS plugin (.pkg)</a>
-    <a class="btn btn-secondary" href="#quick-start">Get the iPhone app</a>
-  </p>
-  <p class="meta">Open source. OBS plugin GPL-2.0-or-later, iPhone app and shared code MIT. Version 0.1.0.</p>
-  <figure>
-    <img src="/img/obs-iphone-live.png" width="1600" height="1166" alt="The OBS source TetherCam showing a live 1080p picture from an iPhone 15 Pro Max over the USB cable" fetchpriority="high">
-    <figcaption>Live 1080p from an iPhone 15 Pro Max, decoded in OBS. The stream never leaves the cable.</figcaption>
-  </figure>
-</section>
+  <div class="grain"></div>
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <p class="eyebrow rise">Open source &middot; macOS &middot; No Wi-Fi</p>
+      <h1 class="rise-lcp">Your iPhone as an OBS camera, <span class="hl">over the cable</span></h1>
+      <p class="lede rise d1">TetherCam sends the iPhone camera into OBS Studio on macOS through the USB cable, with no Wi-Fi, no cloud and no pairing code.</p>
+      <p class="actions rise d2">
+        <a class="btn btn-primary btn--stack" href="https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-obs-plugin.pkg">
+          <span>Download the OBS plugin <span class="arw" aria-hidden="true">&rarr;</span></span>
+          <span class="btn-sub">v0.1.0, coming shortly</span>
+        </a>
+        <a class="btn btn-secondary btn--stack" href="#quick-start">
+          <span>Read the quick start <span class="arw" aria-hidden="true">&rarr;</span></span>
+          <span class="btn-sub">Three steps, five minutes</span>
+        </a>
+      </p>
+      <p class="meta hero-meta rise d3">Open source. OBS plugin GPL-2.0-or-later, iPhone app and shared code MIT. Version 0.1.0.</p>
+    </div>
 
-<section id="download">
-  <h2>Download</h2>
-  <p>The plugin installs into your own home folder, so it needs no administrator rights. Restart OBS after installing.</p>
-  <ul class="plain">
-    <li><a href="https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-obs-plugin.pkg">TetherCam-obs-plugin.pkg</a>, the installer package</li>
-    <li><a href="https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-obs-plugin.zip">TetherCam-obs-plugin.zip</a>, the plain bundle</li>
-    <li><a href="https://github.com/Kanevry/tethercam/releases">All releases and notes</a></li>
-  </ul>
-  <p>Or install from the terminal:</p>
-  <pre><code>curl -fsSL https://raw.githubusercontent.com/Kanevry/tethercam/main/scripts/install.sh | bash</code></pre>
-  <h3>Requirements</h3>
-  <ul>
-    <li>macOS 12 or later. Tested on Apple Silicon with macOS 26.</li>
-    <li>OBS Studio 30 or later. Tested with 32.2.2.</li>
-    <li>An iPhone with iOS 17 or later. Tested on an iPhone 15 Pro Max with iOS 26.6.</li>
-    <li>A USB cable that carries data.</li>
-  </ul>
-</section>
+    <div class="signature rise d4">
+      <svg viewBox="0 0 520 300" width="520" height="300" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+        <rect class="sig-fill" x="30" y="36" width="110" height="210" rx="18"/>
+        <rect class="sig-frame" x="30" y="36" width="110" height="210" rx="18"/>
+        <rect class="sig-screen" x="38" y="44" width="94" height="194" rx="13"/>
+        <rect class="sig-muted" x="68" y="54" width="34" height="5" rx="2.5" opacity="0.45"/>
+        <rect class="sig-accent" x="46" y="76" width="78" height="112" rx="6" opacity="0.16"/>
+        <rect class="sig-frame" x="46" y="76" width="78" height="112" rx="6"/>
+        <circle class="sig-accent" cx="85" cy="132" r="13" opacity="0.5"/>
+        <rect class="sig-muted" x="46" y="200" width="52" height="4" rx="2" opacity="0.4"/>
+        <rect class="sig-muted" x="46" y="212" width="34" height="4" rx="2" opacity="0.25"/>
 
-<section id="quick-start">
-  <h2>Quick start</h2>
-  <p>Three steps, about five minutes.</p>
+        <rect class="sig-fill" x="300" y="60" width="190" height="140" rx="8"/>
+        <rect class="sig-frame" x="300" y="60" width="190" height="140" rx="8"/>
+        <path class="sig-frame" d="M 300 90 L 490 90"/>
+        <circle class="sig-muted" cx="316" cy="75" r="3.5" opacity="0.55"/>
+        <circle class="sig-muted" cx="329" cy="75" r="3.5" opacity="0.4"/>
+        <circle class="sig-muted" cx="342" cy="75" r="3.5" opacity="0.3"/>
+        <rect class="sig-screen" x="312" y="100" width="166" height="90" rx="4"/>
+        <rect class="sig-accent" x="322" y="108" width="146" height="74" rx="3" opacity="0.16"/>
+        <rect class="sig-frame" x="322" y="108" width="146" height="74" rx="3"/>
+        <circle class="sig-accent" cx="395" cy="145" r="12" opacity="0.5"/>
 
-  <article class="step" id="step-1">
-    <h3>1. Install the OBS plugin</h3>
-    <p>Open the <code>.pkg</code> from the <a href="https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-obs-plugin.pkg">download link</a> or run the one-line installer above, then restart OBS. Nothing is installed system-wide.</p>
-  </article>
+        <path class="cable-path" pathLength="1" d="M 85 248 C 85 282 128 292 180 288 C 232 283 260 250 266 216 C 270 194 282 182 300 182"/>
+        <path class="cable-pulse" pathLength="1" d="M 85 248 C 85 282 128 292 180 288 C 232 283 260 250 266 216 C 270 194 282 182 300 182"/>
+        <rect class="sig-plug" x="78" y="242" width="14" height="9" rx="3"/>
+        <rect class="sig-plug" x="294" y="177" width="14" height="10" rx="3"/>
 
-  <article class="step" id="step-2">
-    <h3>2. Get the iPhone app</h3>
-    <p>The app is going to TestFlight. Until the public link is live, you can build it yourself from source with a free Apple ID.</p>
-    <p><a id="testflight-link" href="https://github.com/Kanevry/tethercam#install-the-iphone-app">TestFlight link coming soon</a></p>
-    <figure>
-      <img src="/img/app-live.png" width="1400" height="646" alt="TetherCam on the iPhone: full-screen preview with the status line Streaming 1080p30" loading="lazy">
-      <figcaption>The app is one screen. A preview, one status line, and a gear icon for camera and rotation.</figcaption>
+        <text class="sig-label" x="300" y="236">usb-c &#183; tcp 7878</text>
+        <text class="sig-label" x="300" y="256">hevc, hardware</text>
+      </svg>
+      <p class="sig-status"><span class="dot signal-dot"></span> Streaming 1080p30 over the cable</p>
+    </div>
+  </div>
+
+  <div class="wrap hero-figure">
+    <figure data-reveal>
+      <div class="frame">
+        <picture>
+          <source type="image/webp" srcset="/img/obs-iphone-live.webp">
+          <img src="/img/obs-iphone-live.png" width="1600" height="1166" alt="The OBS source TetherCam showing a live 1080p picture from an iPhone 15 Pro Max over the USB cable" fetchpriority="high" decoding="async">
+        </picture>
+      </div>
+      <figcaption>Live 1080p from an iPhone 15 Pro Max, decoded in OBS. The stream never leaves the cable.</figcaption>
     </figure>
-    <figure>
-      <img src="/img/app-settings-sheet.png" width="1600" height="738" alt="The TetherCam settings sheet on the iPhone with the camera list and the rotation options" loading="lazy">
-      <figcaption>The settings sheet holds the lens picker, auto rotation and the diagnostics.</figcaption>
-    </figure>
-  </article>
-
-  <article class="step" id="step-3">
-    <h3>3. In OBS: Tools, then add the camera</h3>
-    <p>Choose <strong>Tools</strong>, then <strong>TetherCam: Add iPhone camera to current scene</strong>. That creates a source named <code>TetherCam iPhone</code> and fits it to your canvas. Plug the phone in, unlock it, open TetherCam and leave it in the foreground. The status line on the phone turns green and says <code>Streaming 1080p30</code>.</p>
-    <figure>
-      <img src="/img/obs-tools-menu.png" width="900" height="480" alt="The OBS Tools menu with the entry TetherCam: Add iPhone camera to current scene" loading="lazy">
-      <figcaption>One menu entry instead of hunting through the source list.</figcaption>
-    </figure>
-    <p>If the picture stays black, open the source properties. The first row is a status line that says which piece is missing: no phone attached, app not in the foreground, or the live format once frames arrive.</p>
-    <figure>
-      <img src="/img/obs-plugin-properties.png" width="1084" height="1400" alt="The TetherCam source properties in OBS with the status line, device, camera, resolution, frame rate and bitrate" loading="lazy">
-      <figcaption>Source properties: status, device, camera, resolution, frame rate, bitrate, rotation.</figcaption>
-    </figure>
-  </article>
+  </div>
 </section>
 
-<section id="how-it-works">
-  <h2>How it works</h2>
-  <p>The iPhone captures with AVCaptureSession and encodes HEVC in hardware, then serves the stream on a local TCP port, 7878. The Mac reaches that port through <code>usbmuxd</code>, the same system service that carries Xcode and iTunes traffic over the cable. The OBS plugin decodes with VideoToolbox and hands the frames to OBS.</p>
-  <ul>
-    <li>1080p30 by default, 1080p60 possible.</li>
-    <li>First frame in well under a second after the source connects.</li>
-    <li>Reconnect after a cable pull in about 1.3 seconds.</li>
-    <li>Latency measured far below 100 ms on the development machine.</li>
-    <li>Auto horizon leveling with CoreMotion and the rotation coordinator, so a tilted phone still produces a level picture.</li>
-    <li>A lens and camera picker in the app: back wide, back ultra wide, back tele, front.</li>
-  </ul>
-  <p>Those numbers come from one setup, an iPhone 15 Pro Max with an Apple Silicon Mac. Yours will differ.</p>
+<section class="section" aria-label="Measured numbers">
+  <div class="wrap">
+    <p class="eyebrow" data-reveal>Measured, not promised</p>
+    <ul class="proof" data-reveal>
+      <li><span class="pv">~1 ms</span><span class="pl">Ping round trip over USB</span></li>
+      <li><span class="pv">~90 ms</span><span class="pl">To the first frame after connect</span></li>
+      <li><span class="pv">~1.3 s</span><span class="pl">Reconnect after a cable pull</span></li>
+      <li><span class="pv">1080p30</span><span class="pl">1080p60 possible</span></li>
+      <li><span class="pv">0</span><span class="pl">Frames buffered in the plugin</span></li>
+    </ul>
+    <p class="meta proof-note" data-reveal>Measured on one setup, an iPhone 15 Pro Max with an M4 Pro Mac and OBS 32.2.2. Yours will differ.</p>
+  </div>
 </section>
 
-<section id="faq">
-  <h2>FAQ</h2>
+<section id="quick-start" class="section">
+  <div class="wrap">
+    <p class="eyebrow" data-reveal>Quick start</p>
+    <h2 data-reveal>Three steps, about five minutes</h2>
+    <p class="lede" data-reveal>One package on the Mac, one app on the phone, one menu entry in OBS.</p>
 
-  <h3>Is this an alternative to Continuity Camera?</h3>
-  <p>Yes, and that is why it exists. Continuity Camera broke with iOS 26.6 against macOS 26.5.2: the handshake succeeded, the picture stayed black. TetherCam takes a different path that does not depend on that handshake.</p>
+    <div class="steps">
+      <article class="step" data-reveal>
+        <span class="step-n">01</span>
+        <h3>Install the OBS plugin</h3>
+        <p>Open the <code>.pkg</code> from the <a href="#download">download section</a> or run the one-line installer, then restart OBS. Nothing is installed system-wide and no administrator rights are needed.</p>
+        <pre tabindex="0"><code>~/Library/Application Support/
+  obs-studio/plugins/</code></pre>
+      </article>
 
-  <h3>Why USB and not Wi-Fi?</h3>
-  <p>The cable is the shortest path. No network to configure, no dropouts on a busy conference Wi-Fi, no pairing code, and the video never leaves the machine. The phone also charges while it streams.</p>
+      <article class="step s1" data-reveal>
+        <span class="step-n">02</span>
+        <h3>Get the iPhone app</h3>
+        <p>The app is going to TestFlight. Until the public link is live, you can build it yourself from source with a free Apple ID.</p>
+        <p><a id="testflight-link" href="https://github.com/Kanevry/tethercam#install-the-iphone-app">TestFlight link coming soon</a></p>
+        <figure>
+          <div class="device">
+            <picture>
+              <source type="image/webp" srcset="/img/app-live.webp">
+              <img src="/img/app-live.png" width="1400" height="646" alt="TetherCam on the iPhone: full-screen preview with the status line Streaming 1080p30" loading="lazy" decoding="async">
+            </picture>
+          </div>
+          <figcaption>The app is one screen. A preview, one status line, and a gear icon for camera and rotation.</figcaption>
+        </figure>
+      </article>
 
-  <h3>How much latency is there?</h3>
-  <p>Far below 100 ms measured on the development machine. The plugin does not buffer frames, it hands each decoded frame straight to OBS.</p>
+      <article class="step s2" data-reveal>
+        <span class="step-n">03</span>
+        <h3>In OBS: Tools, then add the camera</h3>
+        <p>Choose <strong>Tools</strong>, then <strong>TetherCam: Add iPhone camera to current scene</strong>. That creates the source and fits it to your canvas. Plug the phone in, unlock it, open TetherCam and leave it in the foreground.</p>
+        <figure>
+          <div class="window">
+            <div class="window-bar">
+              <span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span class="window-title">OBS Studio &#183; Tools</span>
+            </div>
+            <picture>
+              <source type="image/webp" srcset="/img/obs-tools-menu.webp">
+              <img src="/img/obs-tools-menu.png" width="900" height="480" alt="The OBS Tools menu with the entry TetherCam: Add iPhone camera to current scene" loading="lazy" decoding="async">
+            </picture>
+          </div>
+          <figcaption>One menu entry instead of hunting through the source list.</figcaption>
+        </figure>
+      </article>
+    </div>
 
-  <h3>Does it need administrator rights?</h3>
-  <p>No. The plugin installs into your own home folder, under the OBS plugins directory. There is no system extension and no daemon.</p>
+    <h3 class="prose" data-reveal>If the picture stays black</h3>
+    <p class="prose" data-reveal>The first row of the source properties is a status line that names the missing piece: no phone attached, app not in the foreground, or the live format once frames arrive. The app has a matching diagnostics sheet for the phone side.</p>
 
-  <h3>Which iPhones, which macOS, which OBS?</h3>
-  <p>An iPhone with iOS 17 or later, macOS 12 or later, and OBS Studio 30 or later. Tested on an iPhone 15 Pro Max with iOS 26.6, an Apple Silicon Mac on macOS 26, and OBS 32.2.2.</p>
-
-  <h3>Does the audio come along?</h3>
-  <p>No. Video only for now. Use a separate microphone in OBS.</p>
-
-  <h3>Is it free and open source?</h3>
-  <p>Yes. The OBS plugin is GPL-2.0-or-later because it links against libobs. The iPhone app, the shared C code, the tools and the protocol spec are MIT.</p>
-
-  <h3>Does it work on Windows or Linux?</h3>
-  <p>No, macOS only for now. The shared C core already builds on Linux, so a receiver for other systems is possible, but none ships today.</p>
+    <div class="fig-2up">
+      <figure data-reveal>
+        <div class="frame">
+          <picture>
+            <source type="image/webp" srcset="/img/obs-plugin-properties.webp">
+            <img src="/img/obs-plugin-properties.png" width="1084" height="1400" alt="The TetherCam source properties in OBS with the status line, device, camera, resolution, frame rate and bitrate" loading="lazy" decoding="async">
+          </picture>
+        </div>
+        <figcaption>Source properties: status, device, camera, resolution, frame rate, bitrate, rotation.</figcaption>
+      </figure>
+      <figure data-reveal class="s1">
+        <div class="device">
+          <picture>
+            <source type="image/webp" srcset="/img/app-diagnostics.webp">
+            <img src="/img/app-diagnostics.png" width="1400" height="646" alt="The TetherCam diagnostics sheet on the iPhone: listener ready, connected, streaming, frames per second, kilobit per second, port, angle and residual" loading="lazy" decoding="async">
+          </picture>
+        </div>
+        <figcaption>Diagnostics on the phone: listener, connection, live fps and kbit/s, port, angle and residual.</figcaption>
+      </figure>
+    </div>
+  </div>
 </section>
 
-<section id="source">
-  <h2>Source and license</h2>
-  <p>Everything is public. Read the wire protocol, build both sides yourself, or write your own receiver.</p>
-  <ul class="plain">
-    <li><a href="https://github.com/Kanevry/tethercam">GitHub: Kanevry/tethercam</a></li>
-    <li><a href="https://gitlab.gotzendorfer.at/agents/obs-iphone-usb-cam">GitLab: agents/obs-iphone-usb-cam</a>, the primary repository</li>
-    <li><a href="https://github.com/Kanevry/tethercam/releases">Releases</a></li>
-    <li><a href="https://github.com/Kanevry/tethercam/issues">Issues and bug reports</a></li>
-  </ul>
-  <p>Licenses: <a href="https://www.gnu.org/licenses/old-licenses/gpl-2.0.html">GPL-2.0-or-later</a> for <code>obs-plugin/</code>, <a href="https://opensource.org/licenses/MIT">MIT</a> for everything else.</p>
+<section id="how-it-works" class="section section--slab slab surface-ink">
+  <div class="grain"></div>
+  <div class="wrap">
+    <p class="eyebrow" data-reveal>The data path</p>
+    <h2 data-reveal>Not magic, three boxes and a cable</h2>
+    <p class="lede" data-reveal>The iPhone captures with AVCaptureSession and encodes HEVC in hardware, then serves the stream on a local TCP port, 7878. The Mac reaches that port through <code>usbmuxd</code>, the same system service that carries Xcode traffic over the cable. The OBS plugin decodes with VideoToolbox and hands the frames to OBS.</p>
+
+    <div class="arch-holder" data-reveal tabindex="0" role="group" aria-label="TetherCam data path diagram, scrollable">
+      <svg id="arch-diagram" class="arch" viewBox="0 0 980 330" width="980" height="330" role="img" aria-labelledby="arch-title arch-desc" xmlns="http://www.w3.org/2000/svg">
+        <title id="arch-title">TetherCam data path</title>
+        <desc id="arch-desc">The iPhone app captures and encodes HEVC in hardware, sends IUCM frames over the USB cable through usbmuxd on TCP port 7878, and the OBS plugin decodes with VideoToolbox and outputs an NV12 source.</desc>
+
+        <path id="ar-a1" class="ar-arrow" pathLength="1" d="M 300 150 L 402 150"/>
+        <path id="ar-a2" class="ar-arrow" pathLength="1" d="M 602 150 L 698 150"/>
+        <path id="ar-t1" class="ar-tip" d="M 402 144 L 412 150 L 402 156 Z"/>
+        <path id="ar-t2" class="ar-tip" d="M 698 144 L 708 150 L 698 156 Z"/>
+        <path class="ar-pulse" pathLength="1" d="M 300 150 L 700 150"/>
+
+        <g id="ar-g1" class="ar-g">
+          <rect class="ar-box ar-box--lead" x="20" y="60" width="270" height="180" rx="10"/>
+          <text class="ar-head" x="40" y="92">iPhone, TetherCam app</text>
+          <text class="ar-txt" x="40" y="120">AVCaptureSession, NV12, BT.709</text>
+          <text class="ar-txt" x="40" y="144">HEVC hardware encode</text>
+          <text class="ar-txt" x="40" y="168">(VTCompressionSession, realtime)</text>
+          <text class="ar-txt" x="40" y="200">TCP listener on port 7878</text>
+          <text class="ar-txt" x="40" y="224">IUCM framing, one receiver</text>
+          <text class="ar-lbl" x="302" y="128">USB cable</text>
+          <text class="ar-lbl" x="302" y="182">usbmuxd</text>
+        </g>
+
+        <g id="ar-g2" class="ar-g">
+          <rect class="ar-box" x="412" y="85" width="180" height="130" rx="10"/>
+          <text class="ar-head" x="430" y="117">/var/run/usbmuxd</text>
+          <text class="ar-txt" x="430" y="145">plist Connect,</text>
+          <text class="ar-txt" x="430" y="167">port 7878 in</text>
+          <text class="ar-txt" x="430" y="189">network byte order</text>
+        </g>
+
+        <g id="ar-g3" class="ar-g">
+          <rect class="ar-box" x="712" y="60" width="248" height="180" rx="10"/>
+          <text class="ar-head" x="732" y="92">Mac, OBS plugin</text>
+          <text class="ar-txt" x="732" y="120">usbmux and IUCM parser (C)</text>
+          <text class="ar-txt" x="732" y="144">VideoToolbox decode</text>
+          <text class="ar-txt" x="732" y="168">(VTDecompressionSession)</text>
+          <text class="ar-txt" x="732" y="200">obs_source_output_video2</text>
+          <text class="ar-txt" x="732" y="224">source "TetherCam (iPhone via USB)"</text>
+          <text class="ar-lbl" x="604" y="128">~13 Mbit/s HEVC</text>
+          <text class="ar-lbl" x="604" y="182">~1 ms ping RTT</text>
+          <text class="ar-lbl" x="20" y="290">No Wi-Fi, no cloud, no Continuity Camera. Wire protocol: protocol/PROTOCOL.md</text>
+          <text class="ar-lbl" x="20" y="312">Control path back to the phone: START, STOP, PING every 2 s.</text>
+        </g>
+      </svg>
+    </div>
+
+    <ul class="facts">
+      <li data-reveal>1080p30 by default, 1080p60 possible.</li>
+      <li data-reveal class="s1">About 13 Mbit/s HEVC, encoded in hardware on the phone.</li>
+      <li data-reveal class="s2">Ping round trip over USB about 1 ms.</li>
+      <li data-reveal class="s3">First frame about 90 ms after the source connects.</li>
+      <li data-reveal>Reconnect after a cable pull in about 1.3 s.</li>
+      <li data-reveal class="s1">No frame buffering in the plugin, each decoded frame goes straight to OBS.</li>
+      <li data-reveal class="s2">Auto horizon leveling with CoreMotion and the rotation coordinator.</li>
+      <li data-reveal class="s3">Camera picker in the app: Back Wide, Back Ultra Wide, Back Telephoto, Front.</li>
+    </ul>
+    <p class="meta" data-reveal>Rotation belongs on the capture side. The app levels against the horizon and rebuilds the encoder session when the geometry changes, so OBS receives a picture that is already right way up.</p>
+
+    <div class="fig-2up">
+      <figure data-reveal>
+        <div class="device">
+          <picture>
+            <source type="image/webp" srcset="/img/app-settings-sheet.webp">
+            <img src="/img/app-settings-sheet.png" width="1400" height="646" alt="The TetherCam settings sheet on the iPhone with the camera list and the rotation options" loading="lazy" decoding="async">
+          </picture>
+        </div>
+        <figcaption>The settings sheet holds the lens picker, auto rotation and the diagnostics.</figcaption>
+      </figure>
+      <figure data-reveal class="s1">
+        <div class="device">
+          <picture>
+            <source type="image/webp" srcset="/img/app-settings-advanced.webp">
+            <img src="/img/app-settings-advanced.png" width="1400" height="646" alt="The advanced settings on the iPhone with resolution, frame rate and bitrate" loading="lazy" decoding="async">
+          </picture>
+        </div>
+        <figcaption>Advanced settings: resolution, frame rate and bitrate, if the defaults do not fit.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section id="download" class="section">
+  <div class="wrap">
+    <p class="eyebrow" data-reveal>Download</p>
+    <h2 data-reveal>Get the OBS plugin</h2>
+    <p class="lede" data-reveal>The plugin installs into your own home folder, so it needs no administrator rights. Restart OBS after installing.</p>
+
+    <div class="dl-grid">
+      <div>
+        <p class="actions" data-reveal>
+          <a class="btn btn-primary btn--stack" href="https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-obs-plugin.pkg">
+            <span>TetherCam-obs-plugin.pkg <span class="arw" aria-hidden="true">&rarr;</span></span>
+            <span class="btn-sub">v0.1.0, coming shortly</span>
+          </a>
+          <a class="btn btn-secondary btn--stack" href="https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-obs-plugin.zip">
+            <span>TetherCam-obs-plugin.zip <span class="arw" aria-hidden="true">&rarr;</span></span>
+            <span class="btn-sub">v0.1.0, coming shortly</span>
+          </a>
+        </p>
+        <p class="notice" data-reveal>Until the first release is published, <a href="https://github.com/Kanevry/tethercam#install-the-mac-plugin">build from source (5 minutes)</a>. The two links above point at the final release URLs and will start working the moment v0.1.0 is tagged.</p>
+        <p data-reveal>The one-line installer, for the same reason, also waits for that first release:</p>
+        <div class="code-block" data-reveal>
+          <pre tabindex="0"><code id="install-cmd">curl -fsSL https://raw.githubusercontent.com/Kanevry/tethercam/main/scripts/install.sh | bash</code></pre>
+          <button class="copy-btn" type="button" data-copy="install-cmd" aria-live="polite">Copy</button>
+        </div>
+        <p class="meta" data-reveal>Read the script before you pipe it into a shell. It downloads the release bundle and unpacks it into the OBS plugins directory in your home folder, nothing else.</p>
+      </div>
+
+      <div class="card" data-reveal>
+        <h3>Requirements</h3>
+        <ul class="reqs">
+          <li>
+            <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg"><path class="tick" pathLength="1" d="M 4 10.5 L 8.5 15 L 16 5.5"/></svg>
+            <span><b>macOS 12</b> or later. Tested on Apple Silicon with macOS 26.</span>
+          </li>
+          <li>
+            <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg"><path class="tick" pathLength="1" d="M 4 10.5 L 8.5 15 L 16 5.5"/></svg>
+            <span><b>OBS Studio 30</b> or later. Tested with 32.2.2.</span>
+          </li>
+          <li>
+            <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg"><path class="tick" pathLength="1" d="M 4 10.5 L 8.5 15 L 16 5.5"/></svg>
+            <span><b>iOS 17</b> or later. Tested on an iPhone 15 Pro Max with iOS 26.6.</span>
+          </li>
+          <li>
+            <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg"><path class="tick" pathLength="1" d="M 4 10.5 L 8.5 15 L 16 5.5"/></svg>
+            <span><b>A data cable</b>, not a charge-only one.</span>
+          </li>
+        </ul>
+        <p class="meta">Video only for now. Use a separate microphone in OBS.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="faq" class="section">
+  <div class="wrap">
+    <p class="eyebrow" data-reveal>FAQ</p>
+    <h2 data-reveal>Questions worth asking first</h2>
+
+    <div class="faq-list prose">
+      <details class="faq" data-reveal>
+        <summary>Is this an alternative to Continuity Camera?</summary>
+        <div class="answer"><p>Yes, and that is why it exists. Continuity Camera broke with iOS 26.6 against macOS 26.5.2: the handshake succeeded, the picture stayed black. TetherCam takes a different path that does not depend on that handshake.</p></div>
+      </details>
+      <details class="faq" data-reveal>
+        <summary>Why USB and not Wi-Fi?</summary>
+        <div class="answer"><p>The cable is the shortest path. No network to configure, no dropouts on a busy conference Wi-Fi, no pairing code, and the video never leaves the machine. The phone also charges while it streams.</p></div>
+      </details>
+      <details class="faq" data-reveal>
+        <summary>How much latency is there?</summary>
+        <div class="answer"><p>The ping round trip over USB is about 1 ms, and the first frame arrives about 90 ms after the source connects. The plugin does not buffer frames, it hands each decoded frame straight to OBS. Measured on one setup, an iPhone 15 Pro Max with an Apple Silicon Mac.</p></div>
+      </details>
+      <details class="faq" data-reveal>
+        <summary>Does it need administrator rights?</summary>
+        <div class="answer"><p>No. The plugin installs into your own home folder, under the OBS plugins directory. There is no system extension and no daemon.</p></div>
+      </details>
+      <details class="faq" data-reveal>
+        <summary>Which iPhones, which macOS, which OBS?</summary>
+        <div class="answer"><p>An iPhone with iOS 17 or later, macOS 12 or later, and OBS Studio 30 or later. Tested on an iPhone 15 Pro Max with iOS 26.6, an Apple Silicon Mac on macOS 26, and OBS 32.2.2.</p></div>
+      </details>
+      <details class="faq" data-reveal>
+        <summary>Does the audio come along?</summary>
+        <div class="answer"><p>No. Video only for now. Use a separate microphone in OBS.</p></div>
+      </details>
+      <details class="faq" data-reveal>
+        <summary>Is it free and open source?</summary>
+        <div class="answer"><p>Yes. The OBS plugin is GPL-2.0-or-later because it links against libobs. The iPhone app, the shared C code, the tools and the protocol spec are MIT. The app collects no data at all, which the <a href="/privacy">privacy policy</a> spells out.</p></div>
+      </details>
+      <details class="faq" data-reveal>
+        <summary>Does it work on Windows or Linux?</summary>
+        <div class="answer"><p>No, macOS only for now. The shared C core already builds on Linux, so a receiver for other systems is possible, but none ships today.</p></div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<section id="source" class="section">
+  <div class="wrap">
+    <p class="eyebrow" data-reveal>Source and license</p>
+    <h2 data-reveal>Everything is public</h2>
+    <p class="lede" data-reveal>Read the wire protocol, build both sides yourself, or write your own receiver.</p>
+    <ul class="links" data-reveal>
+      <li><a href="https://github.com/Kanevry/tethercam"><span class="lk">GitHub: Kanevry/tethercam</span> <span class="lm">public mirror</span></a></li>
+      <li><a href="https://gitlab.gotzendorfer.at/agents/obs-iphone-usb-cam"><span class="lk">GitLab: agents/obs-iphone-usb-cam</span> <span class="lm">primary repository</span></a></li>
+      <li><a href="https://github.com/Kanevry/tethercam/releases"><span class="lk">Releases and notes</span> <span class="lm">v0.1.0 pending</span></a></li>
+      <li><a href="https://github.com/Kanevry/tethercam/issues"><span class="lk">Issues and bug reports</span> <span class="lm">github issues</span></a></li>
+    </ul>
+    <p class="meta" data-reveal>Licenses: <a href="https://www.gnu.org/licenses/old-licenses/gpl-2.0.html">GPL-2.0-or-later</a> for <code>obs-plugin/</code>, because it links against libobs. <a href="https://opensource.org/licenses/MIT">MIT</a> for the iPhone app, the shared C code, the tools and the protocol spec.</p>
+  </div>
 </section>
 
 </main>
 
-<footer class="site-footer">
-  <p>Built by <a href="https://gotzendorfer.at">Bernhard Goetzendorfer</a>. Not affiliated with Apple or the OBS Project.</p>
+<footer class="site-footer surface-ink">
+  <div class="grain"></div>
+  <div class="wrap">
+    <div class="foot-grid">
+      <p>Built by <a href="https://gotzendorfer.at">Bernhard Goetzendorfer</a>. Not affiliated with Apple or the OBS Project.</p>
+      <ul class="foot-links">
+        <li><a href="/privacy">Privacy policy</a></li>
+        <li><a href="https://github.com/Kanevry/tethercam">GitHub</a></li>
+        <li><a href="https://gitlab.gotzendorfer.at/agents/obs-iphone-usb-cam">GitLab</a></li>
+      </ul>
+    </div>
+    <p class="foot-mark">&mdash; TetherCam 0.1.0</p>
+  </div>
 </footer>
 
 <script type="application/ld+json">
@@ -231,7 +477,7 @@
     {
       "@type": "Question",
       "name": "How much latency is there?",
-      "acceptedAnswer": {"@type": "Answer", "text": "Far below 100 ms measured on the development machine. The plugin does not buffer frames, it hands each decoded frame straight to OBS."}
+      "acceptedAnswer": {"@type": "Answer", "text": "The ping round trip over USB is about 1 ms, and the first frame arrives about 90 ms after the source connects. The plugin does not buffer frames, it hands each decoded frame straight to OBS. Measured on one setup, an iPhone 15 Pro Max with an Apple Silicon Mac."}
     },
     {
       "@type": "Question",
@@ -251,7 +497,7 @@
     {
       "@type": "Question",
       "name": "Is it free and open source?",
-      "acceptedAnswer": {"@type": "Answer", "text": "Yes. The OBS plugin is GPL-2.0-or-later because it links against libobs. The iPhone app, the shared C code, the tools and the protocol spec are MIT."}
+      "acceptedAnswer": {"@type": "Answer", "text": "Yes. The OBS plugin is GPL-2.0-or-later because it links against libobs. The iPhone app, the shared C code, the tools and the protocol spec are MIT. The app collects no data at all, which the privacy policy spells out."}
     },
     {
       "@type": "Question",

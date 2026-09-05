@@ -13,10 +13,13 @@ frames to OBS as an async video source. The video never touches a network.
 Key properties:
 
 - 1080p30 by default, 1080p60 possible. About 13 Mbit/s HEVC.
-- Latency far below 100 ms, measured. The plugin does not buffer frames.
-- First frame in well under a second. Reconnect after a cable pull in about 1.3 seconds.
+- Ping round trip over USB about 1 ms. No frame buffering in the plugin, each decoded
+  frame goes straight to OBS.
+- First frame about 90 ms after the source connects. Reconnect after a cable pull in
+  about 1.3 seconds. All of these were measured on one setup, an iPhone 15 Pro Max with
+  an Apple Silicon Mac and OBS 32.2.2.
 - Auto horizon leveling on the capture side (CoreMotion plus AVCaptureDevice.RotationCoordinator).
-- Lens and camera picker in the app: back wide, back ultra wide, back tele, front.
+- Lens and camera picker in the app: Back Wide, Back Ultra Wide, Back Telephoto, Front.
 - Video only. No audio yet.
 - macOS only. The shared C core builds on Linux, but no receiver ships for Windows or Linux.
 
@@ -45,7 +48,9 @@ HEVC stream travels only through the cable via usbmuxd.
 1. OBS plugin: download https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-obs-plugin.pkg
    and open it, or run
    `curl -fsSL https://raw.githubusercontent.com/Kanevry/tethercam/main/scripts/install.sh | bash`.
-   Then restart OBS.
+   Then restart OBS. Note: v0.1.0 is not published yet, so those two URLs return 404
+   today. Until the first release is tagged, build the plugin from source, about five
+   minutes: https://github.com/Kanevry/tethercam#install-the-mac-plugin
 2. iPhone app: TestFlight, public link coming soon. Until then build from source with a
    free Apple ID (xcodegen generate, then Xcode).
 3. In OBS: Tools, then "TetherCam: Add iPhone camera to current scene". The source
@@ -54,6 +59,7 @@ HEVC stream travels only through the cable via usbmuxd.
 ## Links
 
 - Website: https://tethercam.app/
+- Privacy policy: https://tethercam.app/privacy (the app collects no data at all)
 - GitHub (public mirror): https://github.com/Kanevry/tethercam
 - GitLab (primary): https://gitlab.gotzendorfer.at/agents/obs-iphone-usb-cam
 - Releases: https://github.com/Kanevry/tethercam/releases

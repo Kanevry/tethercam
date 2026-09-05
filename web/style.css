@@ -303,7 +303,9 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 2.5rem 0; }
   margin: 0 0 0 auto;
   padding: 0;
   overflow-x: auto;
+  min-width: 0;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
 .site-header ul::-webkit-scrollbar { display: none; }
 .site-header ul a {
@@ -375,7 +377,7 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 2.5rem 0; }
   font-weight: 400;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  opacity: 0.75;
+  opacity: 0.9;
 }
 .btn--stack {
   flex-direction: column;
@@ -412,7 +414,7 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 2.5rem 0; }
 .hero h1 { margin-bottom: 1.25rem; }
 .hero h1 .hl { color: var(--accent); }
 .hero .lede { margin-bottom: 1.75rem; }
-.hero-meta { max-width: 46ch; }
+.hero-meta { max-width: 58ch; }
 
 .hero-figure { margin: clamp(2.5rem, 6vw, 4.5rem) 0 0; position: relative; z-index: 1; }
 
@@ -508,18 +510,19 @@ html.js [data-reveal].is-in { opacity: 1; transform: none; }
 /* ---------- proof strip ---------- */
 .proof {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 1px;
   background: var(--border);
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
   overflow: hidden;
 }
-.proof > div {
+.proof { list-style: none; margin: 0; padding: 0; }
+.proof > li {
   background: var(--bg);
   padding: 1.5rem 1.25rem;
 }
-.proof dt, .proof .pv {
+.proof .pv {
   font-family: var(--font-display);
   font-size: clamp(1.4rem, 2.6vw, 2rem);
   font-weight: 600;
@@ -542,7 +545,7 @@ html.js [data-reveal].is-in { opacity: 1; transform: none; }
 /* ---------- steps ---------- */
 .steps {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1.25rem;
   margin-top: 2.5rem;
   align-items: start;
@@ -613,6 +616,16 @@ figcaption {
 }
 .window img { width: 100%; }
 
+/* screenshots that already carry their own window chrome */
+.frame {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  background: var(--card);
+  box-shadow: var(--shadow-lg);
+}
+.frame img { width: 100%; }
+
 .device {
   background: #0B0C10;
   border: 1px solid var(--border-strong);
@@ -624,11 +637,11 @@ figcaption {
 .device::after {
   content: "";
   position: absolute;
-  top: 15px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 46px;
-  height: 6px;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 46px;
   border-radius: var(--radius-pill);
   background: rgba(242, 243, 245, 0.22);
 }
@@ -636,6 +649,16 @@ figcaption {
   border-radius: 26px;
   width: 100%;
 }
+
+.fig-2up {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(1.25rem, 3vw, 2rem);
+  margin-top: 2rem;
+  align-items: start;
+}
+.fig-2up figure { margin: 0; }
+@media (max-width: 800px) { .fig-2up { grid-template-columns: minmax(0, 1fr); } }
 
 /* ---------- how it works ---------- */
 .slab { border-top: 1px solid var(--border-strong); position: relative; overflow: hidden; }
@@ -670,7 +693,12 @@ html.js .ar-g { opacity: 0; transform: translateY(14px); }
 .arch.is-playing #ar-g3 { animation-delay: 240ms; }
 .arch.is-playing .ar-arrow { animation: draw 700ms var(--ease) 420ms forwards; }
 .arch.is-playing #ar-a2 { animation-delay: 700ms; }
-.arch.is-playing .ar-pulse { animation: arch-pulse 1400ms linear 1150ms 1 forwards; }
+.ar-tip { fill: var(--border-strong); }
+html.js .ar-tip { opacity: 0; }
+.arch.is-playing .ar-tip { animation: fade-in 300ms var(--ease) 1120ms forwards; }
+.arch.is-playing #ar-t2 { animation-delay: 1400ms; }
+.arch.is-playing .ar-pulse { animation: arch-pulse 1400ms linear 1500ms 1 forwards; }
+@keyframes fade-in { to { opacity: 1; } }
 @keyframes arch-pulse {
   0% { stroke-dashoffset: 1; opacity: 0; }
   8% { opacity: 1; }
@@ -704,9 +732,10 @@ html.js .ar-g { opacity: 0; transform: translateY(14px); }
 }
 
 /* ---------- download ---------- */
+.dl-grid > *, .steps > *, .fig-2up > *, .proof > * { min-width: 0; }
 .dl-grid {
   display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
   gap: clamp(1.5rem, 4vw, 3rem);
   margin-top: 2.5rem;
   align-items: start;
@@ -881,15 +910,15 @@ pre code { font-size: inherit; }
 
 /* ---------- responsive ---------- */
 @media (max-width: 1000px) {
-  .hero-grid { grid-template-columns: 1fr; }
+  .hero-grid { grid-template-columns: minmax(0, 1fr); }
   .signature { max-width: 560px; }
-  .steps { grid-template-columns: 1fr; }
-  .dl-grid { grid-template-columns: 1fr; }
-  .proof { grid-template-columns: repeat(2, 1fr); }
-  .facts { grid-template-columns: 1fr; }
+  .steps { grid-template-columns: minmax(0, 1fr); }
+  .dl-grid { grid-template-columns: minmax(0, 1fr); }
+  .proof { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .facts { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 560px) {
-  .proof { grid-template-columns: 1fr; }
+  .proof { grid-template-columns: minmax(0, 1fr); }
   .btn { width: 100%; }
   .actions { flex-direction: column; align-items: stretch; }
   .btn--stack { align-items: flex-start; }
@@ -906,6 +935,7 @@ pre code { font-size: inherit; }
   [data-reveal] { opacity: 1 !important; transform: none !important; }
   .cable-pulse, .ar-pulse { display: none; }
   .cable-path, .ar-arrow, .tick { stroke-dashoffset: 0 !important; }
+  .ar-tip { opacity: 1 !important; }
   .ar-g { opacity: 1 !important; transform: none !important; }
   .signal-dot { opacity: 1 !important; }
 }
