@@ -65,6 +65,9 @@ plugin (`obs-plugin/`, GPL-2.0-or-later) and the iOS app (`ios-app/`, MIT). A ta
 
 ### Changed
 
+- **Camera names sent to OBS are English** (`Back Wide`, `Back Ultra Wide`, `Back Telephoto`,
+  `Front`) instead of German. They travel in HELLO and are shown verbatim in the OBS camera
+  property and in the app's settings sheet, so English OBS users no longer see German labels.
 - **iOS app reduced to one screen**: full-screen preview with a single status line and a
   traffic-light dot ("Waiting for OBS on the Mac" / "Connected to OBS" / "Streaming 1080p30").
   Camera choice, auto rotation, horizon levelling, manual angle and the diagnostics moved

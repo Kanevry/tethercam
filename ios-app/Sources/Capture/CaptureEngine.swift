@@ -147,9 +147,9 @@ public final class CaptureEngine: NSObject {
         // Fixed probe order → stable ids 0..n. Devices absent on the hardware
         // are simply skipped, so an iPhone without a tele lens yields 0,1,2.
         let wanted: [(AVCaptureDevice.DeviceType, AVCaptureDevice.Position, String)] = [
-            (.builtInWideAngleCamera, .back, "Rueck-Weitwinkel"),
-            (.builtInUltraWideCamera, .back, "Rueck-Ultraweit"),
-            (.builtInTelephotoCamera, .back, "Rueck-Tele"),
+            (.builtInWideAngleCamera, .back, "Back Wide"),
+            (.builtInUltraWideCamera, .back, "Back Ultra Wide"),
+            (.builtInTelephotoCamera, .back, "Back Telephoto"),
             (.builtInWideAngleCamera, .front, "Front"),
         ]
         var out: [Camera] = []

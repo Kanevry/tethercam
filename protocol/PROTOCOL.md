@@ -83,7 +83,7 @@ Danach `camera_count` mal, dicht gepackt:
 | 1        | id         | u8, Kamera-ID, im START zu wiederholen      |
 | 1        | position   | u8: `0` = Rueckseite, `1` = Frontseite      |
 | 1        | name_len   | u8                                          |
-| name_len | name       | UTF-8, z. B. `Rueck-Weitwinkel`             |
+| name_len | name       | UTF-8, z. B. `Back Wide`             |
 
 Andere `position`-Werte sind reserviert und werden wie `0` behandelt.
 
