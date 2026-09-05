@@ -65,7 +65,12 @@ final class AppModel: ObservableObject {
             Task { @MainActor in
                 guard let self else { return }
                 self.cameraDenied = !ok
-                if ok { self.server.start() }
+                guard ok else { return }
+                // Picture first, link second: the camera comes up as soon as the
+                // app is open, so the screen shows the framing instead of black
+                // while it waits for the Mac.
+                self.capture.startPreview(cameraId: self.selectedCameraId)
+                self.server.start()
             }
         }
     }
@@ -77,10 +82,20 @@ final class AppModel: ObservableObject {
         guard capture.cameras.contains(where: { $0.id == id }) else { return }
         selectedCameraId = id
         server.selectCamera(id)
+        // While nothing streams the state machine only remembers the choice, so
+        // the preview has to follow on its own. No-op during a take.
+        capture.startPreview(cameraId: id)
     }
 
     func refreshPermission() {
         cameraDenied = AVCaptureDevice.authorizationStatus(for: .video) == .denied
+    }
+
+    /// Called when the app comes back to the foreground: iOS may have stopped
+    /// the session while backgrounded, and the sleep timer has to be pinned again.
+    func resumePreview() {
+        UIApplication.shared.isIdleTimerDisabled = true
+        capture.startPreview(cameraId: selectedCameraId)
     }
 
     func openSystemSettings() {
@@ -160,6 +175,7 @@ struct ContentView: View {
             wasBackgrounded = true
         case .active:
             model.refreshPermission()
+            if !model.cameraDenied { model.resumePreview() }
             guard wasBackgrounded else { return }
             wasBackgrounded = false
             withAnimation { showForegroundBanner = true }

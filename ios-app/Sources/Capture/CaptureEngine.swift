@@ -27,6 +27,34 @@ public final class CaptureEngine: NSObject {
     public let cameras: [Camera]
     public let session = AVCaptureSession()
 
+    /// Format the session runs at while nobody streams. Modest on purpose: the
+    /// preview only has to fill a phone screen, and 720p30 keeps the phone cool
+    /// while it waits — sometimes for an hour before the Mac ever connects.
+    public static let previewWidth: UInt16 = 1280
+    public static let previewHeight: UInt16 = 720
+    public static let previewFps: UInt16 = 30
+
+    /// Parameters for preview-only operation. Pure, so the format contract is
+    /// testable without a camera. `bitrateKbps` is 0: nothing is encoded here.
+    public static func previewParams(cameraId: UInt8) -> StartParams {
+        StartParams(cameraId: cameraId, width: previewWidth, height: previewHeight,
+                    fps: previewFps, bitrateKbps: 0)
+    }
+
+    /// True between a successful `start` and the next `stop`. While false the
+    /// session may well be running — preview-only — but no buffer reaches the
+    /// encoder and the leveller stays idle.
+    public var isEncoding: Bool {
+        motionLock.lock(); defer { motionLock.unlock() }
+        return encodingFlag
+    }
+    private var encodingFlag = false
+    private func setEncoding(_ on: Bool) {
+        motionLock.lock(); encodingFlag = on; motionLock.unlock()
+    }
+    /// Lens the preview falls back to after STOP or a disconnect.
+    private var previewCameraId: UInt8 = 0
+
     /// Rotation source of truth. `true` (default) follows the device's horizon
     /// via `AVCaptureDevice.RotationCoordinator`, so the encoded frame is upright
     /// no matter how the phone sits in the tripod mount. `false` pins the angle
@@ -161,16 +189,23 @@ public final class CaptureEngine: NSObject {
             return
         }
         lastParams = params
+        previewCameraId = cam.id
+        setEncoding(true)
         sessionQueue.async { [self] in
             do {
                 session.beginConfiguration()
                 session.sessionPreset = .inputPriority   // format is chosen manually below
 
-                if let old = currentInput { session.removeInput(old) }
-                let input = try AVCaptureDeviceInput(device: cam.device)
-                guard session.canAddInput(input) else { throw CaptureError.cannotAddInput }
-                session.addInput(input)
-                currentInput = input
+                // Swap the input only when the lens really changes: coming out of
+                // preview on the same camera, keeping it alive means the picture
+                // never blacks out across the START.
+                if currentInput?.device !== cam.device {
+                    if let old = currentInput { session.removeInput(old) }
+                    let input = try AVCaptureDeviceInput(device: cam.device)
+                    guard session.canAddInput(input) else { throw CaptureError.cannotAddInput }
+                    session.addInput(input)
+                    currentInput = input
+                }
 
                 videoOutput.alwaysDiscardsLateVideoFrames = true
                 videoOutput.videoSettings = [
@@ -202,29 +237,86 @@ public final class CaptureEngine: NSObject {
                 }
 
                 session.commitConfiguration()
-                session.startRunning()
+                if !session.isRunning { session.startRunning() }
                 currentDevice = cam.device
                 DispatchQueue.main.async { [self] in rebuildRotationCoordinator() }
                 completion(.success(()))
             } catch {
                 session.commitConfiguration()
+                setEncoding(false)
                 completion(.failure(error))
             }
         }
     }
 
+    /// Ends encoding and falls back to preview-only. The session keeps running:
+    /// a black screen between two takes is the thing this app is judged on, and
+    /// restarting AVCaptureSession costs about a second of black.
     public func stop() {
+        setEncoding(false)
         sessionQueue.async { [self] in
-            if session.isRunning { session.stopRunning() }
             activeFormat = nil
             sourceFormat = nil
             resetLeveling()
-            currentDevice = nil
+            oversampling = false
+            if let cam = cameras.first(where: { $0.id == previewCameraId }) ?? cameras.first {
+                configurePreview(cam)
+            } else if session.isRunning {
+                session.stopRunning()
+                currentDevice = nil
+                DispatchQueue.main.async { [self] in
+                    rotationObservation = nil
+                    rotationCoordinator = nil
+                }
+            }
         }
-        DispatchQueue.main.async { [self] in
-            rotationObservation = nil
-            rotationCoordinator = nil
+    }
+
+    /// Starts (or switches) the preview-only session. No-op while streaming —
+    /// a running take owns the session, and the state machine restarts it with
+    /// the new lens on its own. Safe to call repeatedly.
+    public func startPreview(cameraId: UInt8? = nil) {
+        guard AVCaptureDevice.authorizationStatus(for: .video) == .authorized else { return }
+        let wanted = cameraId ?? previewCameraId
+        guard let cam = cameras.first(where: { $0.id == wanted }) ?? cameras.first else { return }
+        previewCameraId = cam.id
+        sessionQueue.async { [self] in
+            guard !isEncoding else { return }
+            configurePreview(cam)
         }
+    }
+
+    /// sessionQueue only. Runs the given lens at the preview format with the
+    /// video-data output detached, so no buffer is ever delivered and neither
+    /// leveller nor encoder do any work.
+    private func configurePreview(_ cam: Camera) {
+        session.beginConfiguration()
+        session.sessionPreset = .inputPriority
+        if currentInput?.device !== cam.device {
+            if let old = currentInput { session.removeInput(old) }
+            do {
+                let input = try AVCaptureDeviceInput(device: cam.device)
+                guard session.canAddInput(input) else {
+                    session.commitConfiguration()
+                    NSLog("[usbcam] preview: cannot add input for cam=%d", Int(cam.id))
+                    return
+                }
+                session.addInput(input)
+                currentInput = input
+            } catch {
+                session.commitConfiguration()
+                NSLog("[usbcam] preview input failed: %@", "\(error)" as NSString)
+                return
+            }
+        }
+        if session.outputs.contains(videoOutput) { session.removeOutput(videoOutput) }
+        _ = try? configureDevice(cam.device, Self.previewParams(cameraId: cam.id))
+        session.commitConfiguration()
+        if !session.isRunning { session.startRunning() }
+        currentDevice = cam.device
+        NSLog("[usbcam] preview-only cam=%d %dx%d@%d", Int(cam.id),
+              Int(Self.previewWidth), Int(Self.previewHeight), Int(Self.previewFps))
+        DispatchQueue.main.async { [self] in rebuildRotationCoordinator() }
     }
 
     // MARK: - Rotation
@@ -420,7 +512,7 @@ extension CaptureEngine {
 
     /// Levelling only runs in auto mode: a manually pinned angle is the user
     /// overriding the sensor, and rotating on top of that would fight them.
-    var levelingActive: Bool { horizonLeveling && autoRotation && leveler != nil }
+    var levelingActive: Bool { isEncoding && horizonLeveling && autoRotation && leveler != nil }
 
     /// One format step up, so the fill zoom crops out of surplus pixels.
     /// `nil` for anything else — 4K in, 4K out has nothing to oversample from.
@@ -475,6 +567,9 @@ extension CaptureEngine: AVCaptureVideoDataOutputSampleBufferDelegate {
     public func captureOutput(_ output: AVCaptureOutput,
                               didOutput sampleBuffer: CMSampleBuffer,
                               from connection: AVCaptureConnection) {
+        // Belt and braces: the output is detached in preview-only mode, so a
+        // buffer arriving here after STOP is a stale in-flight one. Drop it.
+        guard isEncoding else { return }
         guard levelingActive, let leveler else {
             onSampleBuffer?(sampleBuffer)
             tickStats(levelled: false)

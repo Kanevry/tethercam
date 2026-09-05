@@ -243,6 +243,20 @@ final class HorizonLevelerTests: XCTestCase {
         XCTAssertNil(CaptureEngine.oversampledTarget(width: 640, height: 480))
     }
 
+    /// Preview-only runs at a modest, fixed format and never asks for an encoder
+    /// bitrate — the picture is on screen before any Mac has connected.
+    func testPreviewParamsAre720p30WithoutBitrate() {
+        let p = CaptureEngine.previewParams(cameraId: 2)
+        XCTAssertEqual(p.cameraId, 2)
+        XCTAssertEqual(p.width, 1280)
+        XCTAssertEqual(p.height, 720)
+        XCTAssertEqual(p.fps, 30)
+        XCTAssertEqual(p.bitrateKbps, 0)
+        // 720p preview must not drag the 4K oversampling path in: that only
+        // exists for the levelled encode.
+        XCTAssertEqual(CaptureEngine.oversampledTarget(width: p.width, height: p.height)?.0, 1920)
+    }
+
     // MARK: - render path
 
     /// Whether CoreImage can write biplanar 420v decides the render path. The
