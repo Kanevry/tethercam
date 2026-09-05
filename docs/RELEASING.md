@@ -27,7 +27,7 @@ Already present on this Mac: *Developer ID Application: Bernhard Goetzendorfer
    `MACOS_CERT_P12`; the password goes into `MACOS_CERT_PASSWORD`.
 4. Delete the `.p12` from disk afterwards.
 
-### 1b. Developer ID Installer certificate (signs the `.pkg`): MISSING
+### 1b. Developer ID Installer certificate (signs the `.pkg`): present since 2026-09-05
 
 Verified on this Mac on 2026-09-05: `security find-identity -v` lists a *Developer ID
 Application* identity but **no *Developer ID Installer* identity**. These are two

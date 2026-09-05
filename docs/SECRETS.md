@@ -19,7 +19,7 @@ base64 -i cert.p12 | pbcopy      # macOS, no trailing newline issues
 |---|---|---|---|
 | `MACOS_CERT_P12` | Developer ID **Application** certificate + private key, base64. Signs the `.plugin` bundle with Hardened Runtime. | Keychain Access → My Certificates → *Developer ID Application: Bernhard Goetzendorfer (G3QZ66475M)* → right-click → Export → `.p12` → `base64 -i`. | Certificate expires after 5 years. Re-export and replace both this and `MACOS_CERT_PASSWORD` when it does, or immediately on suspected exposure. A leaked Developer ID key can sign malware in your name. |
 | `MACOS_CERT_PASSWORD` | Password chosen during the `.p12` export. | You pick it at export time. | Together with the certificate. |
-| `MACOS_INSTALLER_CERT_P12` | Developer ID **Installer** certificate + private key, base64. Signs the `.pkg`. **Not yet present on this Mac**: see docs/RELEASING.md, step 1b. | developer.apple.com → Certificates → `+` → Developer ID Installer → issue → download → import into Keychain → export as `.p12`. | Same as the Application certificate. |
+| `MACOS_INSTALLER_CERT_P12` | Developer ID **Installer** certificate + private key, base64. Signs the `.pkg`. Present since 2026-09-05 (issued from a CSR generated with openssl; the key never entered the keychain). | developer.apple.com → Certificates → `+` → Developer ID Installer → issue → download → import into Keychain → export as `.p12`. | Same as the Application certificate. |
 | `MACOS_INSTALLER_CERT_PASSWORD` | Password for that `.p12`. | You pick it at export time. | Together with the certificate. |
 | `MACOS_CODESIGN_IDENT` | *Optional.* Exact identity string, e.g. `Developer ID Application: Bernhard Goetzendorfer (G3QZ66475M)`. Only needed if the keychain holds more than one Developer ID Application identity; otherwise the workflow derives it from the imported certificate. | `security find-identity -v -p codesigning` | Only when the certificate name changes. |
 | `NOTARY_KEY_P8` | App Store Connect API key (`AuthKey_XXXX.p8`), base64. Used by `xcrun notarytool`. | appstoreconnect.apple.com → Users and Access → Integrations → App Store Connect API → Team Keys → `+` → role **Developer** → download. **The `.p8` downloads exactly once.** | Revoke and reissue on exposure or when the key holder changes. No expiry. |
@@ -43,9 +43,9 @@ then cannot upload builds, and revoking one does not break the other.
 |---|---|
 | `ASC_KEY_P8`, `ASC_KEY_ID`, `ASC_ISSUER_ID` | yes |
 | `NOTARY_KEY_P8`, `NOTARY_KEY_ID`, `NOTARY_ISSUER_ID` | yes |
-| `MACOS_CERT_P12`, `MACOS_CERT_PASSWORD` | no |
-| `MACOS_INSTALLER_CERT_P12`, `MACOS_INSTALLER_CERT_PASSWORD` | no — the certificate does not exist yet (docs/RELEASING.md §1b) |
-| `MACOS_CODESIGN_IDENT` | no (optional) |
+| `MACOS_CERT_P12`, `MACOS_CERT_PASSWORD` | yes, set 2026-09-05 |
+| `MACOS_INSTALLER_CERT_P12`, `MACOS_INSTALLER_CERT_PASSWORD` | yes, set 2026-09-05 |
+| `MACOS_CODESIGN_IDENT` | yes, set 2026-09-05 |
 
 **The two-key split above is not yet in effect.** All six `ASC_*`/`NOTARY_*` secrets
 currently carry the *same* App Store Connect key — an **Admin**-role team key that is
