@@ -49,3 +49,4 @@ AuthKey_*
 .vercel/
 web/.vercel/
 
+__pycache__/

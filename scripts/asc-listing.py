@@ -41,10 +41,11 @@ SECONDARY_CATEGORY = "UTILITIES"
 SCREENSHOT_DISPLAY_TYPE = "APP_IPHONE_67"   # 6.7"/6.9" iPhone set, 2796x1290 landscape
 PREVIEW_TYPE = "IPHONE_67"
 SCREENSHOTS = [
-    "screenshots-6.9/01-live-preview.png",
-    "screenshots-6.9/02-camera-lens-picker.png",
-    "screenshots-6.9/03-rotation-leveling.png",
-    "screenshots-6.9/04-diagnostics.png",
+    "marketing-6.9/01-hero-wired-into-obs.png",
+    "marketing-6.9/02-three-steps.png",
+    "marketing-6.9/03-lens-picker.png",
+    "marketing-6.9/04-horizon-level.png",
+    "marketing-6.9/05-diagnostics.png",
 ]
 PREVIEW = "app-preview-6.9-landscape.mp4"
 
@@ -342,6 +343,9 @@ def upload_asset(create_path, set_rel_type, set_id, file_path, item_type, extra_
     print(f"    uploaded {name} ({size/1e6:.1f} MB)")
 
 
+REPLACE_SHOTS = False
+
+
 def upload_media(loc_id, media_dir):
     # screenshots
     sets = api("GET", f"/v1/appStoreVersionLocalizations/{loc_id}/appScreenshotSets?include=appScreenshots")["data"] if not DRY else []
@@ -352,7 +356,13 @@ def upload_media(loc_id, media_dir):
         have = set()
     else:
         set_id = sset["id"]
-        have = {s["attributes"]["fileName"] for s in api("GET", f"/v1/appScreenshotSets/{set_id}/appScreenshots")["data"]}
+        existing = api("GET", f"/v1/appScreenshotSets/{set_id}/appScreenshots")["data"]
+        if REPLACE_SHOTS:
+            for e in existing:
+                api("DELETE", f"/v1/appScreenshots/{e['id']}")
+                print(f"    deleted {e['attributes']['fileName']}")
+            existing = []
+        have = {s["attributes"]["fileName"] for s in existing}
     for rel in SCREENSHOTS:
         p = os.path.join(media_dir, rel)
         if os.path.basename(p) in have:
@@ -370,7 +380,9 @@ def upload_media(loc_id, media_dir):
         pset_id = pset["id"]
         have = {s["attributes"]["fileName"] for s in api("GET", f"/v1/appPreviewSets/{pset_id}/appPreviews")["data"]}
     p = os.path.join(media_dir, PREVIEW)
-    if os.path.basename(p) in have:
+    if not os.path.exists(p):
+        print(f"    no preview file at {p}, skipping (the 2026-09-05 cut showed the owner's face and was withdrawn)")
+    elif os.path.basename(p) in have:
         print(f"    exists {PREVIEW}")
     else:
         upload_asset("/v1/appPreviews", "appPreviewSet", pset_id, p, "appPreviews", {"previewFrameTimeCode": "00:00:27:00"})
@@ -385,8 +397,11 @@ def main():
     ap.add_argument("--skip-media", action="store_true")
     ap.add_argument("--skip-pricing", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--replace-screenshots", action="store_true", help="delete existing screenshots in the target set before uploading")
     a = ap.parse_args()
     DRY = a.dry_run
+    global REPLACE_SHOTS
+    REPLACE_SHOTS = a.replace_screenshots
     load_env_local()
 
     version = a.version or re.search(r'MARKETING_VERSION:\s*"?([\d.]+)', open(os.path.join(ROOT, "ios-app", "project.yml")).read()).group(1)
