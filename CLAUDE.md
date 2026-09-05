@@ -1,4 +1,4 @@
-# CLAUDE.md — obs-iphone-usb-cam
+# CLAUDE.md — TetherCam (Repo obs-iphone-usb-cam)
 
 ## Was das ist
 
@@ -13,8 +13,8 @@ verbindet sich, decodiert per VideoToolbox und liefert NV12-Frames als Async-Sou
 |---|---|---|
 | `protocol/PROTOCOL.md` | **Der Vertrag.** Framing, Nachrichtentypen, Fehlercodes | MIT |
 | `shared/` | C-Bausteine beider Seiten: `frame_parser`, `usbmux` (+ ctest) | MIT |
-| `ios-app/` | Swift/SwiftUI-App `UsbCam` (Capture, HEVC-Encoder, Server) | MIT |
-| `obs-plugin/` | OBS-Source `iPhone USB Camera` (C/ObjC++, CMake) | GPL-2.0-or-later |
+| `ios-app/` | Swift/SwiftUI-App `TetherCam` (Capture, HEVC-Encoder, Server) | MIT |
+| `obs-plugin/` | OBS-Source `TetherCam (iPhone USB Camera)` (C/ObjC++, CMake) | GPL-2.0-or-later |
 | `tools/` | Swift-Paket: `usbcam-sim`, `usbcam-recv`, `integration.sh` | MIT |
 | `docs/superpowers/specs/` | Design-Spec; Korrekturen datiert anfuegen, nichts umschreiben | — |
 
@@ -30,11 +30,11 @@ bash tools/integration.sh            # End-zu-End ohne iPhone, braucht ffmpeg/ff
 
 # ios-app (xcodegen erzeugt das .xcodeproj aus project.yml)
 cd ios-app && xcodegen generate
-xcodebuild test -scheme UsbCam -destination 'platform=iOS Simulator,name=UsbCam-Test-iPhone17'
-xcodebuild -scheme UsbCam -configuration Release \
+xcodebuild test -scheme TetherCam -destination 'platform=iOS Simulator,name=UsbCam-Test-iPhone17'
+xcodebuild -scheme TetherCam -configuration Release \
   -destination 'platform=iOS,id=<UDID>' -allowProvisioningUpdates build
-xcrun devicectl device install app --device <DEVICE-ID> <pfad>/UsbCam.app
-xcrun devicectl device process launch --terminate-existing --device <DEVICE-ID> at.gotzendorfer.usbcam
+xcrun devicectl device install app --device <DEVICE-ID> <pfad>/TetherCam.app
+xcrun devicectl device process launch --terminate-existing --device <DEVICE-ID> at.gotzendorfer.tethercam
 
 # obs-plugin
 cd obs-plugin

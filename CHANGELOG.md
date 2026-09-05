@@ -21,7 +21,7 @@ plugin (`obs-plugin/`, GPL-2.0-or-later) and the iOS app (`ios-app/`, MIT). A ta
 - **iOS app** (`ios-app/`, SwiftUI): AVFoundation capture, hardware HEVC encoding via
   VideoToolbox, TCP listener on port 7878 reachable from the Mac through the usbmux
   tunnel. No Wi-Fi involved.
-- **OBS source plugin** "iPhone USB Camera" (`obs-plugin/`, C/ObjC++): connects over
+- **OBS source plugin** "TetherCam (iPhone USB Camera)" (`obs-plugin/`, C/ObjC++): connects over
   usbmuxd, decodes HEVC with VideoToolbox, delivers NV12 frames as an async source.
   Universal binary (arm64 + x86_64), Hardened Runtime, macOS 12.0+.
 - **Auto-rotation**: the app levels to the horizon via `AVCaptureDevice.RotationCoordinator`
@@ -33,6 +33,12 @@ plugin (`obs-plugin/`, GPL-2.0-or-later) and the iOS app (`ios-app/`, MIT). A ta
   an end-to-end acceptance run that needs no iPhone.
 - **Release engineering**: signed and notarized `.pkg` installer, one-line installer
   script, TestFlight upload workflow, GitHub Actions CI.
+- **Product name TetherCam** and an app icon. The iOS app now ships as `TetherCam`
+  (bundle id `at.gotzendorfer.tethercam`, marketing version 0.1.0) with a 1024x1024
+  asset-catalog icon; the OBS source is listed as "TetherCam (iPhone USB Camera)" and
+  the plugin display name is "TetherCam for OBS". Repository name, module name
+  `obs-iphone-usb-cam`, source id `iphone_usb_camera` and the IUCM wire protocol are
+  unchanged, so existing scenes keep working.
 
 ### Verified
 

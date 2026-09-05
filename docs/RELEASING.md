@@ -27,7 +27,7 @@ Already present on this Mac: *Developer ID Application: Bernhard Goetzendorfer
    `MACOS_CERT_P12`; the password goes into `MACOS_CERT_PASSWORD`.
 4. Delete the `.p12` from disk afterwards.
 
-### 1b. Developer ID Installer certificate (signs the `.pkg`) — MISSING
+### 1b. Developer ID Installer certificate (signs the `.pkg`): MISSING
 
 Verified on this Mac on 2026-09-05: `security find-identity -v` lists a *Developer ID
 Application* identity but **no *Developer ID Installer* identity**. These are two
@@ -61,7 +61,9 @@ The workflow can create certificates and profiles on demand
 upload fails with *"No suitable application records were found"*.
 
 1. developer.apple.com → Identifiers → register the App ID
-   `at.gotzendorfer.usbcam` (the current bundle id) if it is not registered yet.
+   `at.gotzendorfer.tethercam` (the current bundle id) if it is not registered yet.
+   The App Store Connect record must use exactly this bundle id; the old
+   `at.gotzendorfer.usbcam` id is no longer built.
 2. appstoreconnect.apple.com → Apps → `+` → New App → platform iOS, pick the bundle
    id, set a name and SKU. The name must be unique across the whole App Store.
 3. Issue a **second** API key with role **App Manager** →
@@ -83,7 +85,7 @@ enterprise distribution requires a different, non-free program membership.
 
 1. Upload a first build (part 3 does this).
 2. App Store Connect → your app → **TestFlight** → fill in *Test Information*: what to
-   test, feedback email, and — required for external testing — a privacy policy URL.
+   test, feedback email, and (required for external testing) a privacy policy URL.
 3. **Internal group**: up to 100 testers who are members of your team, available within
    minutes of processing, no review.
 4. **External group**: create one, add the build, submit for **Beta App Review**. This
@@ -91,7 +93,7 @@ enterprise distribution requires a different, non-free program membership.
    of the same major version usually pass automatically.
 5. Once approved: enable the **public link** on the external group. That URL is what
    goes into the README and the release notes. It works for anyone, capped at 10 000
-   testers, and each build expires after 90 days — so a public TestFlight link needs a
+   testers, and each build expires after 90 days, so a public TestFlight link needs a
    fresh build roughly every quarter to stay usable.
 
 ---
@@ -187,7 +189,7 @@ There is no unpublish. If a release is broken:
 
 Der `shared-tests`-Job in `.github/workflows/ci-plugin.yml` baut den C-Kern zweimal:
 einmal normal und einmal mit `-DIUCM_SANITIZE=ON` (Default-Liste `address,undefined`).
-Beide laufen auf `ubuntu-latest`, und der Sanitizer-Lauf ist ein **hartes Gate** — kein
+Beide laufen auf `ubuntu-latest`, und der Sanitizer-Lauf ist ein **hartes Gate**: kein
 `continue-on-error`. Das ist kein Zufall: dieser Lauf hat beim allerersten CI-Durchgang
 (Kanevry/tethercam, Run 33969653856) einen Overread gefunden, den die Mac-Suite nicht
 sehen konnte.
@@ -211,11 +213,11 @@ DYLD_INSERT_LIBRARIES=/usr/lib/libgmalloc.dylib MALLOC_STRICT_SIZE=1 \
   ./shared/build-plain/test_frame_parser_fuzz
 ```
 
-Damit das greift, muessen Testeingaben auf dem Heap und exakt bemessen liegen — ein
+Damit das greift, muessen Testeingaben auf dem Heap und exakt bemessen liegen, denn ein
 `static uint8_t noise[8192]` hat keine Guard-Page dahinter.
 `test_feed_never_reads_past_chunk_end` in `shared/tests/test_frame_parser_fuzz.c` ist
 genau dafuer gebaut.
 
 **Konsequenz fuer Releases:** ein roter `shared-tests`-Job blockiert. Nicht mergen und
-nicht taggen, solange er rot ist, auch wenn die macOS-Jobs gruen sind — die koennen
+nicht taggen, solange er rot ist, auch wenn die macOS-Jobs gruen sind, denn die koennen
 diese Fehlerklasse hier nicht sehen.

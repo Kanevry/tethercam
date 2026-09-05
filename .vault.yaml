@@ -5,7 +5,7 @@ apiVersion: vault.gotzendorfer/v1
 kind: Repository
 
 metadata:
-  name: "obs-iphone-usb-cam"
+  name: "TetherCam"
   slug: "obs-iphone-usb-cam"
   tier: active
   owner: bernhard
@@ -13,8 +13,8 @@ metadata:
 spec:
   techStack: ["swift", "c", "objcpp", "cmake", "avfoundation", "videotoolbox", "obs-studio"]
   status: mvp
-  tags: ["obs", "ios", "usb", "hevc", "streaming", "tooling"]
-  summary: "iPhone als OBS-Kamera ueber das USB-Kabel: iOS-App encodiert HEVC in Hardware und sendet ueber den usbmux-Tunnel an ein OBS-Plugin, das per VideoToolbox decodiert. Kein WLAN, kein Fremdtreiber."
+  tags: ["tethercam", "obs", "ios", "usb", "hevc", "streaming", "tooling"]
+  summary: "TetherCam: iPhone als OBS-Kamera ueber das USB-Kabel. iOS-App encodiert HEVC in Hardware und sendet ueber den usbmux-Tunnel an ein OBS-Plugin, das per VideoToolbox decodiert. Kein WLAN, kein Fremdtreiber."
   links:
     gitlab: "https://gitlab.gotzendorfer.at/agents/obs-iphone-usb-cam"
     docs: CLAUDE.md

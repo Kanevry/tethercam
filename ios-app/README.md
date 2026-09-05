@@ -1,4 +1,4 @@
-# UsbCam (iOS-App)
+# TetherCam (iOS-App)
 
 Nimmt das iPhone-Kamerabild auf, kodiert es per Hardware in HEVC und liefert es
 ueber einen lokalen TCP-Listener auf Port **7878** aus. Der Mac erreicht diesen
@@ -28,19 +28,19 @@ Das Xcode-Projekt ist **generiert** und nicht eingecheckt.
 ```sh
 brew install xcodegen        # einmalig
 cd ios-app
-xcodegen generate            # erzeugt UsbCam.xcodeproj
+xcodegen generate            # erzeugt TetherCam.xcodeproj
 ```
 
 ## Bauen
 
 ```sh
 # Geraete-Build (Signierung Team G3QZ66475M, automatisch)
-xcodebuild -project UsbCam.xcodeproj -scheme UsbCam \
+xcodebuild -project TetherCam.xcodeproj -scheme TetherCam \
   -destination 'generic/platform=iOS' \
   -allowProvisioningUpdates -derivedDataPath build build
 
 # Unit-Tests (kein Geraet, keine Kamera noetig)
-xcodebuild test -project UsbCam.xcodeproj -scheme UsbCam \
+xcodebuild test -project TetherCam.xcodeproj -scheme TetherCam \
   -destination 'platform=iOS Simulator,name=iPhone 17'
 ```
 
@@ -61,12 +61,12 @@ xcrun devicectl list devices
 # App installieren
 xcrun devicectl device install app \
   --device 8CDB11B5-13E8-5735-ABD4-AF958AC112DB \
-  build/Build/Products/Debug-iphoneos/UsbCam.app
+  build/Build/Products/Debug-iphoneos/TetherCam.app
 
 # App starten
 xcrun devicectl device process launch \
   --device 8CDB11B5-13E8-5735-ABD4-AF958AC112DB \
-  at.gotzendorfer.usbcam
+  at.gotzendorfer.tethercam
 ```
 
 ## Betrieb

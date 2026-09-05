@@ -65,7 +65,7 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             VStack(alignment: .leading, spacing: 14) {
-                Text("iPhone USB Camera").font(.headline)
+                Text("TetherCam").font(.headline)
 
                 statusLine
 

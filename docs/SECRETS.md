@@ -13,24 +13,24 @@ text. Encode with:
 base64 -i cert.p12 | pbcopy      # macOS, no trailing newline issues
 ```
 
-## macOS plugin release — `.github/workflows/release-plugin.yml`
+## macOS plugin release , `.github/workflows/release-plugin.yml`
 
 | Secret | Purpose | How to obtain | Rotation |
 |---|---|---|---|
-| `MACOS_CERT_P12` | Developer ID **Application** certificate + private key, base64. Signs the `.plugin` bundle with Hardened Runtime. | Keychain Access → My Certificates → *Developer ID Application: Bernhard Goetzendorfer (G3QZ66475M)* → right-click → Export → `.p12` → `base64 -i`. | Certificate expires after 5 years. Re-export and replace both this and `MACOS_CERT_PASSWORD` when it does, or immediately on suspected exposure — a leaked Developer ID key can sign malware in your name. |
+| `MACOS_CERT_P12` | Developer ID **Application** certificate + private key, base64. Signs the `.plugin` bundle with Hardened Runtime. | Keychain Access → My Certificates → *Developer ID Application: Bernhard Goetzendorfer (G3QZ66475M)* → right-click → Export → `.p12` → `base64 -i`. | Certificate expires after 5 years. Re-export and replace both this and `MACOS_CERT_PASSWORD` when it does, or immediately on suspected exposure , a leaked Developer ID key can sign malware in your name. |
 | `MACOS_CERT_PASSWORD` | Password chosen during the `.p12` export. | You pick it at export time. | Together with the certificate. |
-| `MACOS_INSTALLER_CERT_P12` | Developer ID **Installer** certificate + private key, base64. Signs the `.pkg`. **Not yet present on this Mac** — see docs/RELEASING.md, step 1b. | developer.apple.com → Certificates → `+` → Developer ID Installer → issue → download → import into Keychain → export as `.p12`. | Same as the Application certificate. |
+| `MACOS_INSTALLER_CERT_P12` | Developer ID **Installer** certificate + private key, base64. Signs the `.pkg`. **Not yet present on this Mac** , see docs/RELEASING.md, step 1b. | developer.apple.com → Certificates → `+` → Developer ID Installer → issue → download → import into Keychain → export as `.p12`. | Same as the Application certificate. |
 | `MACOS_INSTALLER_CERT_PASSWORD` | Password for that `.p12`. | You pick it at export time. | Together with the certificate. |
 | `MACOS_CODESIGN_IDENT` | *Optional.* Exact identity string, e.g. `Developer ID Application: Bernhard Goetzendorfer (G3QZ66475M)`. Only needed if the keychain holds more than one Developer ID Application identity; otherwise the workflow derives it from the imported certificate. | `security find-identity -v -p codesigning` | Only when the certificate name changes. |
 | `NOTARY_KEY_P8` | App Store Connect API key (`AuthKey_XXXX.p8`), base64. Used by `xcrun notarytool`. | appstoreconnect.apple.com → Users and Access → Integrations → App Store Connect API → Team Keys → `+` → role **Developer** → download. **The `.p8` downloads exactly once.** | Revoke and reissue on exposure or when the key holder changes. No expiry. |
 | `NOTARY_KEY_ID` | The key id, ten characters, shown next to the key in the same table. Also embedded in the downloaded filename `AuthKey_<KEYID>.p8`. | Same page. | With the key. |
 | `NOTARY_ISSUER_ID` | Team issuer id, a UUID, shown once above the key table. Identical for every key of the team. | Same page. | Practically never; it is a team identifier, not a credential on its own. |
 
-## iOS TestFlight — `.github/workflows/testflight-ios.yml`
+## iOS TestFlight , `.github/workflows/testflight-ios.yml`
 
 | Secret | Purpose | How to obtain | Rotation |
 |---|---|---|---|
-| `ASC_KEY_P8` | App Store Connect API key, base64. Authenticates `xcodebuild -allowProvisioningUpdates` and the TestFlight upload. Needs role **App Manager** (or Admin) — the Developer role used for notarization cannot upload builds. | Same page as `NOTARY_KEY_P8`, but issue a **separate key** with the App Manager role. Downloads exactly once. | Revoke and reissue on exposure. |
+| `ASC_KEY_P8` | App Store Connect API key, base64. Authenticates `xcodebuild -allowProvisioningUpdates` and the TestFlight upload. Needs role **App Manager** (or Admin) , the Developer role used for notarization cannot upload builds. | Same page as `NOTARY_KEY_P8`, but issue a **separate key** with the App Manager role. Downloads exactly once. | Revoke and reissue on exposure. |
 | `ASC_KEY_ID` | Key id for that key. | Same page. | With the key. |
 | `ASC_ISSUER_ID` | Team issuer id (same UUID as `NOTARY_ISSUER_ID`). | Same page. | Practically never. |
 

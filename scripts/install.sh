@@ -100,5 +100,5 @@ fi
 
 info "done"
 echo
-echo "  Restart OBS. The source is called 'iPhone USB Camera'."
+echo "  Restart OBS. The source is called 'TetherCam (iPhone USB Camera)'."
 echo "  Connect the iPhone by cable, open the TetherCam app, then add the source in OBS."

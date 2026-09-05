@@ -1,8 +1,12 @@
-# obs-iphone-usb-cam
+<img src="docs/images/tethercam-icon-256.png" alt="TetherCam icon" width="128" align="left" hspace="12">
 
-Your iPhone camera as an OBS source, over the USB cable. No Continuity Camera, no Wi-Fi, no cloud, open source.
+# TetherCam
 
-![The OBS source "iPhone USB Camera" showing a live 1080p picture from an iPhone 15 Pro Max over the USB cable](docs/images/obs-iphone-live.png)
+iPhone camera into OBS over the USB cable. No Continuity Camera, no Wi-Fi, no cloud, open source.
+
+<br clear="left">
+
+![The OBS source "TetherCam (iPhone USB Camera)" showing a live 1080p picture from an iPhone 15 Pro Max over the USB cable](docs/images/obs-iphone-live.png)
 
 *Live 1080p from an iPhone 15 Pro Max, decoded in OBS. The stream never leaves the cable.*
 
@@ -81,24 +85,24 @@ Apple does not allow free distribution of iOS apps outside the App Store and Tes
 brew install xcodegen
 cd ios-app
 xcodegen generate
-open UsbCam.xcodeproj
+open TetherCam.xcodeproj
 ```
 
-In Xcode, select the `UsbCam` target, go to Signing and Capabilities, and set your own Team. Change `PRODUCT_BUNDLE_IDENTIFIER` to something unique to you (for example `com.yourname.usbcam`), otherwise signing fails on a bundle ID that is already taken.
+In Xcode, select the `TetherCam` target, go to Signing and Capabilities, and set your own Team. Change `PRODUCT_BUNDLE_IDENTIFIER` to something unique to you (for example `com.yourname.tethercam`), otherwise signing fails on a bundle ID that is already taken.
 
 On the phone, enable Developer Mode under Settings, Privacy and Security, Developer Mode, then restart the phone. Without this step installation fails even when the build succeeded.
 
 Then build and run to the connected device from Xcode. Or from the command line:
 
 ```sh
-xcodebuild -project UsbCam.xcodeproj -scheme UsbCam \
+xcodebuild -project TetherCam.xcodeproj -scheme TetherCam \
   -destination 'generic/platform=iOS' \
   -allowProvisioningUpdates -derivedDataPath build build
 
 xcrun devicectl list devices
 xcrun devicectl device install app --device <UDID> \
-  build/Build/Products/Debug-iphoneos/UsbCam.app
-xcrun devicectl device process launch --device <UDID> at.gotzendorfer.usbcam
+  build/Build/Products/Debug-iphoneos/TetherCam.app
+xcrun devicectl device process launch --device <UDID> at.gotzendorfer.tethercam
 ```
 
 More detail: [ios-app/README.md](ios-app/README.md).
@@ -106,8 +110,8 @@ More detail: [ios-app/README.md](ios-app/README.md).
 ## Usage
 
 1. Connect the iPhone to the Mac with a cable and unlock it.
-2. Open UsbCam on the phone and leave it in the foreground. iOS suspends the listener as soon as the app goes to the background, so the app keeps the screen on while streaming.
-3. In OBS, add a source of type **iPhone USB Camera**.
+2. Open TetherCam on the phone and leave it in the foreground. iOS suspends the listener as soon as the app goes to the background, so the app keeps the screen on while streaming.
+3. In OBS, add a source of type **TetherCam (iPhone USB Camera)**.
 4. Pick the device, the camera, the resolution, the frame rate and the bitrate. Changing any property reconnects immediately.
 
 The source properties are:
@@ -126,7 +130,7 @@ The source properties are:
 
 | Symptom | Likely cause |
 |---|---|
-| Black source, no log lines | UsbCam is not in the foreground on the phone, or the phone is locked |
+| Black source, no log lines | TetherCam is not in the foreground on the phone, or the phone is locked |
 | Nothing in the device list | Cable is charge only, phone not trusted, or Developer Mode is off |
 | `ERROR 1 BUSY` in the OBS log | Another receiver is already connected. Only one receiver per phone. Close the other OBS source or the CLI receiver |
 | Picture sideways or upside down | The app follows the phone orientation automatically (Auto-Rotation, on by default). Lying flat on a table there is no horizon, so mount the phone first. Override with the manual 0/90/180/270 picker in the app or the Rotation setting in the OBS source |
@@ -158,7 +162,7 @@ swift test --package-path tools
 bash tools/integration.sh
 
 # iOS unit tests, no device and no camera needed
-cd ios-app && xcodebuild test -project UsbCam.xcodeproj -scheme UsbCam \
+cd ios-app && xcodebuild test -project TetherCam.xcodeproj -scheme TetherCam \
   -destination 'platform=iOS Simulator,name=iPhone 17'
 ```
 

@@ -1,4 +1,4 @@
-# tools — Werkzeuge fuer obs-iphone-usb-cam
+# tools — Werkzeuge fuer TetherCam (Repo obs-iphone-usb-cam)
 
 Swift-Paket (macOS 13+, swift-tools-version 5.9) mit dem Protokoll-Codec und dem
 Sender-Simulator. Damit laesst sich der Empfaenger und spaeter das OBS-Plugin ohne

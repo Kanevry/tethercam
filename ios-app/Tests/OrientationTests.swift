@@ -1,5 +1,5 @@
 import XCTest
-@testable import UsbCam
+@testable import TetherCam
 
 /// Gravity vectors for the four physical poses, in CoreMotion device space
 /// (+x right along the short edge, +y towards the front camera, +z out of the

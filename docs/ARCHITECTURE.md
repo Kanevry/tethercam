@@ -11,7 +11,7 @@ document wins. The original design spec is
 
 | Component | Language | License | Role |
 |---|---|---|---|
-| `ios-app/` UsbCam | Swift 6, SwiftUI | MIT | Capture, hardware HEVC encode, TCP listener on port 7878 |
+| `ios-app/` TetherCam | Swift 6, SwiftUI | MIT | Capture, hardware HEVC encode, TCP listener on port 7878 |
 | `shared/frame_parser.c` | C11 | MIT | Stateful IUCM framer and message codec, no I/O, no Apple frameworks |
 | `shared/usbmux.c` | C11 | MIT | usbmuxd client with a hand written plist codec, builds on Linux too |
 | `obs-plugin/` | C and Objective-C++ | GPL-2.0-or-later | OBS source, VideoToolbox decode, reconnect logic |

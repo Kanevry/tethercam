@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct UsbCamApp: App {
+struct TetherCamApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()

@@ -1,7 +1,7 @@
 import CoreMedia
 import CoreVideo
 import XCTest
-@testable import UsbCam
+@testable import TetherCam
 
 final class HorizonLevelerTests: XCTestCase {
 

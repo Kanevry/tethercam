@@ -37,7 +37,7 @@
         }
     },
     "name": "obs-iphone-usb-cam",
-    "displayName": "iPhone USB Camera",
+    "displayName": "TetherCam for OBS",
     "version": "0.1.0",
     "author": "Bernhard Goetzendorfer",
     "website": "https://gitlab.gotzendorfer.at/agents/obs-iphone-usb-cam",

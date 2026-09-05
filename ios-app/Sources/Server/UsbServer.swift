@@ -39,7 +39,7 @@ public final class UsbServer {
     public init(capture: CaptureEngine) {
         self.capture = capture
         let name = UIDevice.current.name
-        let version = (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "1.0"
+        let version = (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "0.1.0"
         machine = ServerStateMachine(deviceName: name, appVersion: version,
                                      cameras: capture.descriptors)
         encoder.onMessage = { [weak self] msg in self?.queue.async { self?.emit(msg) } }

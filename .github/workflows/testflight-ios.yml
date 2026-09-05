@@ -33,9 +33,9 @@ env:
   # and a new TestFlight beta review; a bundle id cannot be renamed in place once a
   # build has been uploaded. Change it here, in ios-app/project.yml, and in the
   # xcrun devicectl invocations in CLAUDE.md at the same time.
-  IOS_BUNDLE_ID: at.gotzendorfer.usbcam
+  IOS_BUNDLE_ID: at.gotzendorfer.tethercam
   TEAM_ID: G3QZ66475M
-  SCHEME: UsbCam
+  SCHEME: TetherCam
 
 jobs:
   testflight:
@@ -116,11 +116,11 @@ jobs:
         run: |
           set -euo pipefail
           xcodebuild archive \
-            -project UsbCam.xcodeproj \
+            -project TetherCam.xcodeproj \
             -scheme "${{ env.SCHEME }}" \
             -configuration Release \
             -destination 'generic/platform=iOS' \
-            -archivePath "$RUNNER_TEMP/UsbCam.xcarchive" \
+            -archivePath "$RUNNER_TEMP/TetherCam.xcarchive" \
             -allowProvisioningUpdates \
             -authenticationKeyPath "${{ steps.asc.outputs.path }}" \
             -authenticationKeyID "$ASC_KEY_ID" \
@@ -137,7 +137,7 @@ jobs:
           # ExportOptions.plist carries destination=upload, so this single command
           # exports the .ipa and hands it to App Store Connect.
           xcodebuild -exportArchive \
-            -archivePath "$RUNNER_TEMP/UsbCam.xcarchive" \
+            -archivePath "$RUNNER_TEMP/TetherCam.xcarchive" \
             -exportPath "$RUNNER_TEMP/export" \
             -exportOptionsPlist packaging/ExportOptions.plist \
             -allowProvisioningUpdates \

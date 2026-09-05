@@ -1,4 +1,4 @@
-# obs-plugin — OBS-Quelle "iPhone USB Camera"
+# obs-plugin — OBS-Quelle "TetherCam (iPhone USB Camera)"
 
 macOS-Plugin fuer OBS Studio. Empfaengt den HEVC-Strom der iOS-App ueber den
 System-USB-Multiplexer (`/var/run/usbmuxd`), dekodiert ihn per VideoToolbox und
@@ -69,7 +69,7 @@ swift build -c release --package-path ../tools
 ../tools/.build/release/usbcam-sim --port 7878
 ```
 
-In OBS eine Quelle "iPhone USB Camera" anlegen und im Feld **Debug-TCP**
+In OBS eine Quelle "TetherCam (iPhone USB Camera)" anlegen und im Feld **Debug-TCP**
 `127.0.0.1:7878` eintragen. Das Log zeigt dann:
 
 ```
