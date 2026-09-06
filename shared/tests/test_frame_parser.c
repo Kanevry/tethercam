@@ -74,6 +74,9 @@ static void test_version_constant(void) {
     CHECK_EQ_INT(IUCM_VERSION_1_0, 0x0100);
     CHECK_EQ_INT(IUCM_VERSION_MAJOR(IUCM_VERSION_1_0), 1);
     CHECK_EQ_INT(IUCM_VERSION_MINOR(IUCM_VERSION_1_0), 0);
+    CHECK_EQ_INT(IUCM_VERSION_1_1, 0x0101);
+    CHECK_EQ_INT(IUCM_VERSION_MAJOR(IUCM_VERSION_1_1), 1);
+    CHECK_EQ_INT(IUCM_VERSION_MINOR(IUCM_VERSION_1_1), 1);
 }
 
 /* ---- round-trips ------------------------------------------------------- */
@@ -123,7 +126,7 @@ static void test_roundtrip_hello(void) {
 }
 
 static void test_roundtrip_start_stop(void) {
-    struct iucm_start in = {2, 1920, 1080, 30, 12000}, out;
+    struct iucm_start in = {2, 1920, 1080, 30, 12000, 0}, out;
     uint8_t           buf[64];
     size_t            n = 0;
     struct sink       s;
@@ -152,6 +155,105 @@ static void test_roundtrip_start_stop(void) {
     CHECK_EQ_INT(s.count, 1);
     CHECK_EQ_INT(s.msgs[0].type, IUCM_MSG_STOP);
     CHECK_EQ_INT(s.msgs[0].length, 0);
+}
+
+/* PROTOCOL.md 4.2: 11 and 12 bytes are both valid, longer is not an error. */
+static void test_start_flags_lengths(void) {
+    struct iucm_start in = {3, 1280, 720, 60, 8000, IUCM_START_FLAG_AUDIO}, out;
+    uint8_t           buf[64];
+    size_t            n = 0;
+
+    /* flags set -> 12-byte payload */
+    CHECK_EQ_INT(iucm_encode_start(buf, sizeof(buf), &in, &n), IUCM_OK);
+    CHECK_EQ_INT(n, 12 + 12);
+    CHECK_EQ_INT(buf[12 + 11], IUCM_START_FLAG_AUDIO);
+    CHECK_EQ_INT(iucm_parse_start(buf + 12, 12, &out), IUCM_OK);
+    CHECK_EQ_INT(out.camera_id, 3);
+    CHECK_EQ_INT(out.width, 1280);
+    CHECK_EQ_INT(out.height, 720);
+    CHECK_EQ_INT(out.fps, 60);
+    CHECK_EQ_INT(out.bitrate_kbps, 8000);
+    CHECK_EQ_INT(out.flags, IUCM_START_FLAG_AUDIO);
+
+    /* flags clear -> 1.0-compatible 11-byte payload */
+    in.flags = 0;
+    CHECK_EQ_INT(iucm_encode_start(buf, sizeof(buf), &in, &n), IUCM_OK);
+    CHECK_EQ_INT(n, 12 + 11);
+    CHECK_EQ_INT(iucm_parse_start(buf + 12, 11, &out), IUCM_OK);
+    CHECK_EQ_INT(out.flags, 0);
+    CHECK_EQ_INT(out.bitrate_kbps, 8000);
+
+    /* 13 bytes: the surplus byte is ignored, flags still read from offset 11 */
+    {
+        uint8_t payload[13];
+        memset(payload, 0, sizeof(payload));
+        payload[0]  = 7;
+        payload[11] = IUCM_START_FLAG_AUDIO;
+        payload[12] = 0xAB;
+        CHECK_EQ_INT(iucm_parse_start(payload, 13, &out), IUCM_OK);
+        CHECK_EQ_INT(out.camera_id, 7);
+        CHECK_EQ_INT(out.flags, IUCM_START_FLAG_AUDIO);
+    }
+
+    /* 10 bytes is short of the 1.0 minimum and stays an error */
+    {
+        uint8_t payload[10];
+        memset(payload, 0, sizeof(payload));
+        CHECK_EQ_INT(iucm_parse_start(payload, 10, &out), IUCM_ERR_TRUNCATED);
+    }
+}
+
+/* PROTOCOL.md 4.9 / 4.10. */
+static void test_parse_audio_config_and_audio(void) {
+    struct iucm_audio_config ac;
+    struct iucm_audio        au;
+
+    {
+        /* 48000 Hz, 1 channel, AAC-LC, 2-byte ASC */
+        uint8_t payload[10] = {0x80, 0xBB, 0x00, 0x00, 1, IUCM_AUDIO_CODEC_AAC_LC,
+                               0x02, 0x00, 0x11, 0x90};
+        CHECK_EQ_INT(iucm_parse_audio_config(payload, sizeof(payload), &ac), IUCM_OK);
+        CHECK_EQ_INT(ac.sample_rate, 48000);
+        CHECK_EQ_INT(ac.channels, 1);
+        CHECK_EQ_INT(ac.codec, IUCM_AUDIO_CODEC_AAC_LC);
+        CHECK_EQ_INT(ac.asc_len, 2);
+        CHECK(ac.asc == payload + 8);
+        CHECK_EQ_INT(ac.asc[0], 0x11);
+        CHECK_EQ_INT(ac.asc[1], 0x90);
+
+        /* asc_len past the payload end is truncated, not a buffer overread */
+        CHECK_EQ_INT(iucm_parse_audio_config(payload, 9, &ac), IUCM_ERR_TRUNCATED);
+        /* a header without the asc_len field is truncated as well */
+        CHECK_EQ_INT(iucm_parse_audio_config(payload, 7, &ac), IUCM_ERR_TRUNCATED);
+        /* asc_len == 0 is legal on the wire */
+        payload[6] = 0;
+        CHECK_EQ_INT(iucm_parse_audio_config(payload, 8, &ac), IUCM_OK);
+        CHECK_EQ_INT(ac.asc_len, 0);
+        CHECK(ac.asc == NULL);
+        /* an unknown codec is passed through, never rejected */
+        payload[5] = 99;
+        CHECK_EQ_INT(iucm_parse_audio_config(payload, 8, &ac), IUCM_OK);
+        CHECK_EQ_INT(ac.codec, 99);
+    }
+    {
+        uint8_t payload[11] = {0x40, 0xE2, 0x01, 0, 0, 0, 0, 0, 0xDE, 0xAD, 0xBE};
+        CHECK_EQ_INT(iucm_parse_audio(payload, sizeof(payload), &au), IUCM_OK);
+        CHECK_EQ_INT(au.pts_us, 123456);
+        CHECK_EQ_INT(au.len, 3);
+        CHECK(au.frame == payload + 8);
+        CHECK_EQ_INT(au.frame[0], 0xDE);
+
+        /* an empty frame is valid framing and carries nothing */
+        CHECK_EQ_INT(iucm_parse_audio(payload, 8, &au), IUCM_OK);
+        CHECK_EQ_INT(au.pts_us, 123456);
+        CHECK_EQ_INT(au.len, 0);
+        CHECK(au.frame == NULL);
+
+        /* a pts that does not fit is a truncated payload */
+        CHECK_EQ_INT(iucm_parse_audio(payload, 7, &au), IUCM_ERR_TRUNCATED);
+    }
+    CHECK_EQ_STR(iucm_type_name(IUCM_MSG_AUDIO_CONFIG), "AUDIO_CONFIG");
+    CHECK_EQ_STR(iucm_type_name(IUCM_MSG_AUDIO), "AUDIO");
 }
 
 static void test_roundtrip_config(void) {
@@ -511,6 +613,8 @@ int main(void) {
     RUN(test_version_constant);
     RUN(test_roundtrip_hello);
     RUN(test_roundtrip_start_stop);
+    RUN(test_start_flags_lengths);
+    RUN(test_parse_audio_config_and_audio);
     RUN(test_roundtrip_config);
     RUN(test_roundtrip_video_and_nal_iteration);
     RUN(test_video_iter_rejects_bad_prefix);

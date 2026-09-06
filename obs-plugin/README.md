@@ -58,9 +58,16 @@ Wirkt erst nach einem OBS-Neustart. Kontrolle im neuesten Log unter
 | Aufloesung | `resolution` | `1280x720` oder `1920x1080` |
 | Bildrate | `fps` | 30 oder 60 |
 | Bitrate | `bitrate_kbps` | Vorgabe 12000 |
+| Audio from the phone | `audio` | Vorgabe an; steuert Bit 0 im START-Flags-Byte (PROTOCOL.md 4.2) |
 | Debug-TCP | `debug_tcp` | `host:port`; gesetzt umgeht die Quelle usbmuxd und verbindet direkt per TCP |
 
 Aenderungen an den Eigenschaften bauen die Verbindung sofort neu auf.
+
+Die Quelle traegt `OBS_SOURCE_AUDIO`, dekodiertes Audio geht per
+`obs_source_output_audio` raus und landet damit wie jede andere Quelle im
+OBS-Mixer, inklusive eigenem Stummschalter dort. Steht das Audio-Haekchen aus,
+sendet der Worker-Thread das kompatible 11-Byte-START ohne Bit 0, und es kommt
+weder `AUDIO_CONFIG` noch `AUDIO` an.
 
 ## Test ohne iPhone (Simulator)
 

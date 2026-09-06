@@ -132,6 +132,25 @@ public final class CaptureEngine: NSObject {
     /// `AVCaptureSession`, so it is untouched by a lens change.
     public let audio = AudioCapture()
 
+    /// User-facing mute switch, mirrored onto the audio capture. Muting drops the
+    /// encoded access units instead of stopping the microphone, so unmuting is
+    /// instant and the pts chain stays monotone.
+    public var audioMuted: Bool {
+        get { audio.isMuted }
+        set { audio.isMuted = newValue }
+    }
+
+    /// True while the active START asked for audio. Written next to
+    /// `setEncoding`, so STATS can tell "no audio requested" from "muted".
+    public var audioRequested: Bool {
+        motionLock.lock(); defer { motionLock.unlock() }
+        return audioRequestedFlag
+    }
+    private var audioRequestedFlag = false
+    private func setAudioRequested(_ on: Bool) {
+        motionLock.lock(); audioRequestedFlag = on; motionLock.unlock()
+    }
+
     /// Called on `sampleQueue` for every delivered frame.
     public var onSampleBuffer: ((CMSampleBuffer) -> Void)?
     /// Actually negotiated format after `start` — may differ from the request.
@@ -203,6 +222,7 @@ public final class CaptureEngine: NSObject {
         lastParams = params
         previewCameraId = cam.id
         setEncoding(true)
+        setAudioRequested(params.wantsAudio)
         sessionQueue.async { [self] in
             do {
                 session.beginConfiguration()
@@ -266,6 +286,7 @@ public final class CaptureEngine: NSObject {
                 session.commitConfiguration()
                 audio.stop()
                 setEncoding(false)
+                setAudioRequested(false)
                 completion(.failure(error))
             }
         }
@@ -276,6 +297,7 @@ public final class CaptureEngine: NSObject {
     /// restarting AVCaptureSession costs about a second of black.
     public func stop() {
         setEncoding(false)
+        setAudioRequested(false)
         sessionQueue.async { [self] in
             // A START that arrived while this block waited (the restart path in
             // ServerStateMachine emits stopCapture + startCapture for a format

@@ -21,6 +21,10 @@
 "settings.horizonLeveling" = "Level the horizon";
 "settings.manualAngle" = "Manual angle";
 "settings.diagnostics" = "Diagnostics";
+"settings.audio" = "Microphone";
+"settings.audioMuted" = "Mute microphone";
+"settings.audioFootnote" = "Audio goes to OBS over the cable together with the picture. OBS mixes it like any other source.";
+"settings.audioDenied" = "Microphone access denied";
 "link.privacy" = "Privacy policy";
 "link.installPlugin" = "Install the Mac plugin";
 

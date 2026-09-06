@@ -454,3 +454,8 @@ baut und testet auf macOS und Linux:
 ```
 cmake -S shared -B shared/build && cmake --build shared/build && ctest --test-dir shared/build --output-on-failure
 ```
+
+`tools/usbcam-sim` und `tools/usbcam-recv` bilden den Audio-Teil (4.9/4.10) mit ab: der
+Simulator sendet einen 440-Hz-AAC-Ton, der Empfaenger dekodiert ihn und meldet
+`audio_frames`, `audio_sample_rate` und `audio_video_pts_skew_ms` in seiner
+JSON-Zusammenfassung (`tools/README.md`).

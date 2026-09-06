@@ -27,6 +27,12 @@ final class AppModel: ObservableObject {
     @Published var manualRotation: Int = 0 {
         didSet { capture.manualRotationAngle = CGFloat(manualRotation) }
     }
+    /// Mute switch for the microphone half of the stream. The encoder keeps
+    /// running while this is on; only the finished packets are dropped.
+    @Published var audioMuted = false { didSet { capture.audioMuted = audioMuted } }
+    /// Mirrored from the audio capture on the one-second stats tick, so the
+    /// settings sheet can explain a mute switch that has nothing to mute.
+    @Published var audioDenied = false
 
     let capture = CaptureEngine()
     private lazy var server = UsbServer(capture: capture)
@@ -56,7 +62,10 @@ final class AppModel: ObservableObject {
         server.onStats = { [weak self] s in
             Task { @MainActor in
                 self?.stats = s
-                if let c = self?.capture { self?.leveler = c.levelerTelemetry }
+                if let c = self?.capture {
+                    self?.leveler = c.levelerTelemetry
+                    self?.audioDenied = c.audio.micDenied
+                }
             }
         }
         // Straight to the system alert. The purpose string in Info.plist is the
@@ -110,6 +119,9 @@ final class AppModel: ObservableObject {
 struct ContentView: View {
     @StateObject private var model = AppModel()
     @AppStorage("horizonLeveling") private var horizonLeveling = true
+    /// Off by default: a camera that silently sends no sound is the worse
+    /// surprise of the two.
+    @AppStorage("audioMuted") private var audioMuted = false
     /// Back wide (id 0) is the default: it is the lens a phone in a mount is
     /// pointed with unless someone says otherwise.
     @AppStorage("preferredCameraId") private var preferredCameraId = 0
@@ -128,7 +140,8 @@ struct ContentView: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .top) {
-                    StatusPill(link: model.link, format: model.formatLabel)
+                    StatusPill(link: model.link, format: model.formatLabel,
+                               muted: model.audioMuted)
                     Spacer()
                     Button {
                         showSettings = true
@@ -160,14 +173,17 @@ struct ContentView: View {
         .statusBarHidden(true)
         .onAppear {
             model.horizonLeveling = horizonLeveling
+            model.audioMuted = audioMuted
             model.boot()
             model.selectCamera(UInt8(clamping: preferredCameraId))
         }
         .onChange(of: horizonLeveling) { _, on in model.horizonLeveling = on }
+        .onChange(of: audioMuted) { _, on in model.audioMuted = on }
         .onChange(of: preferredCameraId) { _, id in model.selectCamera(UInt8(clamping: id)) }
         .onChange(of: scenePhase) { _, phase in handleScenePhase(phase) }
         .sheet(isPresented: $showSettings) {
             SettingsSheet(model: model, horizonLeveling: $horizonLeveling,
+                          audioMuted: $audioMuted,
                           preferredCameraId: $preferredCameraId)
         }
     }
@@ -196,11 +212,20 @@ struct ContentView: View {
 struct StatusPill: View {
     let link: AppModel.Link
     let format: String
+    var muted: Bool = false
 
     var body: some View {
         HStack(spacing: 8) {
             Circle().fill(color).frame(width: 10, height: 10)
             text.font(.footnote.weight(.medium)).foregroundStyle(.white)
+            // Only while a take runs: a mute switch flipped in advance is a
+            // setting, a muted live stream is something to notice.
+            if muted && link == .streaming {
+                Image(systemName: "mic.slash.fill")
+                    .font(.footnote)
+                    .foregroundStyle(.orange)
+                    .accessibilityLabel(Text("settings.audioMuted"))
+            }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
@@ -266,6 +291,7 @@ struct PermissionDeniedCard: View {
 struct SettingsSheet: View {
     @ObservedObject var model: AppModel
     @Binding var horizonLeveling: Bool
+    @Binding var audioMuted: Bool
     @Binding var preferredCameraId: Int
     @Environment(\.dismiss) private var dismiss
     @State private var showAdvanced = false
@@ -292,6 +318,19 @@ struct SettingsSheet: View {
                             }
                         }
                     }
+                }
+
+                Section {
+                    Toggle("settings.audioMuted", isOn: $audioMuted)
+                    if model.audioDenied {
+                        Text("settings.audioDenied")
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                    }
+                } header: {
+                    Text("settings.audio")
+                } footer: {
+                    Text("settings.audioFootnote")
                 }
 
                 Section {

@@ -281,7 +281,9 @@ int iucm_encode_start(uint8_t *out, size_t cap, const struct iucm_start *s,
     size_t off;
     int    rc;
     if (!s) return IUCM_ERR_BADARG;
-    rc = frame_begin(out, cap, 11, IUCM_MSG_START, 0, written);
+    /* The short form stays the default: a 1.0 app treats a surplus byte as a
+     * framing error, so the flags byte is only written when it carries a wish. */
+    rc = frame_begin(out, cap, s->flags != 0 ? 12u : 11u, IUCM_MSG_START, 0, written);
     if (rc != IUCM_OK) return rc;
     off        = IUCM_HEADER_SIZE;
     out[off++] = s->camera_id;
@@ -292,6 +294,8 @@ int iucm_encode_start(uint8_t *out, size_t cap, const struct iucm_start *s,
     put_u16(out + off, s->fps);
     off += 2;
     put_u32(out + off, s->bitrate_kbps);
+    off += 4;
+    if (s->flags != 0) out[off] = s->flags;
     return IUCM_OK;
 }
 
@@ -420,6 +424,9 @@ int iucm_parse_start(const uint8_t *payload, uint32_t len, struct iucm_start *ou
     if ((rc = cur_u16(&c, &out->height)) != IUCM_OK) return rc;
     if ((rc = cur_u16(&c, &out->fps)) != IUCM_OK) return rc;
     if ((rc = cur_u32(&c, &out->bitrate_kbps)) != IUCM_OK) return rc;
+    /* The flags byte is optional (PROTOCOL.md 4.2): 11 bytes mean flags == 0,
+     * and bytes past the twelfth belong to a later minor version. */
+    if (cur_need(&c, 1)) out->flags = c.p[c.off];
     return IUCM_OK;
 }
 
@@ -490,6 +497,34 @@ int iucm_parse_stats(const uint8_t *payload, uint32_t len, struct iucm_stats *ou
     return IUCM_OK;
 }
 
+int iucm_parse_audio_config(const uint8_t *payload, uint32_t len,
+                            struct iucm_audio_config *out) {
+    struct cur c;
+    int        rc;
+    if (!payload || !out) return IUCM_ERR_BADARG;
+    memset(out, 0, sizeof(*out));
+    c.p = payload; c.len = len; c.off = 0;
+    if ((rc = cur_u32(&c, &out->sample_rate)) != IUCM_OK) return rc;
+    if ((rc = cur_u8(&c, &out->channels)) != IUCM_OK) return rc;
+    if ((rc = cur_u8(&c, &out->codec)) != IUCM_OK) return rc;
+    if ((rc = cur_u16(&c, &out->asc_len)) != IUCM_OK) return rc;
+    if (!cur_need(&c, out->asc_len)) return IUCM_ERR_TRUNCATED;
+    /* channels and codec travel unvalidated on purpose (PROTOCOL.md 4.9). */
+    if (out->asc_len > 0) out->asc = payload + c.off;
+    return IUCM_OK;
+}
+
+int iucm_parse_audio(const uint8_t *payload, uint32_t len, struct iucm_audio *out) {
+    if (!payload || !out) return IUCM_ERR_BADARG;
+    memset(out, 0, sizeof(*out));
+    if (len < 8) return IUCM_ERR_TRUNCATED;
+    out->pts_us = get_u64(payload);
+    out->len    = len - 8u;
+    /* An empty frame is valid framing, PROTOCOL.md 4.10; the consumer drops it. */
+    if (out->len > 0) out->frame = payload + 8;
+    return IUCM_OK;
+}
+
 int iucm_video_iter_init(struct iucm_video_iter *it, const uint8_t *payload, uint32_t len) {
     if (!it || !payload) return IUCM_ERR_BADARG;
     if (len < 8) return IUCM_ERR_TRUNCATED;
@@ -534,6 +569,8 @@ const char *iucm_type_name(uint8_t type) {
     case IUCM_MSG_STOP:   return "STOP";
     case IUCM_MSG_CONFIG: return "CONFIG";
     case IUCM_MSG_VIDEO:  return "VIDEO";
+    case IUCM_MSG_AUDIO_CONFIG: return "AUDIO_CONFIG";
+    case IUCM_MSG_AUDIO:  return "AUDIO";
     case IUCM_MSG_PING:   return "PING";
     case IUCM_MSG_PONG:   return "PONG";
     case IUCM_MSG_ERROR:  return "ERROR";

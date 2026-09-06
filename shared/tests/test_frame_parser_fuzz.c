@@ -70,6 +70,29 @@ static int fuzz_cb(void *ctx, const struct iucm_msg *msg) {
         }
         for (i = 0; i < msg->length; i++) f->checksum += msg->payload[i];
     }
+    /* The 1.1 payloads are decoded here too, so a bad length or a runaway
+     * asc_len inside the fuzzed stream shows up as an ASan report, not as a
+     * silently accepted frame. */
+    if (msg->type == IUCM_MSG_AUDIO_CONFIG) {
+        struct iucm_audio_config ac;
+        if (iucm_parse_audio_config(msg->payload, msg->length, &ac) == IUCM_OK) {
+            uint32_t k;
+            for (k = 0; k < ac.asc_len; k++) f->checksum += ac.asc[k];
+        }
+    }
+    if (msg->type == IUCM_MSG_AUDIO) {
+        struct iucm_audio au;
+        if (iucm_parse_audio(msg->payload, msg->length, &au) == IUCM_OK) {
+            uint32_t k;
+            f->checksum += au.pts_us;
+            for (k = 0; k < au.len; k++) f->checksum += au.frame[k];
+        }
+    }
+    if (msg->type == IUCM_MSG_START) {
+        struct iucm_start st;
+        if (iucm_parse_start(msg->payload, msg->length, &st) == IUCM_OK)
+            f->checksum += st.flags;
+    }
     if (msg->type == IUCM_MSG_PONG) {
         uint64_t ts = 0;
         if (iucm_parse_timestamp(msg->payload, msg->length, &ts) == IUCM_OK &&
@@ -85,7 +108,7 @@ static int fuzz_cb(void *ctx, const struct iucm_msg *msg) {
  * when it does not fit. */
 static size_t splice_valid_frame(uint8_t *out, size_t room) {
     size_t written = 0;
-    int    kind    = (int)rnd_below(5);
+    int    kind    = (int)rnd_below(7);
 
     switch (kind) {
     case 0:
@@ -106,8 +129,43 @@ static size_t splice_valid_frame(uint8_t *out, size_t room) {
         s.height       = 1080;
         s.fps          = 30;
         s.bitrate_kbps = 12000;
+        /* Both START lengths, 11 and 12 bytes, appear in the stream. */
+        s.flags = (uint8_t)(rnd64() & 1u) ? IUCM_START_FLAG_AUDIO : (uint8_t)0;
         if (iucm_encode_start(out, room, &s, &written) != IUCM_OK) return 0;
         return written;
+    }
+    case 4: {
+        /* AUDIO_CONFIG, PROTOCOL.md 4.9. shared/ has no encoder for it, so the
+         * frame is written here; the header still comes from the library. */
+        uint32_t asc_len = rnd_below(8);
+        uint32_t payload = 8u + asc_len;
+        uint32_t i;
+        if (room < IUCM_HEADER_SIZE + payload) return 0;
+        iucm_write_header(out, IUCM_MSG_AUDIO_CONFIG, 0, payload);
+        out[IUCM_HEADER_SIZE + 0] = 0x80; /* 48000 LE */
+        out[IUCM_HEADER_SIZE + 1] = 0xBB;
+        out[IUCM_HEADER_SIZE + 2] = 0x00;
+        out[IUCM_HEADER_SIZE + 3] = 0x00;
+        out[IUCM_HEADER_SIZE + 4] = 1;
+        out[IUCM_HEADER_SIZE + 5] = (uint8_t)rnd_below(4);
+        out[IUCM_HEADER_SIZE + 6] = (uint8_t)asc_len;
+        out[IUCM_HEADER_SIZE + 7] = 0;
+        for (i = 0; i < asc_len; i++)
+            out[IUCM_HEADER_SIZE + 8 + i] = (uint8_t)rnd64();
+        return IUCM_HEADER_SIZE + payload;
+    }
+    case 5: {
+        /* AUDIO, PROTOCOL.md 4.10; an empty frame is a legal length of 8. */
+        uint32_t body    = rnd_below(64);
+        uint32_t payload = 8u + body;
+        uint32_t i;
+        uint64_t pts = rnd64();
+        if (room < IUCM_HEADER_SIZE + payload) return 0;
+        iucm_write_header(out, IUCM_MSG_AUDIO, 0, payload);
+        for (i = 0; i < 8; i++)
+            out[IUCM_HEADER_SIZE + i] = (uint8_t)((pts >> (8 * i)) & 0xFFu);
+        for (i = 0; i < body; i++) out[IUCM_HEADER_SIZE + 8 + i] = (uint8_t)rnd64();
+        return IUCM_HEADER_SIZE + payload;
     }
     default: {
         uint8_t        nal[64];

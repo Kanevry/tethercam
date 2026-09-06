@@ -79,6 +79,17 @@ xcrun devicectl device process launch \
 - Bleibt der PING des Mac laenger als 6 Sekunden aus, verwirft die App die
   Verbindung und gibt den Listener frei.
 - Farbkonvention fest: NV12 Video-Range, BT.709 (Primaries, Transfer, Matrix).
+- Fragt die Gegenseite Audio an (START-Flags-Byte Bit 0, gesteuert vom
+  Plugin-Haekchen "Audio from the phone"), holt sich die App die
+  Mikrofonberechtigung (`NSMicrophoneUsageDescription`: "The microphone audio
+  is sent to the Mac over the USB cable together with the picture."). Verweigert
+  der Nutzer sie, sendet die App einmalig `ERROR` Code 6 (MIC_DENIED) und
+  streamt weiter, nur ohne Ton. Der Schalter "Mikrofon stummschalten" im
+  Einstellungs-Sheet (`@AppStorage("audioMuted")`) ist ein Frame-Gate:
+  `CaptureEngine.audioMuted` haelt fertig kodierte AAC-Access-Units zurueck,
+  der Encoder laeuft weiter und die pts-Kette bleibt monoton. Waehrend des
+  Streams zeigt die Statuskapsel dann ein `mic.slash`-Symbol, und STATS traegt
+  die Bits 4 (audio_active) und 5 (audio_muted).
 
 ## Bildlage
 

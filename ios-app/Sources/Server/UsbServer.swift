@@ -352,7 +352,24 @@ public final class UsbServer {
     /// per PROTOCOL.md section 2, so this is safe to send unconditionally.
     private func sendStats() {
         guard let id = machine.activeConnection else { return }
-        send(.stats(capture.statsSnapshot()), to: id)
+        var snapshot = capture.statsSnapshot()
+        let muted = capture.audioMuted
+        // "Active" is the honest answer to "does AUDIO reach this receiver right
+        // now": a take is running, it asked for audio, the microphone is not
+        // muted, and this very connection already has the AudioSpecificConfig.
+        let active = machine.isStreaming && capture.isEncoding
+            && capture.audioRequested && !muted && audioConfigSentTo == id
+        snapshot.flags |= Self.audioFlags(active: active, muted: muted)
+        send(.stats(snapshot), to: id)
+    }
+
+    /// Bits 4 and 5 of the STATS flag byte (`protocol/PROTOCOL.md` section 4.8).
+    /// Pure, so the bit assignment is testable without a socket or a microphone.
+    static func audioFlags(active: Bool, muted: Bool) -> UInt8 {
+        var flags: UInt8 = 0
+        if active { flags |= DeviceStats.flagAudioActive }
+        if muted { flags |= DeviceStats.flagAudioMuted }
+        return flags
     }
 
     private func refreshStats() {

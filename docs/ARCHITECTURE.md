@@ -45,6 +45,34 @@ joins it, so there is no window where a dead source still emits frames.
 There is no frame queue anywhere in the path. A queue would add latency to hide jitter
 that a 1 ms cable does not produce.
 
+## Audio
+
+The audio path mirrors the video path one component down. `AVCaptureAudioDataOutput`
+hangs off the same `AVCaptureSession` the camera already runs on, so its PCM buffers
+carry presentation timestamps from the same capture-session clock the video buffers
+use (`ios-app/Sources/Capture/AudioCapture.swift`). A plain `AudioConverter` turns that
+PCM into AAC-LC, 48 kHz, mono, 96 kbps, 1024 samples per access unit, and announces the
+format once via `AUDIO_CONFIG` (the magic cookie) before the first `AUDIO` frame
+(`protocol/PROTOCOL.md` 4.9/4.10). On the Mac, `aac_decoder.mm` runs an `AudioConverter`
+back to Float32 PCM, and `iphone_source.mm` hands the result to OBS with
+`obs_source_output_audio`.
+
+**PTS coupling.** There is no correlation arithmetic on the wire. The anchor is the
+presentation timestamp of the first PCM buffer of the take, read from the same
+capture-session clock as the first VIDEO frame's timestamp. Every later access unit's
+pts is `anchor + n * 1024 * 1_000_000 / 48000` microseconds, one 1024-sample step per
+packet, whether that packet is actually sent or not.
+
+**Mute is a frame gate, not a stream stop.** The encoder keeps running while the
+microphone is muted; the finished access units are dropped instead of sent, but the
+packet counter, and with it the pts, keeps advancing, so unmuting resumes exactly where
+the wall clock says it should instead of restarting the timeline at the anchor.
+
+**Backward compatibility.** The audio wish rides bit 0 of the START flags byte
+(`protocol/PROTOCOL.md` 4.2). A 1.0 receiver sends the 11 byte START from before that
+byte existed and never asks for audio, so it gets no `AUDIO_CONFIG` and no `AUDIO`,
+only the video stream it always had.
+
 ## 3. Protocol summary
 
 A 12 byte header (`IUCM` magic, type, flags, reserved, u32 little endian length) followed

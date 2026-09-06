@@ -11,6 +11,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PKG="$ROOT/tools"
 PORT="${IUCM_PORT:-7979}"
 DUMP=/tmp/iucm-int.hevc
+DUMPA=/tmp/iucm-int-audio.aac
 PNG=/tmp/iucm-int.png
 JSONF=/tmp/iucm-int.json
 SIMLOG=/tmp/iucm-int-sim.log
@@ -44,7 +45,7 @@ RECV="$PKG/.build/release/usbcam-recv"
 [ -x "$RECV" ] || die "usbcam-recv fehlt"
 
 echo "== sim auf 127.0.0.1:$PORT"
-rm -f "$DUMP" "$PNG" "$JSONF"
+rm -f "$DUMP" "$DUMPA" "$PNG" "$JSONF"
 "$SIM" --bind 127.0.0.1 --port "$PORT" >"$SIMLOG" 2>&1 &
 SIM_PID=$!
 for _ in $(seq 1 50); do
@@ -56,7 +57,7 @@ echo "   pid=$SIM_PID"
 
 echo "== recv 5 s"
 "$RECV" --tcp "127.0.0.1:$PORT" --size ${WIDTH}x${HEIGHT} --bitrate 6000 \
-        --seconds 5 --dump "$DUMP" --json >"$JSONF"
+        --seconds 5 --dump "$DUMP" --dump-audio "$DUMPA" --json >"$JSONF"
 RC=$?
 [ $RC -eq 0 ] || die "usbcam-recv exit $RC"
 SUMMARY="$(cat "$JSONF")"
@@ -66,6 +67,8 @@ field() { python3 -c "import json,sys;print(json.load(open('$JSONF'))['$1'])"; }
 
 FPS=$(field fps_avg); KEY=$(field keyframes); FFMS=$(field first_frame_ms)
 RTT=$(field ping_rtt_ms_avg); FRAMES=$(field frames); NALS=$(field nals)
+AUDIO_FRAMES=$(field audio_frames); AUDIO_RATE=$(field audio_sample_rate)
+AUDIO_SKEW=$(field audio_video_pts_skew_ms)
 
 assert() { # assert <ist> <op> <soll> <label>
     python3 -c "import sys;sys.exit(0 if float('$1') $2 float('$3') else 1)" \
@@ -80,6 +83,13 @@ assert "$RTT" "<" 50 "ping_rtt_ms_avg"
 assert "$FRAMES" ">" 0 "frames"
 assert "$NALS" ">=" "$FRAMES" "nals"
 
+# Audio: 5 s bei 46,9 AAC-Frames/s (48000 Hz / 1024 Samples je Frame) sind rund 234
+# Frames; 100 laesst Anlaufzeit und Hostlast Luft, ohne die Abnahme zu verwaessern.
+assert "$AUDIO_FRAMES" ">=" 100 "audio_frames"
+assert "$AUDIO_RATE" "==" 48000 "audio_sample_rate"
+AUDIO_SKEW_ABS=$(python3 -c "print(abs(float('$AUDIO_SKEW')))")
+assert "$AUDIO_SKEW_ABS" "<=" 50 "audio_video_pts_skew_ms_abs"
+
 echo "== ffmpeg decode"
 [ -s "$DUMP" ] || die "$DUMP ist leer"
 "$FFMPEG" -v error -i "$DUMP" -frames:v 1 -y "$PNG" || die "ffmpeg decode"
@@ -88,6 +98,13 @@ SIZE="$("$FFPROBE" -v error -select_streams v:0 -show_entries stream=width,heigh
 [ "$SIZE" = "${WIDTH}x${HEIGHT}" ] || die "PNG ist $SIZE, erwartet ${WIDTH}x${HEIGHT}"
 echo "   ok  $PNG $SIZE"
 
+echo "== ffprobe audio"
+[ -s "$DUMPA" ] || die "$DUMPA ist leer"
+ASTREAM="$("$FFPROBE" -v error -show_entries stream=codec_name,sample_rate,channels \
+        -of csv=p=0 "$DUMPA")"
+[ "$ASTREAM" = "aac,48000,1" ] || die "Audio-Stream ist $ASTREAM, erwartet aac,48000,1"
+echo "   ok  $DUMPA $ASTREAM"
+
 echo
-echo "PASS  frames=$FRAMES fps=$FPS keyframes=$KEY first_frame_ms=$FFMS rtt_ms=$RTT png=$SIZE"
+echo "PASS  frames=$FRAMES fps=$FPS keyframes=$KEY first_frame_ms=$FFMS rtt_ms=$RTT png=$SIZE audio_frames=$AUDIO_FRAMES skew_ms=$AUDIO_SKEW"
 exit 0

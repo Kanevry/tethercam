@@ -31,7 +31,7 @@ swift test --package-path tools
 ## usbcam-sim
 
 ```sh
-usbcam-sim [--bind HOST] [--port PORT] [--dump FILE]
+usbcam-sim [--bind HOST] [--port PORT] [--dump FILE] [--no-audio]
 ```
 
 - `--bind` lokale Adresse, Vorgabe `127.0.0.1`
@@ -39,6 +39,8 @@ usbcam-sim [--bind HOST] [--port PORT] [--dump FILE]
 - `--dump` schreibt den kodierten Strom zusaetzlich als Annex-B-HEVC (mit
   Parametersaetzen vor jedem Keyframe), damit `ffplay`/`ffmpeg` ihn unabhaengig
   pruefen koennen
+- `--no-audio` haelt den Sinuston auch dann zurueck, wenn das START-Flags-Byte
+  Bit 0 (Audio) setzt
 
 Beispiel:
 
@@ -59,6 +61,10 @@ geht eine Statuszeile (fps, kbps, Keyframes) nach stderr.
 Farbkonvention fix laut Spec: NV12 Video-Range, BT.709 in Primaries, Transfer und
 Matrix, am Pixelpuffer und am Encoder gesetzt.
 
+Sendet zusaetzlich einen 440-Hz-Sinuston als AAC-LC (48 kHz, mono, 96 kbps), sobald
+das START-Flags-Byte Bit 0 setzt: erst `AUDIO_CONFIG`, danach `AUDIO`-Frames im
+1024-Sample-Takt, auf derselben Uhr wie VIDEO (PROTOCOL.md 4.9/4.10).
+
 **Totlink:** Die 6-Sekunden-Regel wird erst scharf, nachdem der Empfaenger den
 ersten PING geschickt hat. Ein Empfaenger, der noch gar nicht pingt, wird also
 nicht mitten im Handshake abgeraeumt.
@@ -68,7 +74,8 @@ nicht mitten im Handshake abgeraeumt.
 ```sh
 usbcam-recv [--tcp HOST:PORT | --serial UDID] [--port N] [--camera N]
             [--size WxH] [--fps N] [--bitrate KBPS]
-            [--dump FILE] [--seconds N] [--json] [--hello-timeout S]
+            [--dump FILE] [--dump-audio FILE] [--no-audio]
+            [--seconds N] [--json] [--hello-timeout S]
 ```
 
 - `--tcp HOST:PORT` gewoehnliches TCP, also gegen `usbcam-sim`. Ohne diese Option
@@ -84,10 +91,19 @@ usbcam-recv [--tcp HOST:PORT | --serial UDID] [--port N] [--camera N]
 - `--dump FILE` schreibt Annex-B-HEVC: die Parametersaetze aus dem `hvcC` der
   CONFIG stehen vor jedem Keyframe, die NALs bekommen Startcodes. Die
   Wire-Nutzlast selbst bleibt unangetastet laengenpraefixiert.
+- `--dump-audio FILE` schreibt den AAC-Strom als ADTS (mit Header vor jedem
+  Access-Unit), damit `ffprobe`/`ffplay` ihn unabhaengig lesen koennen. Die
+  Wire-Nutzlast selbst traegt kein ADTS (PROTOCOL.md 4.10).
+- `--no-audio` loescht Bit 0 im START-Flags-Byte: die Gegenseite schickt dann
+  weder `AUDIO_CONFIG` noch `AUDIO`. Ohne die Option fordert `usbcam-recv`
+  Audio standardmaessig an.
 - `--seconds N` sendet nach N Sekunden ab CONFIG ein STOP und endet mit 0.
 - `--json` gibt am Ende eine Zeile auf stdout aus: `frames`, `fps_avg`,
   `kbps_avg`, `keyframes`, `ping_rtt_ms_avg`, `first_frame_ms`, `nals`,
-  `width`, `height`. Alle Logzeilen gehen nach stderr, stdout bleibt sauber.
+  `width`, `height`, dazu die Audio-Felder `audio_frames`,
+  `audio_decoded_samples`, `audio_sample_rate`, `audio_first_frame_ms` und
+  `audio_video_pts_skew_ms` (erstes AUDIO-pts minus erstes VIDEO-pts, in ms).
+  Alle Logzeilen gehen nach stderr, stdout bleibt sauber.
 
 Waehrend des Laufs geht pro Sekunde eine Zeile nach stderr (fps, kbps,
 Keyframes, NAL-Zahl, letzte PING-Umlaufzeit). PING geht alle 2 s raus, drei
@@ -112,12 +128,16 @@ Vorgabe 3 s) und abgelehntem Tunnel.
 
 `tools/integration.sh` ist die Abnahme ohne iPhone und wiederholbar: baut das
 Paket in Release, startet `usbcam-sim` auf Port 7979 (per `IUCM_PORT`
-umstellbar), laesst `usbcam-recv` 5 s in `/tmp/iucm-int.hevc` aufzeichnen und
-prueft die JSON-Zusammenfassung gegen `fps_avg >= 25`, `keyframes >= 4`,
-`first_frame_ms < 1500` und `ping_rtt_ms_avg < 50`. Danach dekodiert `ffmpeg`
-einen Frame nach `/tmp/iucm-int.png` und `ffprobe` muss `1280x720` melden.
-Beendet wird nur der selbst gestartete Simulator, per gemerkter PID, nie per
-`pkill`. Pfade zu ffmpeg/ffprobe ueber `FFMPEG=`/`FFPROBE=` ueberschreibbar.
+umstellbar), laesst `usbcam-recv` 5 s in `/tmp/iucm-int.hevc` (Video) und
+`/tmp/iucm-int-audio.aac` (Audio als ADTS) aufzeichnen und prueft die
+JSON-Zusammenfassung gegen `fps_avg >= 25`, `keyframes >= 4`,
+`first_frame_ms < 1500`, `ping_rtt_ms_avg < 50`, `audio_frames >= 100`,
+`audio_sample_rate == 48000` und `|audio_video_pts_skew_ms| <= 50`. Danach
+dekodiert `ffmpeg` einen Frame nach `/tmp/iucm-int.png` und `ffprobe` muss
+`1280x720` melden; ein zweites `ffprobe` auf dem ADTS-Dump muss `aac,48000,1`
+melden (Codec, Sample-Rate, Kanaele). Beendet wird nur der selbst gestartete
+Simulator, per gemerkter PID, nie per `pkill`. Pfade zu ffmpeg/ffprobe ueber
+`FFMPEG=`/`FFPROBE=` ueberschreibbar.
 
 ```sh
 bash tools/integration.sh

@@ -59,14 +59,6 @@ extern "C" {
 #define S_ROTATION "rotation"
 #define S_AUDIO "audio"
 
-/* Audio message types and the START flags bit, PROTOCOL.md 1.1 (4.2, 4.9, 4.10).
- * shared/frame_parser.h still stops at 1.0, so the two payloads are read by hand
- * here; the framing itself is the parser's job as before. */
-#define IUCM_MSG_AUDIO_CONFIG 0x13
-#define IUCM_MSG_AUDIO 0x14
-#define IUCM_START_FLAG_AUDIO 0x01u
-#define IUCM_START_PAYLOAD_AUDIO 12
-#define IUCM_AUDIO_CODEC_AAC_LC 1
 /* AUDIO arrives ~47x per second; every irregularity is logged at most once
  * per 5 s, same idiom as the STATS info line. */
 #define IUCM_AUDIO_LOG_INTERVAL_MS 5000
@@ -139,6 +131,10 @@ struct iphone_source {
 	int status_height = 0;
 	int status_fps = 0;
 	double status_measured_fps = 0.0;
+	/* 0 = no audio on this connection. The rate comes from AUDIO_CONFIG, the
+	 * mute flag from STATS (PROTOCOL.md 4.8, bit 5). */
+	int status_audio_rate = 0;
+	bool status_audio_muted = false;
 
 	/* per-connection state, worker thread only */
 	int fd = -1;
@@ -209,38 +205,6 @@ uint64_t now_us(void)
 	return (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(
 			       std::chrono::steady_clock::now().time_since_epoch())
 		.count();
-}
-
-/* Little-endian accessors for the two payloads this file reads and writes by
- * hand (PROTOCOL.md 4.2, 4.9, 4.10). Everything else still goes through
- * shared/frame_parser. */
-uint16_t rd_u16(const uint8_t *p)
-{
-	return (uint16_t) ((uint16_t) p[0] | ((uint16_t) p[1] << 8));
-}
-
-uint32_t rd_u32(const uint8_t *p)
-{
-	return (uint32_t) p[0] | ((uint32_t) p[1] << 8) | ((uint32_t) p[2] << 16) | ((uint32_t) p[3] << 24);
-}
-
-uint64_t rd_u64(const uint8_t *p)
-{
-	return (uint64_t) rd_u32(p) | ((uint64_t) rd_u32(p + 4) << 32);
-}
-
-void wr_u16(uint8_t *p, uint16_t v)
-{
-	p[0] = (uint8_t) (v & 0xFFu);
-	p[1] = (uint8_t) (v >> 8);
-}
-
-void wr_u32(uint8_t *p, uint32_t v)
-{
-	p[0] = (uint8_t) (v & 0xFFu);
-	p[1] = (uint8_t) ((v >> 8) & 0xFFu);
-	p[2] = (uint8_t) ((v >> 16) & 0xFFu);
-	p[3] = (uint8_t) ((v >> 24) & 0xFFu);
 }
 
 /* Worker thread only. The socket carries SO_SNDTIMEO (see worker_main), so a
@@ -463,27 +427,11 @@ int on_message(void *ctx, const struct iucm_msg *msg)
 			start.bitrate_kbps = (uint32_t) s->bitrate_kbps;
 			want_audio = s->audio;
 		}
-		bool encoded;
-		if (want_audio) {
-			/* 12-byte form, PROTOCOL.md 4.2. The 11-byte encoder in
-			 * shared/ predates the flags byte, so this one frame is
-			 * written here; a 1.0 app would reject the extra byte,
-			 * which is exactly why the short form stays the default
-			 * whenever no audio is wanted. */
-			iucm_write_header(out, IUCM_MSG_START, 0, IUCM_START_PAYLOAD_AUDIO);
-			uint8_t *p = out + IUCM_HEADER_SIZE;
-			p[0] = start.camera_id;
-			wr_u16(p + 1, start.width);
-			wr_u16(p + 3, start.height);
-			wr_u16(p + 5, start.fps);
-			wr_u32(p + 7, start.bitrate_kbps);
-			p[11] = IUCM_START_FLAG_AUDIO;
-			written = IUCM_HEADER_SIZE + IUCM_START_PAYLOAD_AUDIO;
-			encoded = true;
-		} else {
-			encoded = iucm_encode_start(out, sizeof(out), &start, &written) == IUCM_OK;
-		}
-		if (!encoded || !send_all(s, out, written)) {
+		/* The flags byte decides the payload length: 12 bytes with the audio
+		 * wish, the 1.0-compatible 11 without it (PROTOCOL.md 4.2). */
+		start.flags = want_audio ? (uint8_t) IUCM_START_FLAG_AUDIO : (uint8_t) 0;
+		if (iucm_encode_start(out, sizeof(out), &start, &written) != IUCM_OK ||
+		    !send_all(s, out, written)) {
 			obs_log(LOG_WARNING, "[iphone-cam] sending START failed: errno %d (%s)", errno,
 				strerror(errno));
 			return 1;
@@ -577,26 +525,30 @@ int on_message(void *ctx, const struct iucm_msg *msg)
 		 * never fatal: audio stays off and the video keeps running. */
 		if (!s->audio_requested)
 			return 0;
-		if (msg->length < 8) {
-			obs_log(LOG_WARNING, "[iphone-cam] short AUDIO_CONFIG (%u bytes)", (unsigned) msg->length);
+		struct iucm_audio_config acfg = {};
+		int arc = iucm_parse_audio_config(msg->payload, msg->length, &acfg);
+		if (arc != IUCM_OK) {
+			obs_log(LOG_WARNING, "[iphone-cam] bad AUDIO_CONFIG (%u bytes): %s",
+				(unsigned) msg->length, iucm_strerror(arc));
 			return 0;
 		}
-		uint32_t rate = rd_u32(msg->payload);
-		uint8_t channels = msg->payload[4];
-		uint8_t codec = msg->payload[5];
-		uint16_t asc_len = rd_u16(msg->payload + 6);
-		if ((uint32_t) asc_len + 8u > msg->length) {
-			obs_log(LOG_WARNING, "[iphone-cam] AUDIO_CONFIG truncated: asc_len %u, payload %u",
-				(unsigned) asc_len, (unsigned) msg->length);
-			return 0;
-		}
+		uint32_t rate = acfg.sample_rate;
+		uint8_t channels = acfg.channels;
+		uint8_t codec = acfg.codec;
+		uint16_t asc_len = acfg.asc_len;
 		if (codec != IUCM_AUDIO_CODEC_AAC_LC) {
 			/* Passed through, not refused (PROTOCOL.md 4.9). */
 			obs_log(LOG_WARNING, "[iphone-cam] unknown audio codec %u — audio stays off",
 				(unsigned) codec);
 			return 0;
 		}
-		const uint8_t *asc = msg->payload + 8;
+		const uint8_t *asc = acfg.asc;
+		if (asc_len == 0 || !asc) {
+			/* Legal framing, unusable for AAC-LC (PROTOCOL.md 4.9): without the
+			 * magic cookie no audio path is started. */
+			obs_log(LOG_WARNING, "[iphone-cam] AUDIO_CONFIG without AudioSpecificConfig, audio stays off");
+			return 0;
+		}
 		/* Same reasoning as CONFIG: rebuilding costs samples, and the app
 		 * re-announces unchanged parameters. */
 		if (s->adec && !iucm_aac_decoder_failed(s->adec) && s->adec_rate == rate &&
@@ -620,13 +572,18 @@ int on_message(void *ctx, const struct iucm_msg *msg)
 		s->adec_asc.assign(asc, asc + asc_len);
 		s->adec_rate = rate;
 		s->adec_channels = channels;
+		{
+			std::lock_guard<std::mutex> lock(s->cfg_mutex);
+			s->status_audio_rate = (int) rate;
+		}
 		return 0;
 	}
 	case IUCM_MSG_AUDIO: {
 		/* 8-byte pts plus exactly one raw AAC access unit (PROTOCOL.md 4.10). */
 		if (!s->audio_requested)
 			return 0;
-		if (msg->length < 8) {
+		struct iucm_audio au = {};
+		if (iucm_parse_audio(msg->payload, msg->length, &au) != IUCM_OK) {
 			if (audio_log_due(s))
 				obs_log(LOG_WARNING, "[iphone-cam] short AUDIO (%u bytes)", (unsigned) msg->length);
 			return 0;
@@ -637,15 +594,15 @@ int on_message(void *ctx, const struct iucm_msg *msg)
 				obs_log(LOG_INFO, "[iphone-cam] AUDIO without AUDIO_CONFIG — dropping");
 			return 0;
 		}
-		uint64_t pts_us = rd_u64(msg->payload);
-		uint32_t body_len = msg->length - 8;
+		uint64_t pts_us = au.pts_us;
+		uint32_t body_len = au.len;
 		if (body_len == 0)
 			return 0; /* an empty frame is valid and carries nothing */
 		s->bytes_since_report += body_len;
 
 		const float *pcm = nullptr;
 		uint32_t frames = 0;
-		if (!iucm_aac_decoder_decode(s->adec, msg->payload + 8, body_len, &pcm, &frames)) {
+		if (!iucm_aac_decoder_decode(s->adec, au.frame, body_len, &pcm, &frames)) {
 			if (iucm_aac_decoder_failed(s->adec)) {
 				/* The decoder tore its converter down; wait for the
 				 * next AUDIO_CONFIG to build a fresh one. */
@@ -676,12 +633,14 @@ int on_message(void *ctx, const struct iucm_msg *msg)
 			obs_log(LOG_DEBUG, "[iphone-cam] bad STATS (%u bytes)", (unsigned) msg->length);
 			return 0;
 		}
-		char flags[32];
-		snprintf(flags, sizeof(flags), "%s%s%s%s",
+		char flags[64];
+		snprintf(flags, sizeof(flags), "%s%s%s%s%s%s",
 			 (st.flags & IUCM_STATS_FLAG_AUTO) ? "auto," : "",
 			 (st.flags & IUCM_STATS_FLAG_LEVEL) ? "level," : "",
 			 (st.flags & IUCM_STATS_FLAG_OVERSAMP) ? "oversample," : "",
-			 (st.flags & IUCM_STATS_FLAG_FLAT_HOLD) ? "flat-hold," : "");
+			 (st.flags & IUCM_STATS_FLAG_FLAT_HOLD) ? "flat-hold," : "",
+			 (st.flags & IUCM_STATS_FLAG_AUDIO_ACTIVE) ? "audio_active," : "",
+			 (st.flags & IUCM_STATS_FLAG_AUDIO_MUTED) ? "audio_muted," : "");
 		size_t fl = strlen(flags);
 		if (fl > 0)
 			flags[fl - 1] = '\0'; /* drop the trailing comma */
@@ -690,6 +649,12 @@ int on_message(void *ctx, const struct iucm_msg *msg)
 
 		/* One format string, two levels: every sample at DEBUG, one per 5 s at
 		 * INFO so a normal log stays readable but still carries the device state. */
+		/* Bits 4 and 5 are informational (PROTOCOL.md 4.8): the mute state only
+		 * reaches the properties dialog, it never changes the audio path. */
+		{
+			std::lock_guard<std::mutex> lock(s->cfg_mutex);
+			s->status_audio_muted = (st.flags & IUCM_STATS_FLAG_AUDIO_MUTED) != 0;
+		}
 		uint64_t now = now_ms();
 		bool info = now >= s->stats_log_deadline_ms;
 		if (info)
@@ -752,6 +717,11 @@ void close_connection(iphone_source *s)
 	s->adec_rate = 0;
 	s->adec_channels = 0;
 	s->audio_requested = false;
+	{
+		std::lock_guard<std::mutex> lock(s->cfg_mutex);
+		s->status_audio_rate = 0;
+		s->status_audio_muted = false;
+	}
 	s->audio_log_deadline_ms = 0; /* log the first audio oddity of the next session at once */
 	if (s->fd >= 0) {
 		close(s->fd);
@@ -1087,6 +1057,8 @@ obs_properties_t *source_get_properties(void *data)
 		std::string serial;
 		int w = 0, h = 0, f = 0;
 		double measured = 0.0;
+		int audio_rate = 0;
+		bool audio_muted = false;
 		if (s) {
 			std::lock_guard<std::mutex> lock(s->cfg_mutex);
 			st = s->status_state;
@@ -1095,6 +1067,8 @@ obs_properties_t *source_get_properties(void *data)
 			h = s->status_height;
 			f = s->status_fps;
 			measured = s->status_measured_fps;
+			audio_rate = s->status_audio_rate;
+			audio_muted = s->status_audio_muted;
 		}
 		switch (st) {
 		case link_state::streaming:
@@ -1106,6 +1080,14 @@ obs_properties_t *source_get_properties(void *data)
 			snprintf(status, sizeof(status), obs_module_text("Status.Connected"),
 				 serial.empty() ? "?" : serial.c_str(), (unsigned) w, (unsigned) h, (unsigned) f,
 				 measured);
+			/* Audio is optional, so it is appended rather than folded into
+			 * the connected line: a stream without it keeps its old text. */
+			if (audio_rate > 0) {
+				size_t used = strlen(status);
+				snprintf(status + used, sizeof(status) - used,
+					 obs_module_text(audio_muted ? "Status.AudioMuted" : "Status.Audio"),
+					 (unsigned) ((audio_rate + 500) / 1000));
+			}
 #pragma clang diagnostic pop
 			break;
 		case link_state::starting:

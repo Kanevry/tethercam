@@ -21,6 +21,10 @@
 "settings.horizonLeveling" = "Horizont ausrichten";
 "settings.manualAngle" = "Winkel von Hand";
 "settings.diagnostics" = "Diagnose";
+"settings.audio" = "Mikrofon";
+"settings.audioMuted" = "Mikrofon stummschalten";
+"settings.audioFootnote" = "Der Ton geht über das Kabel zusammen mit dem Bild an OBS. OBS mischt ihn wie jede andere Quelle.";
+"settings.audioDenied" = "Mikrofonzugriff verweigert";
 "link.privacy" = "Datenschutz";
 "link.installPlugin" = "Mac-Plugin installieren";
 

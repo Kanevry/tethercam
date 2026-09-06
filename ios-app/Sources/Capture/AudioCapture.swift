@@ -25,6 +25,33 @@ public final class AudioCapture: NSObject {
     /// Fatal for audio only — the caller keeps the video stream running.
     public var onError: ((IucmErrorCode) -> Void)?
 
+    /// Pure accounting for the mute gate.
+    ///
+    /// The encoder keeps running while the microphone is muted and the finished
+    /// access units are dropped here, so the packet counter advances either way.
+    /// That is what keeps the timeline honest: after an unmute the next access
+    /// unit lands where the wall clock says it belongs instead of restarting the
+    /// pts chain at the anchor, which would make the receiver's audio jump back.
+    public struct MuteGate {
+        /// Access units produced since the anchor, muted ones included.
+        public private(set) var emittedPackets: UInt64 = 0
+
+        public init() {}
+
+        /// Advances the counter by one access unit and returns its presentation
+        /// timestamp, or `nil` when the packet must not go on the wire.
+        public mutating func next(anchorPtsUs: UInt64, muted: Bool) -> UInt64? {
+            let pts = anchorPtsUs
+                + emittedPackets * UInt64(AudioCapture.framesPerPacket) * 1_000_000
+                / UInt64(AudioCapture.outputSampleRate)
+            emittedPackets &+= 1
+            return muted ? nil : pts
+        }
+
+        /// New take, new anchor: the counter starts over.
+        public mutating func reset() { emittedPackets = 0 }
+    }
+
     /// Wire-side output format. Fixed by the protocol contract.
     public static let outputSampleRate: Double = 48_000
     public static let outputChannels: UInt32 = 1
@@ -42,6 +69,9 @@ public final class AudioCapture: NSObject {
     // Encoder state. Touched from `sampleQueue` (frames) and from the caller's
     // session queue (start/stop) — hence the lock.
     private let lock = NSLock()
+    /// Guards the two user-facing flags only. Separate from `lock` so the encoder
+    /// path can read the mute state while it holds the encoder lock.
+    private let stateLock = NSLock()
     private var converter: AudioConverterRef?
     private var inputFormat = AudioStreamBasicDescription()
     private var outputFormat = AudioStreamBasicDescription()
@@ -51,9 +81,35 @@ public final class AudioCapture: NSObject {
     private var outputScratch: UnsafeMutableRawPointer?
     private var configSent = false
     /// Timeline anchor: PTS of the first PCM buffer of this take, in the video
-    /// clock's microseconds, plus the number of access units emitted since.
+    /// clock's microseconds. `gate` counts the access units produced since.
     private var anchorPtsUs: UInt64?
-    private var emittedPackets: UInt64 = 0
+    private var gate = MuteGate()
+    private var mutedFlag = false
+    private var micDeniedFlag = false
+
+    /// User-facing mute switch. While true the encoder keeps working and the
+    /// finished access units are dropped instead of sent, so AUDIO stops without
+    /// tearing down the microphone and without a pts discontinuity on unmute.
+    /// Safe from any queue.
+    public var isMuted: Bool {
+        get { stateLock.lock(); defer { stateLock.unlock() }; return mutedFlag }
+        set { stateLock.lock(); mutedFlag = newValue; stateLock.unlock() }
+    }
+
+    /// True once this capture reported `IucmErrorCode.micDenied`, so the UI can
+    /// say why the mute switch has nothing to mute. Safe from any queue.
+    public var micDenied: Bool {
+        stateLock.lock(); defer { stateLock.unlock() }; return micDeniedFlag
+    }
+
+    /// Single funnel for `onError`, so the denied state is recorded exactly where
+    /// it is reported.
+    private func report(_ code: IucmErrorCode) {
+        if code == .micDenied {
+            stateLock.lock(); micDeniedFlag = true; stateLock.unlock()
+        }
+        onError?(code)
+    }
 
     deinit {
         inputScratch?.deallocate()
@@ -77,11 +133,11 @@ public final class AudioCapture: NSObject {
             AVCaptureDevice.requestAccess(for: .audio) { [weak self] ok in
                 queue.async {
                     guard let self else { return }
-                    if ok { self.attach(session) } else { self.onError?(.micDenied) }
+                    if ok { self.attach(session) } else { self.report(.micDenied) }
                 }
             }
         default:
-            onError?(.micDenied)
+            report(.micDenied)
         }
     }
 
@@ -105,14 +161,14 @@ public final class AudioCapture: NSObject {
         pendingPCM.removeAll(keepingCapacity: false)
         configSent = false
         anchorPtsUs = nil
-        emittedPackets = 0
+        gate.reset()
         lock.unlock()
     }
 
     private func attach(_ session: AVCaptureSession) {
         guard !running else { return }
         guard let mic = AVCaptureDevice.default(for: .audio) else {
-            onError?(.micDenied)
+            report(.micDenied)
             return
         }
         session.beginConfiguration()
@@ -120,7 +176,7 @@ public final class AudioCapture: NSObject {
             let deviceInput = try AVCaptureDeviceInput(device: mic)
             guard session.canAddInput(deviceInput) else {
                 session.commitConfiguration()
-                onError?(.micDenied)
+                report(.micDenied)
                 return
             }
             session.addInput(deviceInput)
@@ -129,7 +185,7 @@ public final class AudioCapture: NSObject {
                 guard session.canAddOutput(output) else {
                     session.removeInput(deviceInput)
                     session.commitConfiguration()
-                    onError?(.micDenied)
+                    report(.micDenied)
                     return
                 }
                 session.addOutput(output)
@@ -143,7 +199,7 @@ public final class AudioCapture: NSObject {
         } catch {
             session.commitConfiguration()
             NSLog("[usbcam] audio input failed: %@", "\(error)" as NSString)
-            onError?(.micDenied)
+            report(.micDenied)
         }
     }
 
@@ -267,14 +323,14 @@ public final class AudioCapture: NSObject {
             }
             guard packets > 0, list.mBuffers.mDataByteSize > 0 else { return }
             sendConfigIfPossible()
-            let frame = Data(bytes: outputScratch, count: Int(list.mBuffers.mDataByteSize))
             // Same clock as VIDEO: the anchor is a capture-session presentation
             // timestamp, and every further access unit is exactly 1024 samples
-            // further along the output rate.
-            let pts = (anchorPtsUs ?? 0)
-                + emittedPackets * UInt64(Self.framesPerPacket) * 1_000_000
-                / UInt64(Self.outputSampleRate)
-            emittedPackets &+= 1
+            // further along the output rate. A muted packet still advances the
+            // counter, so the chain stays monotone across an unmute.
+            guard let pts = gate.next(anchorPtsUs: anchorPtsUs ?? 0, muted: isMuted) else {
+                continue
+            }
+            let frame = Data(bytes: outputScratch, count: Int(list.mBuffers.mDataByteSize))
             onFrame?(pts, frame)
         }
     }
@@ -319,7 +375,7 @@ extension AudioCapture: AVCaptureAudioDataOutputSampleBufferDelegate {
             // First buffer of the take, or a route change (headset plugged in).
             pendingPCM.removeAll(keepingCapacity: true)
             anchorPtsUs = nil
-            emittedPackets = 0
+            gate.reset()
             guard makeConverter(from: asbd) else {
                 onError?(.encoderFailed)
                 return

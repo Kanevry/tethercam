@@ -19,6 +19,7 @@ extern "C" {
 #define IUCM_MAX_PAYLOAD (8u * 1024u * 1024u) /* 8 MiB, PROTOCOL.md 2 */
 
 #define IUCM_VERSION_1_0 0x0100u
+#define IUCM_VERSION_1_1 0x0101u
 #define IUCM_VERSION_MAJOR(v) ((uint8_t)((v) >> 8))
 #define IUCM_VERSION_MINOR(v) ((uint8_t)((v) & 0xFFu))
 
@@ -30,13 +31,19 @@ enum {
     IUCM_MSG_STATS  = 0x12,
     IUCM_MSG_CONFIG = 0x10,
     IUCM_MSG_VIDEO  = 0x11,
+    /* 1.1 */
+    IUCM_MSG_AUDIO_CONFIG = 0x13,
+    IUCM_MSG_AUDIO        = 0x14,
     IUCM_MSG_PING   = 0x20,
     IUCM_MSG_PONG   = 0x21,
     IUCM_MSG_ERROR  = 0x30
 };
 
-/* flags */
+/* header flags, VIDEO only (PROTOCOL.md 2) */
 #define IUCM_FLAG_KEYFRAME 0x01u
+
+/* START payload flags, PROTOCOL.md 4.2 (since 1.1) */
+#define IUCM_START_FLAG_AUDIO 0x01u
 
 /* error codes carried in ERROR payloads */
 enum {
@@ -44,8 +51,13 @@ enum {
     IUCM_ERRCODE_CAMERA_DENIED       = 2,
     IUCM_ERRCODE_FORMAT_UNSUPPORTED  = 3,
     IUCM_ERRCODE_ENCODER_FAILED      = 4,
-    IUCM_ERRCODE_VERSION_UNSUPPORTED = 5
+    IUCM_ERRCODE_VERSION_UNSUPPORTED = 5,
+    IUCM_ERRCODE_MIC_DENIED          = 6 /* since 1.1 */
 };
+
+/* AUDIO_CONFIG codec ids, PROTOCOL.md 4.9. Unknown values are passed through,
+ * never rejected: the receiver logs them and leaves audio off. */
+enum { IUCM_AUDIO_CODEC_AAC_LC = 1 };
 
 /* camera positions */
 enum { IUCM_CAMERA_BACK = 0, IUCM_CAMERA_FRONT = 1 };
@@ -115,10 +127,31 @@ struct iucm_hello {
     struct iucm_camera cameras[IUCM_MAX_CAMERAS];
 };
 
+/* flags is the optional 12th byte; an 11-byte START parses as flags == 0. It sits
+ * last so the existing positional initialisers keep their meaning. */
 struct iucm_start {
     uint8_t  camera_id;
     uint16_t width, height, fps;
     uint32_t bitrate_kbps;
+    uint8_t  flags;
+};
+
+/* AUDIO_CONFIG payload, PROTOCOL.md 4.9. channels and codec are passed through
+ * unvalidated; asc_len == 0 is legal on the wire. */
+struct iucm_audio_config {
+    uint32_t       sample_rate;
+    uint8_t        channels;
+    uint8_t        codec;
+    uint16_t       asc_len;
+    const uint8_t *asc; /* points into the payload, NULL when asc_len == 0 */
+};
+
+/* AUDIO payload, PROTOCOL.md 4.10: pts plus exactly one raw AAC frame. An empty
+ * frame (len == 0) is valid framing; the consumer drops it. */
+struct iucm_audio {
+    uint64_t       pts_us;
+    const uint8_t *frame; /* points into the payload, NULL when len == 0 */
+    uint32_t       len;
 };
 
 struct iucm_config {
@@ -147,6 +180,9 @@ struct iucm_stats {
 #define IUCM_STATS_FLAG_LEVEL     0x02
 #define IUCM_STATS_FLAG_OVERSAMP  0x04
 #define IUCM_STATS_FLAG_FLAT_HOLD 0x08
+/* Reserved in 1.1: read for the log, never acted upon (PROTOCOL.md 4.8). */
+#define IUCM_STATS_FLAG_AUDIO_ACTIVE 0x10
+#define IUCM_STATS_FLAG_AUDIO_MUTED  0x20
 
 struct iucm_error {
     uint16_t code;
@@ -157,6 +193,8 @@ struct iucm_error {
 /* ---- encoders (write a full framed message) ----
  * Each returns IUCM_OK and sets *written, or IUCM_ERR_CAPACITY / IUCM_ERR_RANGE. */
 int iucm_encode_hello(uint8_t *out, size_t cap, const struct iucm_hello *h, size_t *written);
+/* Writes the 12-byte payload when s->flags != 0, else the 1.0-compatible 11-byte
+ * form (PROTOCOL.md 4.2). */
 int iucm_encode_start(uint8_t *out, size_t cap, const struct iucm_start *s, size_t *written);
 int iucm_encode_stop(uint8_t *out, size_t cap, size_t *written);
 int iucm_encode_config(uint8_t *out, size_t cap, uint16_t width, uint16_t height,
@@ -173,10 +211,14 @@ int iucm_encode_error(uint8_t *out, size_t cap, uint16_t code, const char *text,
 
 /* ---- decoders (payload only, without the 12-byte header) ---- */
 int iucm_parse_hello(const uint8_t *payload, uint32_t len, struct iucm_hello *out);
+/* Accepts 11 and 12 bytes; 11 yields flags == 0, anything beyond 12 is ignored. */
 int iucm_parse_start(const uint8_t *payload, uint32_t len, struct iucm_start *out);
 int iucm_parse_config(const uint8_t *payload, uint32_t len, struct iucm_config *out);
 int iucm_parse_error(const uint8_t *payload, uint32_t len, struct iucm_error *out);
 int iucm_parse_stats(const uint8_t *payload, uint32_t len, struct iucm_stats *out);
+int iucm_parse_audio_config(const uint8_t *payload, uint32_t len,
+                            struct iucm_audio_config *out);
+int iucm_parse_audio(const uint8_t *payload, uint32_t len, struct iucm_audio *out);
 /* PING and PONG share this. */
 int iucm_parse_timestamp(const uint8_t *payload, uint32_t len, uint64_t *out_us);
 
