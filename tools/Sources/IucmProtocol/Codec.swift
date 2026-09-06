@@ -28,6 +28,9 @@ public enum IucmCodec {
             w.u16(m.height)
             w.u16(m.fps)
             w.u32(m.bitrateKbps)
+            // Short form (11 byte) when there is nothing to say, so a 1.0 app that
+            // rejects trailing bytes still understands a 1.1 receiver.
+            if m.flags != 0 { w.u8(m.flags) }
         case .stop:
             break
         case .stats(let m):
@@ -53,6 +56,16 @@ public enum IucmCodec {
             flags = m.isKeyframe ? 0x01 : 0x00
             w.u64(m.ptsUs)
             w.raw(m.nalData)
+        case .audioConfig(let m):
+            w.u32(m.sampleRate)
+            w.u8(m.channels)
+            w.u8(m.codec)
+            guard m.asc.count <= 0xFFFF else { throw IucmProtocolError.stringTooLong(m.asc.count) }
+            w.u16(UInt16(m.asc.count))
+            w.raw(m.asc)
+        case .audio(let m):
+            w.u64(m.ptsUs)
+            w.raw(m.frame)
         case .ping(let ts), .pong(let ts):
             w.u64(ts)
         case .error(let m):
@@ -108,9 +121,14 @@ public enum IucmCodec {
                                        appVersion: appVersion, cameras: cameras))
 
         case .start:
-            let m = StartMessage(cameraId: try r.u8(), width: try r.u16(), height: try r.u16(),
+            var m = StartMessage(cameraId: try r.u8(), width: try r.u16(), height: try r.u16(),
                                  fps: try r.u16(), bitrateKbps: try r.u32())
-            try r.expectEnd()
+            // Protocol 1.1 appends a flags byte; 1.0 senders stop after 11 byte.
+            // Anything beyond that belongs to a later minor version: ignore it (4.2).
+            if !r.isAtEnd {
+                m.flags = try r.u8()
+                _ = r.rest()
+            }
             return .start(m)
 
         case .stop:
@@ -140,6 +158,21 @@ public enum IucmCodec {
             let pts = try r.u64()
             // Everything after pts is passed through verbatim to the decoder.
             return .video(VideoMessage(ptsUs: pts, isKeyframe: (flags & 0x01) != 0, nalData: r.rest()))
+
+        case .audioConfig:
+            let sampleRate = try r.u32()
+            let channels = try r.u8()
+            let codec = try r.u8()
+            let ascLen = Int(try r.u16())
+            let asc = try r.data(ascLen)
+            try r.expectEnd()
+            return .audioConfig(AudioConfigMessage(sampleRate: sampleRate, channels: channels,
+                                                   codec: codec, asc: asc))
+
+        case .audio:
+            let pts = try r.u64()
+            // Everything after pts is one raw AAC access unit, passed through verbatim.
+            return .audio(AudioMessage(ptsUs: pts, frame: r.rest()))
 
         case .ping:
             let ts = try r.u64()

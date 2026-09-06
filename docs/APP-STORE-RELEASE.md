@@ -611,3 +611,18 @@ TetherCam source live; the poster is picked in the App Store Connect editor, not
 caption-free full-bleed crop; whether to record a German-captioned variant later; and
 whether to upload a German screenshot set once the interface is captured in German. None of
 these blocks submission.
+
+---
+
+## 2026-09-06: Streu-Submission MAC_OS
+
+`reviewSubmissions/776750a6-a640-4696-92bf-c53cb4d21a14` (platform `MAC_OS`, state
+`READY_FOR_REVIEW`, `submittedDate` null, never submitted) carries no items: `GET
+.../items` returns `"data":[]` with `meta.paging.total: 0`. Both cancellation routes were
+tried and both failed: `DELETE` returns HTTP 403 `FORBIDDEN_ERROR` ("does not allow
+'DELETE'. Allowed operations are: CREATE, GET_COLLECTION, GET_INSTANCE, UPDATE"), and
+`PATCH` with `{"attributes":{"canceled":true}}` returns HTTP 409
+`STATE_ERROR.ENTITY_STATE_INVALID` ("Resource is not in cancellable state"). It stayed
+untouched at both attempts; it carries no items and is unrelated to the real iOS
+submission `0e749dcd-74bb-43c1-a597-2d64408dfc87`, so it is inert stray state rather than a
+blocker, and clearing it (if desired) needs the App Store Connect web UI, not this API key.

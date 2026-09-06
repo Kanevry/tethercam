@@ -11,7 +11,10 @@ plugin (`obs-plugin/`, GPL-2.0-or-later) and the iOS app (`ios-app/`, MIT). A ta
 
 ## [Unreleased]
 
-(nothing yet)
+### Changed
+
+- iOS build number 3 for the next TestFlight upload (build 2 is the one under review).
+- Repository ships `.env.example` for the App Store Connect API variables.
 
 ## [0.1.0] - 2026-09-05
 

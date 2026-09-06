@@ -1,6 +1,6 @@
 import Foundation
 
-/// Wire protocol "IUCM" (iPhone USB Cam Message), version 1.0.
+/// Wire protocol "IUCM" (iPhone USB Cam Message), version 1.1.
 ///
 /// Framing: 12-byte header, little-endian:
 ///   magic  4  ASCII "IUCM"
@@ -17,8 +17,8 @@ public enum Iucm {
     public static let headerSize = 12
     /// Guard against absurd allocations from a corrupt stream (spec section 8).
     public static let maxPayload = 8 * 1024 * 1024
-    /// High byte major, low byte minor. Prototype = 1.0.
-    public static let version: UInt16 = 0x0100
+    /// High byte major, low byte minor. 1.1 added AUDIO_CONFIG/AUDIO (PROTOCOL.md 4.9/4.10).
+    public static let version: UInt16 = 0x0101
     public static let defaultPort: UInt16 = 7878
 }
 
@@ -29,6 +29,8 @@ public enum IucmType: UInt8, Sendable, CaseIterable {
     case stats = 0x12
     case config = 0x10
     case video = 0x11
+    case audioConfig = 0x13
+    case audio = 0x14
     case ping = 0x20
     case pong = 0x21
     case error = 0x30
@@ -40,6 +42,13 @@ public enum IucmErrorCode: UInt16, Sendable, CaseIterable {
     case formatUnsupported = 3
     case encoderFailed = 4
     case versionUnsupported = 5
+    /// Microphone permission denied. Not fatal: video keeps running without audio.
+    case micDenied = 6
+}
+
+/// AUDIO_CONFIG `codec` field. See `protocol/PROTOCOL.md` section 4.9.
+public enum IucmAudioCodec: UInt8, Sendable, CaseIterable {
+    case aacLC = 1
 }
 
 public enum CameraPosition: UInt8, Sendable {
@@ -74,6 +83,10 @@ public struct DeviceStats: Equatable, Sendable {
     public static let flagOversampling: UInt8 = 1 << 2
     /// Bit 3 — in-plane gravity is below the flat threshold, angle is being held.
     public static let flagFlatHold: UInt8 = 1 << 3
+    /// Bit 4 — audio is currently being sent (reserved in 1.1, no sender logic yet).
+    public static let flagAudioActive: UInt8 = 1 << 4
+    /// Bit 5 — the user muted the microphone (reserved in 1.1, no sender logic yet).
+    public static let flagAudioMuted: UInt8 = 1 << 5
 
     public var continuousAngleX10: Int16
     public var sector: UInt16
@@ -134,18 +147,38 @@ public struct DeviceStats: Equatable, Sendable {
     public var levelerMs: Double { Double(levelerMsX10) / 10 }
 }
 
+/// START (`0x02`) payload. See `protocol/PROTOCOL.md` section 4.2.
+///
+/// `flags` is the byte added in protocol 1.1. A 1.0 receiver sends an 11-byte
+/// START without it; that decodes as `flags == 0`, i.e. "no audio wanted".
 public struct StartParams: Equatable, Sendable {
+    /// Bit 0 — the receiver wants audio (AUDIO_CONFIG + AUDIO).
+    public static let flagAudio: UInt8 = 1 << 0
+
     public var cameraId: UInt8
     public var width: UInt16
     public var height: UInt16
     public var fps: UInt16
     public var bitrateKbps: UInt32
-    public init(cameraId: UInt8, width: UInt16, height: UInt16, fps: UInt16, bitrateKbps: UInt32) {
+    public var flags: UInt8
+
+    public init(cameraId: UInt8, width: UInt16, height: UInt16, fps: UInt16,
+                bitrateKbps: UInt32, flags: UInt8 = 0) {
         self.cameraId = cameraId
         self.width = width
         self.height = height
         self.fps = fps
         self.bitrateKbps = bitrateKbps
+        self.flags = flags
+    }
+
+    /// Convenience view of `flags` bit 0.
+    public var wantsAudio: Bool {
+        get { flags & StartParams.flagAudio != 0 }
+        set {
+            if newValue { flags |= StartParams.flagAudio }
+            else { flags &= ~StartParams.flagAudio }
+        }
     }
 }
 
@@ -159,6 +192,11 @@ public enum IucmMessage: Equatable, Sendable {
     /// `nalUnits` is the raw remainder after the pts field: a concatenation of
     /// 4-byte-big-endian-length-prefixed NAL units, passed through unchanged.
     case video(ptsUs: UInt64, keyframe: Bool, nalUnits: Data)
+    /// AUDIO_CONFIG (`0x13`): `asc` is the AudioSpecificConfig magic cookie from
+    /// the encoder, passed through unchanged. `codec` uses `IucmAudioCodec`.
+    case audioConfig(sampleRate: UInt32, channels: UInt8, codec: UInt8, asc: Data)
+    /// AUDIO (`0x14`): exactly one raw AAC access unit (1024 samples, no ADTS header).
+    case audio(ptsUs: UInt64, frame: Data)
     case ping(timestampUs: UInt64)
     case pong(timestampUs: UInt64)
     case error(code: UInt16, text: String)
@@ -171,6 +209,8 @@ public enum IucmMessage: Equatable, Sendable {
         case .stats: return .stats
         case .config: return .config
         case .video: return .video
+        case .audioConfig: return .audioConfig
+        case .audio: return .audio
         case .ping: return .ping
         case .pong: return .pong
         case .error: return .error
@@ -303,6 +343,9 @@ public enum IucmCodec {
             p.u16(s.height)
             p.u16(s.fps)
             p.u32(s.bitrateKbps)
+            // Short form (11 byte) when there is nothing to say, so a 1.0 app that
+            // rejects trailing bytes still understands a 1.1 receiver.
+            if s.flags != 0 { p.u8(s.flags) }
         case .stop:
             break
         case let .stats(st):
@@ -328,6 +371,15 @@ public enum IucmCodec {
             p.u64(pts)
             p.bytes(nal)
             if keyframe { flags |= 0x01 }
+        case let .audioConfig(sampleRate, channels, codec, asc):
+            p.u32(sampleRate)
+            p.u8(channels)
+            p.u8(codec)
+            p.u16(UInt16(min(asc.count, 0xFFFF)))
+            p.bytes(asc.prefix(0xFFFF))
+        case let .audio(pts, frame):
+            p.u64(pts)
+            p.bytes(frame)
         case let .ping(ts), let .pong(ts):
             p.u64(ts)
         case let .error(code, text):
@@ -366,9 +418,16 @@ public enum IucmCodec {
             }
             msg = .hello(version: version, deviceName: device, appVersion: app, cameras: cams)
         case .start:
-            msg = .start(StartParams(cameraId: try r.u8(), width: try r.u16(),
-                                     height: try r.u16(), fps: try r.u16(),
-                                     bitrateKbps: try r.u32()))
+            var s = StartParams(cameraId: try r.u8(), width: try r.u16(),
+                                height: try r.u16(), fps: try r.u16(),
+                                bitrateKbps: try r.u32())
+            // Protocol 1.1 appends a flags byte; 1.0 senders stop after 11 byte.
+            // Anything beyond that belongs to a later minor version: ignore it (4.2).
+            if !r.isAtEnd {
+                s.flags = try r.u8()
+                _ = r.rest()
+            }
+            msg = .start(s)
         case .stop:
             msg = .stop
         case .stats:
@@ -385,6 +444,14 @@ public enum IucmCodec {
         case .video:
             // Everything after pts is opaque: length-prefixed NAL units, passed through.
             msg = .video(ptsUs: try r.u64(), keyframe: flags & 0x01 != 0, nalUnits: r.rest())
+        case .audioConfig:
+            let rate = try r.u32(), channels = try r.u8(), codec = try r.u8()
+            let ascLen = Int(try r.u16())
+            msg = .audioConfig(sampleRate: rate, channels: channels, codec: codec,
+                               asc: try r.bytes(ascLen))
+        case .audio:
+            // Everything after pts is one raw AAC access unit, passed through.
+            msg = .audio(ptsUs: try r.u64(), frame: r.rest())
         case .ping:
             msg = .ping(timestampUs: try r.u64())
         case .pong:
@@ -392,8 +459,9 @@ public enum IucmCodec {
         case .error:
             msg = .error(code: try r.u16(), text: try r.longString())
         }
-        // VIDEO consumes the remainder by design; every other type is fixed-shape.
-        if t != .video && !r.isAtEnd { throw IucmDecodeError.trailingBytes }
+        // VIDEO and AUDIO consume the remainder by design; every other type is
+        // fixed-shape. START is length-tolerant and already consumed its optional byte.
+        if t != .video && t != .audio && !r.isAtEnd { throw IucmDecodeError.trailingBytes }
         return msg
     }
 

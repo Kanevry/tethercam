@@ -38,6 +38,7 @@ shared/build-*/
 # Credentials and key material. Never committed; see docs/SECRETS.md.
 .env
 .env.*
+!.env.example
 *.p8
 *.p12
 *.mobileprovision

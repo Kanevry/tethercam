@@ -188,6 +188,10 @@ final class Receiver {
                                    st.outputWidth, st.outputHeight, st.flags, st.cameraId))
                 case .hello:
                     throw RecvError.protocolViolation("second HELLO during streaming")
+                case .audioConfig, .audio:
+                    // 0x13/0x14, PROTOCOL.md 4.9/4.10 — accepted and ignored until
+                    // the receiver grows an audio path.
+                    break
                 case .start, .stop, .ping:
                     throw RecvError.protocolViolation("unexpected \(msg.type) from sender")
                 }

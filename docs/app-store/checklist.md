@@ -47,8 +47,8 @@ API, so the record itself is unavoidably manual (section 2.1, step O4).
 | 16 | TestFlight > Internal Testing: add the team as internal testers, install, verify the app on a real device before anyone external sees it | OWNER | 2.3 |
 | 17 | TestFlight > **Test Information**: beta app description, feedback email `office@gotzendorfer.at`, what to test, marketing URL, privacy policy URL. Required before external distribution | DONE 2026-09-05 via API | 2.4, 6.13 |
 | 18 | TestFlight > `+` next to **External Testing** > group name `Public Beta` > Create | DONE 2026-09-05 via API | 2.4, 6.14 |
-| 19 | In the group: **Add Builds** > select the build > fill "What to Test" > **Submit for Review**. Beta App Review, budget one to two working days. Paste `docs/app-store/review-notes.md` | DONE 2026-09-05: build in the group, Beta App Review WAITING_FOR_REVIEW | 2.4, 6.14 |
-| 20 | When the status reads **Testing**: group > Testers > **Create Public Link** > Open to Anyone (or Filter by Criteria for iOS 17+) > optional tester limit > Confirm > copy the URL | DONE: https://testflight.apple.com/join/wmT74Ry8 (accepts testers once Beta App Review approves) | 2.4, 6.15 |
+| 19 | In the group: **Add Builds** > select the build > fill "What to Test" > **Submit for Review**. Beta App Review, budget one to two working days. Paste `docs/app-store/review-notes.md` | DONE 2026-09-06: build in the group, Beta App Review APPROVED 2026-09-06 | 2.4, 6.14 |
+| 20 | When the status reads **Testing**: group > Testers > **Create Public Link** > Open to Anyone (or Filter by Criteria for iOS 17+) > optional tester limit > Confirm > copy the URL | DONE 2026-09-06: https://testflight.apple.com/join/wmT74Ry8, Beta App Review APPROVED, public link active and accepting testers | 2.4, 6.15 |
 | 21 | Publish the public link on https://tethercam.app. Remember: every build expires 90 days after upload, so refresh at least quarterly | DONE 2026-09-05 (site, README, llms.txt) | 2.4, 6.15 |
 
 ## Phase 5: App Store submission

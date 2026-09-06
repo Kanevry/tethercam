@@ -6,8 +6,9 @@ public enum Iucm {
     public static let magic: [UInt8] = [0x49, 0x55, 0x43, 0x4D]
     /// Fixed header size in bytes.
     public static let headerSize = 12
-    /// Protocol version 1.0 — high byte major, low byte minor.
-    public static let version: UInt16 = 0x0100
+    /// Protocol version 1.1 — high byte major, low byte minor.
+    /// 1.1 added AUDIO_CONFIG/AUDIO (PROTOCOL.md 4.9/4.10).
+    public static let version: UInt16 = 0x0101
     /// Payloads larger than this are rejected as corrupt rather than buffered.
     public static let maxPayloadSize = 16 * 1024 * 1024
     /// A sender drops a connection that has not sent a PING for this long.
@@ -21,6 +22,8 @@ public enum IucmMessageType: UInt8, Sendable {
     case stats = 0x12
     case config = 0x10
     case video = 0x11
+    case audioConfig = 0x13
+    case audio = 0x14
     case ping = 0x20
     case pong = 0x21
     case error = 0x30
@@ -57,19 +60,38 @@ public struct HelloMessage: Equatable, Sendable {
     }
 }
 
+/// START (`0x02`), Mac to app. See `protocol/PROTOCOL.md` section 4.2.
+///
+/// `flags` is the byte added in protocol 1.1. A 1.0 receiver sends an 11-byte
+/// START without it; that decodes as `flags == 0`, i.e. "no audio wanted".
 public struct StartMessage: Equatable, Sendable {
+    /// Bit 0 — the receiver wants audio (AUDIO_CONFIG + AUDIO).
+    public static let flagAudio: UInt8 = 1 << 0
+
     public var cameraId: UInt8
     public var width: UInt16
     public var height: UInt16
     public var fps: UInt16
     public var bitrateKbps: UInt32
+    public var flags: UInt8
 
-    public init(cameraId: UInt8, width: UInt16, height: UInt16, fps: UInt16, bitrateKbps: UInt32) {
+    public init(cameraId: UInt8, width: UInt16, height: UInt16, fps: UInt16,
+                bitrateKbps: UInt32, flags: UInt8 = 0) {
         self.cameraId = cameraId
         self.width = width
         self.height = height
         self.fps = fps
         self.bitrateKbps = bitrateKbps
+        self.flags = flags
+    }
+
+    /// Convenience view of `flags` bit 0.
+    public var wantsAudio: Bool {
+        get { flags & StartMessage.flagAudio != 0 }
+        set {
+            if newValue { flags |= StartMessage.flagAudio }
+            else { flags &= ~StartMessage.flagAudio }
+        }
     }
 }
 
@@ -96,6 +118,10 @@ public struct StatsMessage: Equatable, Sendable {
     public static let flagHorizonLeveling: UInt8 = 1 << 1
     public static let flagOversampling: UInt8 = 1 << 2
     public static let flagFlatHold: UInt8 = 1 << 3
+    /// Bit 4 — audio is currently being sent (reserved in 1.1, no sender logic yet).
+    public static let flagAudioActive: UInt8 = 1 << 4
+    /// Bit 5 — the user muted the microphone (reserved in 1.1, no sender logic yet).
+    public static let flagAudioMuted: UInt8 = 1 << 5
 
     public var continuousAngleX10: Int16
     public var sector: UInt16
@@ -148,12 +174,53 @@ public struct VideoMessage: Equatable, Sendable {
     }
 }
 
+/// AUDIO_CONFIG `codec` field. See `protocol/PROTOCOL.md` section 4.9.
+public enum IucmAudioCodec: UInt8, Sendable {
+    case aacLC = 1
+}
+
+/// AUDIO_CONFIG (`0x13`), app to Mac. See `protocol/PROTOCOL.md` section 4.9.
+public struct AudioConfigMessage: Equatable, Sendable {
+    public var sampleRate: UInt32
+    public var channels: UInt8
+    /// Raw `IucmAudioCodec` value; unknown values are passed through, not rejected.
+    public var codec: UInt8
+    /// AudioSpecificConfig magic cookie from the encoder, verbatim (typically 2 byte).
+    public var asc: Data
+
+    public init(sampleRate: UInt32, channels: UInt8, codec: UInt8, asc: Data) {
+        self.sampleRate = sampleRate
+        self.channels = channels
+        self.codec = codec
+        self.asc = asc
+    }
+
+    public init(sampleRate: UInt32, channels: UInt8, codec: IucmAudioCodec = .aacLC, asc: Data) {
+        self.init(sampleRate: sampleRate, channels: channels, codec: codec.rawValue, asc: asc)
+    }
+}
+
+/// AUDIO (`0x14`), app to Mac. See `protocol/PROTOCOL.md` section 4.10.
+public struct AudioMessage: Equatable, Sendable {
+    /// Same clock as `VideoMessage.ptsUs` — that is the A/V sync basis.
+    public var ptsUs: UInt64
+    /// Exactly one raw AAC access unit (1024 samples), no ADTS header.
+    public var frame: Data
+
+    public init(ptsUs: UInt64, frame: Data) {
+        self.ptsUs = ptsUs
+        self.frame = frame
+    }
+}
+
 public enum IucmErrorCode: UInt16, Sendable {
     case busy = 1
     case cameraDenied = 2
     case formatUnsupported = 3
     case encoderFailed = 4
     case versionUnsupported = 5
+    /// Microphone permission denied. Not fatal: video keeps running without audio.
+    case micDenied = 6
 }
 
 public struct ErrorMessage: Equatable, Sendable {
@@ -177,6 +244,8 @@ public enum IucmMessage: Equatable, Sendable {
     case stats(StatsMessage)
     case config(ConfigMessage)
     case video(VideoMessage)
+    case audioConfig(AudioConfigMessage)
+    case audio(AudioMessage)
     case ping(UInt64)
     case pong(UInt64)
     case error(ErrorMessage)
@@ -189,6 +258,8 @@ public enum IucmMessage: Equatable, Sendable {
         case .stats: return .stats
         case .config: return .config
         case .video: return .video
+        case .audioConfig: return .audioConfig
+        case .audio: return .audio
         case .ping: return .ping
         case .pong: return .pong
         case .error: return .error

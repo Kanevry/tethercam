@@ -1,6 +1,6 @@
-# IUCM: iPhone USB Camera Message Protocol, Version 1.0
+# IUCM: iPhone USB Camera Message Protocol, Version 1.1
 
-Stand: 2026-09-05. Normativ fuer `shared/frame_parser.c`, die iOS-App und jeden weiteren
+Stand: 2026-09-06 (1.1: Audio, siehe 4.2, 4.9 und 4.10). Normativ fuer `shared/frame_parser.c`, die iOS-App und jeden weiteren
 Empfaenger. Wer sich an dieses Dokument haelt, kann eine Swift- und eine C-Implementierung
 unabhaengig voneinander schreiben und sie sprechen miteinander.
 
@@ -59,6 +59,8 @@ Jede Nachricht besteht aus einem 12-Byte-Kopf und einer Nutzlast variabler Laeng
 | `0x12` | STATS   | App → Mac | §4.8, 1x pro Sekunde solange verbunden |
 | `0x10` | CONFIG  | App → Mac | §4.5                                |
 | `0x11` | VIDEO   | App → Mac | §4.6                                |
+| `0x13` | AUDIO_CONFIG | App → Mac | §4.9, vor dem ersten AUDIO     |
+| `0x14` | AUDIO   | App → Mac | §4.10                               |
 | `0x20` | PING    | Mac → App | §4.3, u64 Zeitstempel               |
 | `0x21` | PONG    | App → Mac | §4.3, derselbe u64 Zeitstempel      |
 | `0x30` | ERROR   | beide     | §4.7                                |
@@ -100,9 +102,27 @@ Fehler; unbekannte Zusatzfelder am Ende der Nutzlast werden ignoriert.
 | 3      | 2       | height       | u16, Wunschhoehe in Pixel          |
 | 5      | 2       | fps          | u16, Wunsch-Bildrate               |
 | 7      | 4       | bitrate_kbps | u32, Ziel-Bitrate in kbit/s        |
+| 11     | 1       | flags        | u8, optional (ab 1.1), siehe unten |
 
-Gesamtlaenge 11 Byte. Die App waehlt das naechstliegende unterstuetzte Format und meldet
-das tatsaechlich aktive per CONFIG. Standard fuer 1080p30: `bitrate_kbps = 12000`.
+**Zwei gueltige Laengen: 11 und 12 Byte.** Bis Version 1.0 war START 11 Byte lang; ab 1.1
+haengt der Empfaenger ein `flags`-Byte an. Beide Laengen sind gueltig und muessen von jedem
+Empfaenger akzeptiert werden: **wer nur 11 Byte erhaelt, behandelt `flags` als 0.** Eine
+Laenge groesser als 12 ist kein Fehler, die Zusatzbytes werden ignoriert (§4.1, Versionsregel).
+
+| Bit | Name  | Bedeutung                                                      |
+|-----|-------|-----------------------------------------------------------------|
+| 0   | audio | Der Empfaenger wuenscht Audio (AUDIO_CONFIG und AUDIO, §4.9/4.10) |
+
+Bits 1-7 sind reserviert und werden als 0 gesendet.
+
+Ein Sender darf die kurze Form (11 Byte) verwenden, solange `flags == 0` ist; genau das tun
+die beiden Swift-Implementierungen. So versteht auch eine App der Version 1.0, die
+ueberzaehlige Bytes als Rahmenfehler wertet, ein START ohne Audiowunsch.
+
+Die App waehlt das naechstliegende unterstuetzte Format und meldet das tatsaechlich aktive
+per CONFIG. Standard fuer 1080p30: `bitrate_kbps = 12000`. **Audio wird ausschliesslich
+gesendet, wenn Bit 0 im letzten START gesetzt war**; ohne das Bit sendet die App weder
+AUDIO_CONFIG noch AUDIO.
 
 ### 4.3 PING (`0x20`) / PONG (`0x21`)
 
@@ -187,8 +207,9 @@ die niemand im Protokoll bemerkt.
 | 3    | FORMAT_UNSUPPORTED  | Kein Format nahe genug am START-Wunsch.                         |
 | 4    | ENCODER_FAILED      | VTCompressionSession-Fehler. App baut neu auf und laeuft weiter.|
 | 5    | VERSION_UNSUPPORTED | Major-Version aus HELLO unbekannt. Sender schliesst danach.     |
+| 6    | MIC_DENIED          | Mikrofonzugriff verweigert. **Nicht fatal:** Video laeuft weiter, es kommt nur kein Audio. |
 
-Codes 6 und hoeher sind reserviert. Ein Empfaenger, der einen unbekannten Code sieht,
+Codes 7 und hoeher sind reserviert. Ein Empfaenger, der einen unbekannten Code sieht,
 protokolliert Code plus Text und behandelt ihn wie einen nicht-fatalen Fehler.
 
 ### 4.8 STATS (`0x12`), App → Mac
@@ -221,8 +242,12 @@ Gesamtlaenge **22 Byte**, dicht gepackt, little-endian:
 | 1   | horizonLeveling: der Leveller ist eingeschaltet                          |
 | 2   | oversampling: die Kamera laeuft groesser als die Ausgabe (4K → 1080p)     |
 | 3   | flat_hold: das Telefon liegt flach, der Winkel wird gehalten             |
+| 4   | audio_active: Audio wird gerade gesendet (reserviert in 1.1)             |
+| 5   | audio_muted: der Nutzer hat das Mikrofon stummgeschaltet (reserviert in 1.1) |
 
-Bits 4-7 sind reserviert und werden als 0 gesendet.
+Bits 6-7 sind reserviert und werden als 0 gesendet. Bits 4 und 5 sind in 1.1 nur belegt,
+noch nicht gesendet: die App setzt sie erst, wenn der Audiopfad steht. Ein Empfaenger liest
+sie rein informativ und leitet daraus keine Zustandswechsel ab.
 
 `residual_x10` ist der **angewandte** Restwinkel (geglaettet und geklemmt), nicht die
 geometrische Differenz `continuous - sector`. Letztere ergibt sich aus den beiden
@@ -233,15 +258,68 @@ Neigung *nicht* deckt. Faustregel beim Lesen des Logs: weicht `residual` deutlic
 Ein Empfaenger, der `0x12` nicht kennt, ueberspringt den Rahmen nach §2: STATS ist
 rueckwaertskompatibel und darf ohne Aushandlung gesendet werden.
 
+### 4.9 AUDIO_CONFIG (`0x13`), App → Mac
+
+Ergaenzt in 1.1. Beschreibt den Audiostrom, bevor das erste AUDIO kommt, und erneut, sobald
+sich Rate, Kanalzahl oder Codec aendern. Wird nur gesendet, wenn START Bit 0 gesetzt war (§4.2).
+
+| Offset | Groesse | Feld        | Inhalt                                             |
+|--------|---------|-------------|----------------------------------------------------|
+| 0      | 4       | sample_rate | u32 LE, Abtastrate in Hz, in der Praxis 48000      |
+| 4      | 1       | channels    | u8, 1 (mono) oder 2 (stereo)                       |
+| 5      | 1       | codec       | u8, `1` = AAC-LC. Andere Werte sind reserviert      |
+| 6      | 2       | asc_len     | u16 LE, Laenge des AudioSpecificConfig in Byte     |
+| 8      | asc_len | asc         | AudioSpecificConfig, unveraendert                   |
+
+Gesamtlaenge `8 + asc_len`. `asc` ist der Magic Cookie des AudioConverters
+(`kAudioConverterCompressionMagicCookie`), typisch 2 Byte, und wird **nicht** selbst gebaut.
+Der Empfaenger fuellt daraus seine `AudioStreamBasicDescription` (`mSampleRate` aus
+`sample_rate`, `mChannelsPerFrame` aus `channels`, `mFormatID = kAudioFormatMPEG4AAC`,
+`mFramesPerPacket = 1024`) und reicht `asc` unveraendert als Magic Cookie an den Decoder
+weiter.
+
+Der Codec-Wert wird **durchgereicht, nicht abgelehnt**: ein Empfaenger, der einen unbekannten
+Codec sieht, protokolliert ihn und laesst Audio aus, statt die Verbindung zu beenden.
+`asc_len = 0` ist auf der Leitung gueltig, fuer AAC-LC aber unbrauchbar: der Sender MUSS den
+Cookie mitschicken, der Empfaenger startet ohne ihn keinen Audiopfad.
+
+Ein Empfaenger, der `0x13` nicht kennt, ueberspringt den Rahmen nach §2.
+
+### 4.10 AUDIO (`0x14`), App → Mac
+
+| Offset | Groesse | Feld   | Inhalt                                              |
+|--------|---------|--------|------------------------------------------------------|
+| 0      | 8       | pts_us | u64 LE, Praesentationszeit in Mikrosekunden          |
+| 8      | Rest    | frame  | genau **ein** rohes AAC-Frame (1024 Samples)         |
+
+- `pts_us` laeuft auf **derselben Uhr wie VIDEO** (§4.6). Das ist die einzige Grundlage der
+  A/V-Synchronisation; es gibt keinen getrennten Audiotakt und keinen Offset.
+- Die Nutzlast ab Offset 8 ist ein einzelnes Access Unit **ohne ADTS-Header**, ohne
+  Laengenpraefix und ohne Paketierung mehrerer Frames. Bei 48 kHz entspricht ein Frame
+  21333 us.
+- Header-`flags` sind bei AUDIO **0**. Bit 0 bedeutet nur bei VIDEO Keyframe (§2).
+- Eine leere Nutzlast ab Offset 8 (`length == 8`) ist **kein Rahmenfehler**: der Parser
+  liefert ein leeres Frame, der Empfaenger verwirft es. Der Sender darf so etwas nicht
+  erzeugen. Diese Regel haelt Audio- und Videopfad im Parser gleich (§4.6 reicht die
+  Restbytes ebenfalls unbesehen durch) und erspart der C-Seite einen Sonderfall.
+- Kommt AUDIO ohne vorheriges AUDIO_CONFIG, verwirft der Empfaenger den Rahmen und wartet
+  auf das CONFIG. Ein Verbindungsabbruch ist das nicht.
+
+Ein Empfaenger, der `0x14` nicht kennt, ueberspringt den Rahmen nach §2. AUDIO_CONFIG und
+AUDIO sind damit ohne Aushandlung ueberspringbar, genau wie STATS.
+
 ## 5. Ablauf
 
 ```
 App                                  Mac
  |<------------------ TCP/usbmux connect ----|
  |--- HELLO (version, name, cameras) ------->|
- |<-- START (camera_id, w, h, fps, bitrate) -|
+ |<-- START (camera_id, w, h, fps, bitrate,  |
+ |          flags: Bit 0 = Audio) -----------|
  |--- CONFIG (aktives Format, hvcC) -------->|
+ |--- AUDIO_CONFIG (48k, 1ch, AAC, asc) ---->|   nur wenn START Bit 0
  |--- VIDEO (pts, NALs) [flags=1 Keyframe] ->|
+ |--- AUDIO (pts, AAC-Frame) --------------->|   nur wenn START Bit 0
  |--- VIDEO ... ---------------------------->|
  |<-- PING (t) --- alle 2 s -----------------|
  |--- PONG (t) ----------------------------->|
@@ -252,6 +330,15 @@ App                                  Mac
 Regeln: HELLO ist immer die erste Nachricht der App. START vor HELLO ist ein Protokollfehler.
 CONFIG kommt immer vor dem ersten VIDEO nach einem START. Nach einem STOP darf ein neues
 START folgen; darauf antwortet die App wieder mit CONFIG.
+
+**Audio.** Audio haengt allein an Bit 0 des letzten START (§4.2). Ist es gesetzt, sendet die
+App AUDIO_CONFIG vor dem ersten AUDIO und erneut bei jeder Formataenderung; Video und Audio
+laufen danach als zwei unabhaengige Nachrichtenstroeme mit derselben Uhr, ohne feste
+Reihenfolge zueinander. Ist das Bit nicht gesetzt, kommt weder AUDIO_CONFIG noch AUDIO.
+Verweigert der Nutzer den Mikrofonzugriff, sendet die App einmalig `ERROR` Code 6
+(MIC_DENIED) und streamt weiter, nur eben ohne Ton. Nach einem STOP mit anschliessendem
+neuen START gilt der Audiowunsch des **neuen** START; die App sendet dann wieder ein
+AUDIO_CONFIG.
 
 ## 6. usbmuxd-Seite
 

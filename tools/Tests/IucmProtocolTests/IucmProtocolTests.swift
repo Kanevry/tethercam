@@ -29,10 +29,10 @@ final class CodecRoundTripTests: XCTestCase {
                       CameraInfo(id: 1, position: .front, name: "Frontkamera")])))
     }
 
-    func testHelloVersionIsOneDotZero() throws {
+    func testHelloVersionIsOneDotOne() throws {
         let data = try IucmCodec.encode(.hello(HelloMessage(deviceName: "x", appVersion: "y", cameras: [])))
-        XCTAssertEqual(Iucm.version, 0x0100)
-        XCTAssertEqual([UInt8](data)[12], 0x00)   // LE low byte = minor
+        XCTAssertEqual(Iucm.version, 0x0101)
+        XCTAssertEqual([UInt8](data)[12], 0x01)   // LE low byte = minor
         XCTAssertEqual([UInt8](data)[13], 0x01)   // high byte = major
     }
 
@@ -70,12 +70,83 @@ final class CodecRoundTripTests: XCTestCase {
         try roundTrip(.error(ErrorMessage(.versionUnsupported, "Umlaute: äöüß")))
     }
 
+    // MARK: - Audio, PROTOCOL.md 4.2/4.9/4.10
+
+    func testStartShortFormIsElevenBytesAndDecodesAsNoAudio() throws {
+        let data = try IucmCodec.encode(.start(StartMessage(cameraId: 1, width: 1920, height: 1080,
+                                                            fps: 30, bitrateKbps: 12000)))
+        XCTAssertEqual(Array([UInt8](data)[8..<12]), [11, 0, 0, 0])
+        guard case let .start(m) = try IucmCodec.decode(data) else { return XCTFail("not start") }
+        XCTAssertEqual(m.flags, 0)
+        XCTAssertFalse(m.wantsAudio)
+    }
+
+    func testStartWithAudioFlagIsTwelveBytes() throws {
+        var m = StartMessage(cameraId: 1, width: 1920, height: 1080, fps: 30, bitrateKbps: 12000)
+        m.wantsAudio = true
+        XCTAssertEqual(m.flags, StartMessage.flagAudio)
+        let data = try IucmCodec.encode(.start(m))
+        XCTAssertEqual(Array([UInt8](data)[8..<12]), [12, 0, 0, 0])
+        XCTAssertEqual([UInt8](data)[23], 0x01)          // flags byte at payload offset 11
+        try roundTrip(.start(m))
+    }
+
+    func testStartFromAFutureMinorVersionIgnoresExtraBytes() throws {
+        // 14-byte START: 11 fixed + flags + two bytes a later 1.x may add.
+        let payload: [UInt8] = [1, 0x80, 0x07, 0x38, 0x04, 30, 0, 0xE0, 0x2E, 0, 0, 0x01, 0xAB, 0xCD]
+        guard case let .start(m) = try IucmCodec.decodePayload(type: 0x02, flags: 0, payload: payload)
+        else { return XCTFail("not start") }
+        XCTAssertTrue(m.wantsAudio)
+        XCTAssertEqual(m.width, 1920)
+    }
+
+    func testAudioConfigRoundTrip() throws {
+        let m = AudioConfigMessage(sampleRate: 48000, channels: 1, codec: .aacLC,
+                                   asc: Data([0x11, 0x88]))
+        XCTAssertEqual(m.codec, IucmAudioCodec.aacLC.rawValue)
+        let data = try IucmCodec.encode(.audioConfig(m))
+        XCTAssertEqual([UInt8](data)[4], 0x13)
+        XCTAssertEqual(Array([UInt8](data)[8..<12]), [10, 0, 0, 0])   // 8 fixed + 2 asc
+        XCTAssertEqual(Array([UInt8](data)[12..<16]), [0x80, 0xBB, 0x00, 0x00])  // 48000 LE
+        try roundTrip(.audioConfig(m))
+        try roundTrip(.audioConfig(AudioConfigMessage(sampleRate: 44100, channels: 2,
+                                                      codec: 1, asc: Data())))
+    }
+
+    func testAudioConfigRejectsTruncatedAsc() {
+        XCTAssertThrowsError(try IucmCodec.decodePayload(
+            type: 0x13, flags: 0,
+            payload: [0x80, 0xBB, 0x00, 0x00, 0x01, 0x01, 0x04, 0x00, 0xAA]))  // asc_len 4, 1 byte
+    }
+
+    func testAudioRoundTripAndEmptyFrameIsAllowed() throws {
+        let frame = Data((0..<180).map { UInt8($0 % 251) })
+        let data = try IucmCodec.encode(.audio(AudioMessage(ptsUs: 1_725_000_000_000_000, frame: frame)))
+        XCTAssertEqual([UInt8](data)[4], 0x14)
+        XCTAssertEqual([UInt8](data)[5], 0x00)                        // header flags are 0
+        XCTAssertEqual(data.count, Iucm.headerSize + 8 + frame.count)
+        try roundTrip(.audio(AudioMessage(ptsUs: 1_725_000_000_000_000, frame: frame)))
+        // An empty frame is legal on the wire: senders must not emit it, receivers skip it.
+        try roundTrip(.audio(AudioMessage(ptsUs: 0, frame: Data())))
+    }
+
+    func testMicDeniedErrorCode() throws {
+        XCTAssertEqual(IucmErrorCode.micDenied.rawValue, 6)
+        try roundTrip(.error(ErrorMessage(.micDenied, "Mikrofonzugriff verweigert")))
+    }
+
+    func testAudioStatsFlagBits() {
+        XCTAssertEqual(StatsMessage.flagAudioActive, 0x10)
+        XCTAssertEqual(StatsMessage.flagAudioMuted, 0x20)
+    }
+
     func testAllErrorCodes() {
         XCTAssertEqual(IucmErrorCode.busy.rawValue, 1)
         XCTAssertEqual(IucmErrorCode.cameraDenied.rawValue, 2)
         XCTAssertEqual(IucmErrorCode.formatUnsupported.rawValue, 3)
         XCTAssertEqual(IucmErrorCode.encoderFailed.rawValue, 4)
         XCTAssertEqual(IucmErrorCode.versionUnsupported.rawValue, 5)
+        XCTAssertEqual(IucmErrorCode.micDenied.rawValue, 6)
     }
 }
 

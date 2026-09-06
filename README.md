@@ -37,7 +37,7 @@ v0.1.0 is published, signed and notarized. Prefer to build from source? See [Ins
 **2. Get the iPhone app.**
 
 <!-- TESTFLIGHT: public link, external group "Public Beta" -->
-Free public beta on TestFlight: **[https://testflight.apple.com/join/wmT74Ry8](https://testflight.apple.com/join/wmT74Ry8)**. Build 0.1.0 (2) was submitted to Beta App Review on 2026-09-05; until Apple approves it the link says the beta is not accepting testers. Or build it yourself with a free Apple ID, five minutes: [Install the iPhone app](#install-the-iphone-app).
+Free public beta on TestFlight, open to anyone: **[https://testflight.apple.com/join/wmT74Ry8](https://testflight.apple.com/join/wmT74Ry8)**. Build 0.1.0 (2) cleared Beta App Review on 2026-09-06; the App Store listing is still in review. Or build it yourself with a free Apple ID, five minutes: [Install the iPhone app](#install-the-iphone-app).
 
 <img src="docs/images/app-live.png" width="720" alt="TetherCam on the iPhone: full-screen preview, status capsule Streaming 1080p30, gear icon top right">
 
@@ -119,7 +119,7 @@ To confirm it loaded, open the newest log under `~/Library/Application Support/o
 ## Install the iPhone app
 
 <a id="testflight-link"></a>
-**Easiest way: join the free public TestFlight beta** at [https://testflight.apple.com/join/wmT74Ry8](https://testflight.apple.com/join/wmT74Ry8). Install TestFlight from the App Store first if you do not have it. Build 0.1.0 (2) was submitted to Beta App Review on 2026-09-05; until Apple approves it the link says the beta is not accepting testers, so try again a little later. TestFlight is the only way to get a prebuilt app.
+**Easiest way: join the free public TestFlight beta** at [https://testflight.apple.com/join/wmT74Ry8](https://testflight.apple.com/join/wmT74Ry8). Install TestFlight from the App Store first if you do not have it. Build 0.1.0 (2) cleared Beta App Review on 2026-09-06 and the link is open to anyone; the App Store listing is still in review. TestFlight is the only way to get a prebuilt app.
 
 Apple does not allow free distribution of iOS apps outside the App Store and TestFlight, so there is no `.ipa` to download here and there cannot be one. If you would rather not use TestFlight, or want to change the code, build and install the app yourself. That is free with any Apple ID, and the resulting build expires after 7 days unless you have a paid developer account.
 
@@ -244,7 +244,7 @@ swift build -c release --package-path tools
 - Virtual camera as a macOS Camera Extension (CMIO), so the picture also shows up in Zoom, FaceTime and Safari.
 - Audio from the phone.
 - Receivers for Windows and Linux. The C core already builds there.
-- App Store listing: 0.1.0 (2) was submitted for App Review on 2026-09-05; the TestFlight public beta link above works as soon as Beta App Review approves it.
+- App Store listing: 0.1.0 (2) was submitted for App Review on 2026-09-05, still in review; Build 0.1.0 (2) cleared Beta App Review on 2026-09-06, so the TestFlight public beta link above now accepts testers.
 
 ## License
 
