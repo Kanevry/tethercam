@@ -651,6 +651,9 @@ int on_message(void *ctx, const struct iucm_msg *msg)
 		audio.format = AUDIO_FORMAT_FLOAT; /* Float32 interleaved, see aac_decoder.h */
 		audio.timestamp = pts_us * 1000ULL; /* same clock as the video frames */
 		obs_source_output_audio(s->source, &audio);
+		if (iucm_aac_decoder_frames(s->adec) == 1)
+			obs_log(LOG_INFO, "[iphone-cam] first audio frame decoded (%u frames, pts %llu us)",
+				(unsigned) frames, (unsigned long long) pts_us);
 		return 0;
 	}
 	case IUCM_MSG_STATS: {

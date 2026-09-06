@@ -42,6 +42,7 @@ struct iucm_aac_decoder {
 	uint8_t channels = 0;
 	bool failed = false;
 	uint64_t frames = 0;
+	uint64_t empty = 0;
 };
 
 /* One access unit per call. The converter asks for input until it has enough
@@ -196,19 +197,29 @@ bool iucm_aac_decoder_decode(iucm_aac_decoder_t *dec, const uint8_t *frame, uint
 	out_list.mBuffers[0].mDataByteSize = (UInt32) (dec->pcm.size() * sizeof(float));
 	out_list.mBuffers[0].mData = dec->pcm.data();
 
-	/* PCM output: one packet is one frame, so the packet count is the frame
-	 * count both on the way in and on the way back. */
-	UInt32 packets = IUCM_AAC_MAX_FRAMES;
+	/* PCM output: one packet is one frame. Ask for exactly one access unit
+	 * worth of frames (mFramesPerPacket of the input format). Asking for more
+	 * makes the converter pull a second input packet; the input proc then
+	 * answers 0 packets, which AudioToolbox treats as end of stream and the
+	 * converter never produces output again (measured 2026-09-06: silent
+	 * mixer in OBS with the 4096-frame request). The buffer keeps its
+	 * headroom for the byte-size check only. */
+	UInt32 packets = dec->in_asbd.mFramesPerPacket ? dec->in_asbd.mFramesPerPacket : 1024;
 	OSStatus st = AudioConverterFillComplexBuffer(dec->converter, iucm_aac_input_proc, &input, &packets, &out_list,
 						      nullptr);
 	if (st != noErr) {
-		obs_log(LOG_WARNING, "[iphone-cam] AAC decode error %d — dropping the audio decoder", (int) st);
+		obs_log(LOG_WARNING, "[iphone-cam] AAC decode error %d, dropping the audio decoder", (int) st);
 		iucm_aac_decoder_close(dec);
 		dec->failed = true;
 		return false;
 	}
-	if (packets == 0)
-		return false; /* converter needed more input than one access unit */
+	if (packets == 0) {
+		/* Priming or a stalled converter: reset so the next access unit is
+		 * decoded from a clean state instead of a latched end-of-stream. */
+		AudioConverterReset(dec->converter);
+		dec->empty++;
+		return false;
+	}
 
 	dec->frames++;
 	*out_pcm = dec->pcm.data();
