@@ -135,6 +135,10 @@ struct iphone_source {
 	 * mute flag from STATS (PROTOCOL.md 4.8, bit 5). */
 	int status_audio_rate = 0;
 	bool status_audio_muted = false;
+	/* The phone answered the audio request with ERROR 6 MIC_DENIED
+	 * (PROTOCOL.md 4.7). Video keeps running, so this is a note in the status
+	 * line, not a connection state. */
+	bool status_audio_denied = false;
 
 	/* per-connection state, worker thread only */
 	int fd = -1;
@@ -179,6 +183,9 @@ struct iphone_source {
 	uint8_t adec_channels = 0;
 	std::vector<uint8_t> adec_asc;
 	uint64_t audio_log_deadline_ms = 0;
+	/* Non-fatal ERROR frames can repeat as fast as the app retries, so their
+	 * log line is rate-limited the same way. 0 = log the first one at once. */
+	uint64_t error_log_deadline_ms = 0;
 
 	float color_matrix[16];
 	float color_min[3];
@@ -383,6 +390,17 @@ bool audio_log_due(iphone_source *s)
 	return true;
 }
 
+/* Worker thread only. Same throttle for the non-fatal ERROR frames: an app that
+ * cannot start its encoder may say so on every rebuild attempt. */
+bool error_log_due(iphone_source *s)
+{
+	uint64_t now = now_ms();
+	if (now < s->error_log_deadline_ms)
+		return false;
+	s->error_log_deadline_ms = now + IUCM_AUDIO_LOG_INTERVAL_MS;
+	return true;
+}
+
 int on_message(void *ctx, const struct iucm_msg *msg)
 {
 	auto *s = static_cast<iphone_source *>(ctx);
@@ -564,6 +582,12 @@ int on_message(void *ctx, const struct iucm_msg *msg)
 		s->adec_asc.clear();
 		s->adec_rate = 0;
 		s->adec_channels = 0;
+		{
+			/* The old rate is gone the moment the old decoder is: the status
+			 * line must not keep advertising audio that no longer plays. */
+			std::lock_guard<std::mutex> lock(s->cfg_mutex);
+			s->status_audio_rate = 0;
+		}
 		obs_log(LOG_INFO, "[iphone-cam] AUDIO_CONFIG received: %u Hz, %u ch, codec %u, ASC %u bytes",
 			(unsigned) rate, (unsigned) channels, (unsigned) codec, (unsigned) asc_len);
 		s->adec = iucm_aac_decoder_create(rate, channels, asc, asc_len);
@@ -611,6 +635,8 @@ int on_message(void *ctx, const struct iucm_msg *msg)
 				s->adec_asc.clear();
 				s->adec_rate = 0;
 				s->adec_channels = 0;
+				std::lock_guard<std::mutex> lock(s->cfg_mutex);
+				s->status_audio_rate = 0;
 			}
 			return 0;
 		}
@@ -684,15 +710,46 @@ int on_message(void *ctx, const struct iucm_msg *msg)
 	}
 	case IUCM_MSG_ERROR: {
 		struct iucm_error err = {};
-		if (iucm_parse_error(msg->payload, msg->length, &err) == IUCM_OK) {
-			obs_log(LOG_WARNING, "[iphone-cam] peer ERROR %u: %s", (unsigned) err.code, err.text);
-			if (err.code == IUCM_ERRCODE_BUSY || err.code == IUCM_ERRCODE_VERSION_UNSUPPORTED) {
-				s->fatal = true;
-				s->fatal_state = err.code == IUCM_ERRCODE_BUSY ? link_state::busy
-									      : link_state::incompatible;
-			}
+		if (iucm_parse_error(msg->payload, msg->length, &err) != IUCM_OK) {
+			/* A malformed ERROR says nothing about the session, and the
+			 * parser already skipped it. Never a reason to disconnect. */
+			if (error_log_due(s))
+				obs_log(LOG_WARNING, "[iphone-cam] bad ERROR frame (%u bytes)",
+					(unsigned) msg->length);
+			return 0;
 		}
-		return 1;
+		/* Only BUSY and VERSION_UNSUPPORTED are fatal (PROTOCOL.md 4.7): the
+		 * sender closes after them. Every other code, known or not, leaves the
+		 * connection usable, so the receiver holds it. Returning 1 here would
+		 * abort the parser, drop the socket and reconnect at once, which for a
+		 * repeating cause such as MIC_DENIED is an endless loop without a
+		 * picture. */
+		if (err.code == IUCM_ERRCODE_BUSY || err.code == IUCM_ERRCODE_VERSION_UNSUPPORTED) {
+			obs_log(LOG_WARNING, "[iphone-cam] peer ERROR %u: %s", (unsigned) err.code, err.text);
+			s->fatal = true;
+			s->fatal_state = err.code == IUCM_ERRCODE_BUSY ? link_state::busy
+								      : link_state::incompatible;
+			return 1;
+		}
+		if (err.code == IUCM_ERRCODE_MIC_DENIED) {
+			/* The user refused the microphone on the phone. Audio will not
+			 * arrive on this connection; the video path is untouched. */
+			bool first = false;
+			{
+				std::lock_guard<std::mutex> lock(s->cfg_mutex);
+				first = !s->status_audio_denied;
+				s->status_audio_denied = true;
+			}
+			if (first)
+				obs_log(LOG_WARNING,
+					"[iphone-cam] peer ERROR 6 MIC_DENIED: %s - audio stays off, video keeps running",
+					err.text);
+			return 0;
+		}
+		if (error_log_due(s))
+			obs_log(LOG_WARNING, "[iphone-cam] peer ERROR %u (non-fatal): %s", (unsigned) err.code,
+				err.text);
+		return 0;
 	}
 	default:
 		return 0; /* unknown types are skipped, PROTOCOL.md 2 */
@@ -721,8 +778,10 @@ void close_connection(iphone_source *s)
 		std::lock_guard<std::mutex> lock(s->cfg_mutex);
 		s->status_audio_rate = 0;
 		s->status_audio_muted = false;
+		s->status_audio_denied = false;
 	}
 	s->audio_log_deadline_ms = 0; /* log the first audio oddity of the next session at once */
+	s->error_log_deadline_ms = 0; /* same for the first non-fatal ERROR */
 	if (s->fd >= 0) {
 		close(s->fd);
 		s->fd = -1;
@@ -1059,6 +1118,7 @@ obs_properties_t *source_get_properties(void *data)
 		double measured = 0.0;
 		int audio_rate = 0;
 		bool audio_muted = false;
+		bool audio_denied = false;
 		if (s) {
 			std::lock_guard<std::mutex> lock(s->cfg_mutex);
 			st = s->status_state;
@@ -1069,6 +1129,7 @@ obs_properties_t *source_get_properties(void *data)
 			measured = s->status_measured_fps;
 			audio_rate = s->status_audio_rate;
 			audio_muted = s->status_audio_muted;
+			audio_denied = s->status_audio_denied;
 		}
 		switch (st) {
 		case link_state::streaming:
@@ -1105,6 +1166,13 @@ obs_properties_t *source_get_properties(void *data)
 		default:
 			snprintf(status, sizeof(status), "%s", obs_module_text("Status.NoDevice"));
 			break;
+		}
+		/* ERROR 6 leaves the video running, so this is appended to whatever the
+		 * link state says instead of replacing it. Fixed English until a
+		 * Status.AudioDenied key exists in the locale files. */
+		if (audio_denied) {
+			size_t used = strlen(status);
+			snprintf(status + used, sizeof(status) - used, "%s", obs_module_text("Status.AudioDenied"));
 		}
 	}
 	obs_property_t *status_prop =

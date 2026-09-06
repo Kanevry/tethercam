@@ -242,12 +242,12 @@ Gesamtlaenge **22 Byte**, dicht gepackt, little-endian:
 | 1   | horizonLeveling: der Leveller ist eingeschaltet                          |
 | 2   | oversampling: die Kamera laeuft groesser als die Ausgabe (4K → 1080p)     |
 | 3   | flat_hold: das Telefon liegt flach, der Winkel wird gehalten             |
-| 4   | audio_active: Audio wird gerade gesendet (reserviert in 1.1)             |
-| 5   | audio_muted: der Nutzer hat das Mikrofon stummgeschaltet (reserviert in 1.1) |
+| 4   | audio_active: Audio wird gerade gesendet (ab 1.1)                          |
+| 5   | audio_muted: der Nutzer hat das Mikrofon stummgeschaltet (ab 1.1)            |
 
-Bits 6-7 sind reserviert und werden als 0 gesendet. Bits 4 und 5 sind in 1.1 nur belegt,
-noch nicht gesendet: die App setzt sie erst, wenn der Audiopfad steht. Ein Empfaenger liest
-sie rein informativ und leitet daraus keine Zustandswechsel ab.
+Bits 6-7 sind reserviert und werden als 0 gesendet. Bits 4 und 5 werden ab 1.1 gesendet:
+Bit 4 solange AUDIO-Rahmen ausgehen, Bit 5 solange der Nutzer stummgeschaltet hat. Ein
+Empfaenger liest sie rein informativ und leitet daraus keine Zustandswechsel ab.
 
 `residual_x10` ist der **angewandte** Restwinkel (geglaettet und geklemmt), nicht die
 geometrische Differenz `continuous - sector`. Letztere ergibt sich aus den beiden

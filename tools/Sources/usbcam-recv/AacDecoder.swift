@@ -113,11 +113,16 @@ final class AacDecoder {
     }
 
     /// Decodes one access unit and returns the number of PCM sample frames produced.
+    ///
+    /// An empty frame is not a framing error (PROTOCOL.md 4.10): the receiver already
+    /// drops those before they reach here, but this returns 0 rather than throwing so
+    /// the guarantee holds for any caller.
     func decode(frame: Data) throws -> Int {
         guard let converter else { throw RecvError.protocolViolation("AAC decoder is gone") }
-        guard !frame.isEmpty, frame.count <= 8192 else {
+        guard frame.count <= 8192 else {
             throw RecvError.protocolViolation("AUDIO frame of \(frame.count) bytes is not an AAC access unit")
         }
+        guard !frame.isEmpty else { return 0 }
         frame.withUnsafeBytes { raw in
             pendingBuffer.update(from: raw.bindMemory(to: UInt8.self).baseAddress!, count: frame.count)
         }

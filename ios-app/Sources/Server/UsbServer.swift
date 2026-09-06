@@ -310,7 +310,11 @@ public final class UsbServer {
     /// Audio failures are reported but never stop the take — the picture is what
     /// the receiver is here for (`IucmErrorCode.micDenied`, spec section 4.9).
     private func reportAudioError(_ code: IucmErrorCode) {
-        audioConfig = nil
+        // The last known AudioSpecificConfig stays: an error is not necessarily
+        // the end of the take (a converter rebuild re-arms the encoder and then
+        // pushes a fresh cookie through `onConfig`). Only the "receiver has seen
+        // it" marker is dropped, so the first frame after a recovery is preceded
+        // by AUDIO_CONFIG again instead of being discarded forever.
         audioConfigSentTo = nil
         guard let id = machine.activeConnection else { return }
         NSLog("[usbcam] audio unavailable (code=%d) - video continues", Int(code.rawValue))

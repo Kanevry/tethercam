@@ -56,6 +56,52 @@ public final class AudioCapture: NSObject {
     public static let outputSampleRate: Double = 48_000
     public static let outputChannels: UInt32 = 1
     public static let framesPerPacket: UInt32 = 1024
+    /// Nominal length of one access unit in microseconds (21333 at 48 kHz).
+    /// Also the resync tolerance: anything within one packet is jitter.
+    public static let packetDurationUs: UInt64 =
+        UInt64(framesPerPacket) * 1_000_000 / UInt64(outputSampleRate)
+
+    /// Decides whether the microphone stream has drifted away from the pts
+    /// chain far enough to warrant a new anchor.
+    ///
+    /// The emitted pts is pure arithmetic (`anchor + n x 1024/48000`), so a gap
+    /// in the microphone stream (an interruption, a phone call, dropped
+    /// buffers) or plain ppm clock drift turns into a permanent A/V offset:
+    /// the counter keeps ticking as if no time had passed. Comparing the
+    /// buffer's real presentation timestamp against the pts the next access
+    /// unit *would* get catches that.
+    ///
+    /// - Parameters:
+    ///   - anchorPtsUs: current timeline anchor, in the capture clock's us.
+    ///   - emittedPackets: access units produced since the anchor.
+    ///   - actualPtsUs: presentation timestamp of the incoming PCM buffer.
+    ///   - pendingUs: duration of PCM already buffered but not yet encoded;
+    ///     that much of the expected pts belongs to earlier buffers.
+    /// - Returns: the new anchor to adopt (with the packet counter reset to
+    ///   zero), or `nil` when the stream is on time and nothing must change.
+    ///
+    /// Monotonicity is preserved by construction: a returned anchor is never
+    /// below the last emitted pts plus one packet, so a backwards jump in the
+    /// microphone stream can stall the chain but never rewind it.
+    public static func resyncAnchor(anchorPtsUs: UInt64,
+                                    emittedPackets: UInt64,
+                                    actualPtsUs: UInt64,
+                                    pendingUs: UInt64 = 0) -> UInt64? {
+        let step = UInt64(framesPerPacket) * 1_000_000
+        let rate = UInt64(outputSampleRate)
+        let nextPts = anchorPtsUs + emittedPackets * step / rate
+        // The next access unit starts with the PCM already queued, so the
+        // incoming buffer is expected that much later on the timeline.
+        let expected = nextPts &+ pendingUs
+        let deviation = expected > actualPtsUs ? expected - actualPtsUs : actualPtsUs - expected
+        guard deviation > packetDurationUs else { return nil }
+        // Never rewind: the floor is one packet past the last pts on the wire.
+        let floor = emittedPackets > 0
+            ? anchorPtsUs + (emittedPackets - 1) * step / rate + packetDurationUs
+            : 0
+        return max(actualPtsUs, floor)
+    }
+
     private static let bitrate: UInt32 = 96_000
     /// Generous ceiling for one AAC access unit; 96 kbps needs ~256 byte.
     private static let maxPacketBytes = 4096
@@ -80,6 +126,13 @@ public final class AudioCapture: NSObject {
     private var inputScratchBytes = 0
     private var outputScratch: UnsafeMutableRawPointer?
     private var configSent = false
+    /// Latched once the converter reports a failure. Without the latch a broken
+    /// encoder fires `onError` per PCM buffer (~50 per second) and the server
+    /// turns each one into an ERROR frame. Cleared by a successful rebuild.
+    private var encoderFailed = false
+    /// pts of the last resync log line, so a drifting stream logs at most once
+    /// per second instead of once per buffer.
+    private var lastResyncLogUs: UInt64?
     /// Timeline anchor: PTS of the first PCM buffer of this take, in the video
     /// clock's microseconds. `gate` counts the access units produced since.
     private var anchorPtsUs: UInt64?
@@ -160,6 +213,8 @@ public final class AudioCapture: NSObject {
         converter = nil
         pendingPCM.removeAll(keepingCapacity: false)
         configSent = false
+        encoderFailed = false
+        lastResyncLogUs = nil
         anchorPtsUs = nil
         gate.reset()
         lock.unlock()
@@ -241,11 +296,30 @@ public final class AudioCapture: NSObject {
         converter = converterRef
         inputFormat = input
         outputFormat = output
+        // A new converter means a new magic cookie: the receiver must be told
+        // again, otherwise it keeps decoding against the old AudioSpecificConfig.
+        configSent = false
+        clearEncoderFailure()
         if outputScratch == nil {
             outputScratch = .allocate(byteCount: Self.maxPacketBytes, alignment: 16)
         }
         return true
     }
+
+    /// Reports an encoder failure exactly once per breakage and stalls the
+    /// audio path until a converter rebuild clears the latch. `configSent` is
+    /// dropped along with it, so the first frame after a recovery carries a
+    /// fresh AUDIO_CONFIG. `lock` must be held.
+    func latchEncoderFailure() {
+        configSent = false
+        guard !encoderFailed else { return }
+        encoderFailed = true
+        report(.encoderFailed)
+    }
+
+    /// Re-arms the error path after a successful converter rebuild.
+    /// `lock` must be held.
+    func clearEncoderFailure() { encoderFailed = false }
 
     /// Reads the magic cookie and fires `onConfig` once. `lock` must be held.
     private func sendConfigIfPossible() {
@@ -302,6 +376,15 @@ public final class AudioCapture: NSObject {
         return noErr
     }
 
+    /// Duration of the PCM waiting in the accumulator, in microseconds, at the
+    /// *input* rate the converter was built for. `lock` must be held.
+    private func pendingPCMDurationUs() -> UInt64 {
+        let bytesPerFrame = Int(inputFormat.mBytesPerFrame)
+        guard bytesPerFrame > 0, inputFormat.mSampleRate > 0 else { return 0 }
+        let frames = UInt64(pendingPCM.count / bytesPerFrame)
+        return frames * 1_000_000 / UInt64(inputFormat.mSampleRate)
+    }
+
     /// Drains the converter into whole access units. `lock` must be held.
     private func drain() {
         guard let converter, let outputScratch else { return }
@@ -318,7 +401,7 @@ public final class AudioCapture: NSObject {
                 converter, audioCaptureInputProc, selfPtr, &packets, &list, &description)
             guard status == noErr else {
                 NSLog("[usbcam] audio encode failed (%d)", Int(status))
-                onError?(.encoderFailed)
+                latchEncoderFailure()
                 return
             }
             guard packets > 0, list.mBuffers.mDataByteSize > 0 else { return }
@@ -368,6 +451,12 @@ extension AudioCapture: AVCaptureAudioDataOutputSampleBufferDelegate {
         guard status == noErr, list.mBuffers.mDataByteSize > 0,
               let data = list.mBuffers.mData else { return }
 
+        // Identical derivation to HevcEncoder's VIDEO pts, from the same
+        // capture-session clock.
+        let bufferPts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
+        let actualPtsUs = bufferPts.isValid
+            ? UInt64(max(0, CMTimeGetSeconds(bufferPts) * 1_000_000)) : nil
+
         lock.lock()
         defer { lock.unlock() }
         if converter == nil || inputFormat.mSampleRate != asbd.mSampleRate
@@ -375,17 +464,33 @@ extension AudioCapture: AVCaptureAudioDataOutputSampleBufferDelegate {
             // First buffer of the take, or a route change (headset plugged in).
             pendingPCM.removeAll(keepingCapacity: true)
             anchorPtsUs = nil
+            lastResyncLogUs = nil
             gate.reset()
             guard makeConverter(from: asbd) else {
-                onError?(.encoderFailed)
+                latchEncoderFailure()
                 return
             }
+        } else if encoderFailed {
+            // Stalled: the encoder is broken and only a rebuild re-arms it.
+            return
         }
         if anchorPtsUs == nil {
-            // Identical derivation to HevcEncoder's VIDEO pts, from the same
-            // capture-session clock.
-            let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
-            anchorPtsUs = pts.isValid ? UInt64(max(0, CMTimeGetSeconds(pts) * 1_000_000)) : 0
+            anchorPtsUs = actualPtsUs ?? 0
+        } else if let anchor = anchorPtsUs, let actualPtsUs,
+                  let newAnchor = Self.resyncAnchor(anchorPtsUs: anchor,
+                                                    emittedPackets: gate.emittedPackets,
+                                                    actualPtsUs: actualPtsUs,
+                                                    pendingUs: pendingPCMDurationUs()) {
+            // A gap in the microphone stream would otherwise become a permanent
+            // A/V offset. The queued PCM belongs to the time before the gap, so
+            // it goes with the old anchor.
+            pendingPCM.removeAll(keepingCapacity: true)
+            anchorPtsUs = newAnchor
+            gate.reset()
+            if lastResyncLogUs.map({ newAnchor &- $0 >= 1_000_000 }) ?? true {
+                lastResyncLogUs = newAnchor
+                NSLog("[usbcam] audio resync: anchor -> %llu us", newAnchor)
+            }
         }
         pendingPCM.append(Data(bytes: data, count: Int(list.mBuffers.mDataByteSize)))
         drain()

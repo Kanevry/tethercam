@@ -132,6 +132,25 @@ final class CodecRoundTripTests: XCTestCase {
         try roundTrip(.audio(AudioMessage(ptsUs: 0, frame: Data())))
     }
 
+    // MARK: - Receiver audio decision logic, no socket needed (case a/c review fix)
+
+    func testReceiverTreatsSecondAudioConfigAsChange() {
+        let first = AudioConfigMessage(sampleRate: 48000, channels: 1, codec: .aacLC, asc: Data([0x11, 0x88]))
+        XCTAssertFalse(Receiver.isAudioConfigChange(existingConfig: nil),
+                        "the first AUDIO_CONFIG in a session must not count as a change")
+        XCTAssertTrue(Receiver.isAudioConfigChange(existingConfig: first),
+                      "a second AUDIO_CONFIG (rate/channel/codec change) must count as a change, "
+                      + "not a protocol violation (PROTOCOL.md 4.9)")
+    }
+
+    func testReceiverDropsAudioBeforeConfigWithoutThrowing() {
+        XCTAssertTrue(Receiver.shouldDropAudio(hasConfig: false, frameIsEmpty: false),
+                      "AUDIO before AUDIO_CONFIG must be dropped, not treated as a protocol "
+                      + "violation (PROTOCOL.md 4.10)")
+        XCTAssertFalse(Receiver.shouldDropAudio(hasConfig: true, frameIsEmpty: false),
+                       "AUDIO with a config present and a non-empty payload must be processed")
+    }
+
     func testMicDeniedErrorCode() throws {
         XCTAssertEqual(IucmErrorCode.micDenied.rawValue, 6)
         try roundTrip(.error(ErrorMessage(.micDenied, "Mikrofonzugriff verweigert")))

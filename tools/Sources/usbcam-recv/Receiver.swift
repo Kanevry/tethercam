@@ -43,6 +43,10 @@ struct Summary: Encodable {
     var audio_first_frame_ms: Double
     /// First AUDIO pts minus first VIDEO pts, in ms — the A/V alignment at stream start.
     var audio_video_pts_skew_ms: Double
+    /// Times AUDIO_CONFIG changed rate/channels/codec after the first one (PROTOCOL.md 4.9).
+    var audio_config_changes: Int
+    /// AUDIO frames dropped without decoding: before AUDIO_CONFIG, or empty payload (4.10).
+    var audio_dropped: Int
 }
 
 final class Receiver {
@@ -69,6 +73,8 @@ final class Receiver {
     private var audioDecoder: AacDecoder?
     private var audioFrames = 0
     private var audioSamples = 0
+    private var audioConfigChanges = 0
+    private var audioDropped = 0
     private var firstAudioPts: UInt64?
     private var audioFirstFrameMs: Double = 0
 
@@ -259,15 +265,33 @@ final class Receiver {
 
     // MARK: - Audio
 
+    /// True when this AUDIO_CONFIG replaces an earlier one (rate/channels/codec change,
+    /// PROTOCOL.md 4.9) rather than being the first for this session. Pure so it is
+    /// testable without a socket; production call site is `handleAudioConfig`.
+    static func isAudioConfigChange(existingConfig: AudioConfigMessage?) -> Bool {
+        existingConfig != nil
+    }
+
+    /// True when an incoming AUDIO frame must be dropped instead of decoded:
+    /// PROTOCOL.md 4.10 says AUDIO before any AUDIO_CONFIG, and an empty payload, are
+    /// both non-fatal drops rather than framing errors. Pure so both cases are
+    /// testable without a socket; production call site is `handleAudio`.
+    static func shouldDropAudio(hasConfig: Bool, frameIsEmpty: Bool) -> Bool {
+        !hasConfig || frameIsEmpty
+    }
+
     private func handleAudioConfig(_ c: AudioConfigMessage) throws {
-        guard audioConfig == nil else {
-            throw RecvError.protocolViolation("second AUDIO_CONFIG during streaming")
-        }
-        guard c.codec == IucmAudioCodec.aacLC.rawValue else {
-            throw RecvError.protocolViolation("unsupported audio codec \(c.codec) (only 1 = AAC-LC)")
+        if Receiver.isAudioConfigChange(existingConfig: audioConfig) {
+            audioConfigChanges += 1
         }
         audioConfig = c
         logLine("AUDIOCFG \(c.sampleRate) Hz ch=\(c.channels) codec=\(c.codec) asc_len=\(c.asc.count)")
+        guard c.codec == IucmAudioCodec.aacLC.rawValue else {
+            logLine("WARN    unsupported audio codec \(c.codec) (only 1 = AAC-LC known), "
+                     + "counting AUDIO frames without decoding them")
+            audioDecoder = nil
+            return
+        }
         do {
             audioDecoder = try AacDecoder(sampleRate: Double(c.sampleRate),
                                           channels: UInt32(max(1, c.channels)), asc: c.asc)
@@ -277,8 +301,15 @@ final class Receiver {
     }
 
     private func handleAudio(_ a: AudioMessage) throws {
+        guard !Receiver.shouldDropAudio(hasConfig: audioConfig != nil, frameIsEmpty: a.frame.isEmpty) else {
+            audioDropped += 1
+            return
+        }
         guard let config = audioConfig else {
-            throw RecvError.protocolViolation("AUDIO before AUDIO_CONFIG")
+            // Unreachable: shouldDropAudio returns true whenever hasConfig is false, so
+            // the guard above already exited for that case.
+            audioDropped += 1
+            return
         }
         if firstAudioPts == nil {
             firstAudioPts = a.ptsUs
@@ -362,6 +393,8 @@ final class Receiver {
                        audio_decoded_samples: audioSamples,
                        audio_sample_rate: Int(audioConfig?.sampleRate ?? 0),
                        audio_first_frame_ms: audioFirstFrameMs,
-                       audio_video_pts_skew_ms: skew)
+                       audio_video_pts_skew_ms: skew,
+                       audio_config_changes: audioConfigChanges,
+                       audio_dropped: audioDropped)
     }
 }

@@ -84,6 +84,98 @@ final class AudioMuteTests: XCTestCase {
         XCTAssertEqual(gate.next(anchorPtsUs: 900, muted: false), 900)
     }
 
+    // MARK: - Resync
+
+    /// The bug this guards: the pts chain is pure arithmetic from the anchor, so
+    /// a 500 ms hole in the microphone stream (interruption, call, dropped
+    /// buffers) used to leave audio permanently 500 ms behind the picture.
+    func testGapReanchorsThePtsChainForward() {
+        let anchor: UInt64 = 1_000_000
+        let emitted: UInt64 = 10
+        let expected = pts(emitted, anchor: anchor)
+        let actual = expected + 500_000
+        let newAnchor = AudioCapture.resyncAnchor(anchorPtsUs: anchor,
+                                                  emittedPackets: emitted,
+                                                  actualPtsUs: actual)
+        XCTAssertEqual(newAnchor, actual)
+        XCTAssertGreaterThan(newAnchor!, pts(emitted - 1, anchor: anchor))
+    }
+
+    func testJitterWithinOnePacketKeepsTheAnchor() {
+        let anchor: UInt64 = 1_000_000
+        let emitted: UInt64 = 4
+        let expected = pts(emitted, anchor: anchor)
+        for delta in [UInt64(0), 5_000, AudioCapture.packetDurationUs] {
+            XCTAssertNil(AudioCapture.resyncAnchor(anchorPtsUs: anchor,
+                                                   emittedPackets: emitted,
+                                                   actualPtsUs: expected + delta))
+            XCTAssertNil(AudioCapture.resyncAnchor(anchorPtsUs: anchor,
+                                                   emittedPackets: emitted,
+                                                   actualPtsUs: expected - delta))
+        }
+    }
+
+    /// A backwards jump must never rewind the wire pts: the new anchor stays at
+    /// least one packet past the last access unit that already went out.
+    func testBackwardsJumpNeverMovesThePtsBackwards() {
+        let anchor: UInt64 = 1_000_000
+        let emitted: UInt64 = 10
+        let lastSent = pts(emitted - 1, anchor: anchor)
+        let newAnchor = AudioCapture.resyncAnchor(anchorPtsUs: anchor,
+                                                  emittedPackets: emitted,
+                                                  actualPtsUs: anchor - 500_000)
+        XCTAssertNotNil(newAnchor)
+        XCTAssertGreaterThanOrEqual(newAnchor!, lastSent + AudioCapture.packetDurationUs)
+        // The chain continues from the new anchor without a step backwards.
+        var gate = AudioCapture.MuteGate()
+        XCTAssertEqual(gate.next(anchorPtsUs: newAnchor!, muted: false), newAnchor!)
+        XCTAssertGreaterThan(newAnchor!, lastSent)
+    }
+
+    /// PCM already queued belongs to the time before this buffer, so it must not
+    /// register as drift.
+    func testQueuedPcmIsNotMistakenForDrift() {
+        let anchor: UInt64 = 0
+        let pending = AudioCapture.packetDurationUs * 2
+        let onTime = pts(3, anchor: anchor) + pending
+        XCTAssertNil(AudioCapture.resyncAnchor(anchorPtsUs: anchor,
+                                               emittedPackets: 3,
+                                               actualPtsUs: onTime,
+                                               pendingUs: pending))
+        XCTAssertNotNil(AudioCapture.resyncAnchor(anchorPtsUs: anchor,
+                                                  emittedPackets: 3,
+                                                  actualPtsUs: onTime,
+                                                  pendingUs: 0))
+    }
+
+    // MARK: - Error latch
+
+    /// The bug this guards: `drain()` reported `encoderFailed` per PCM buffer
+    /// (~50 per second), so a single broken converter produced ~50 ERROR frames
+    /// per second on the wire.
+    func testRepeatedEncoderFailuresReportOnce() {
+        let audio = AudioCapture()
+        var codes: [IucmErrorCode] = []
+        audio.onError = { codes.append($0) }
+        audio.latchEncoderFailure()
+        audio.latchEncoderFailure()
+        audio.latchEncoderFailure()
+        XCTAssertEqual(codes, [.encoderFailed])
+    }
+
+    /// After a successful converter rebuild the latch is re-armed, so a later
+    /// breakage is reported again.
+    func testEncoderFailureIsReportedAgainAfterARebuild() {
+        let audio = AudioCapture()
+        var codes: [IucmErrorCode] = []
+        audio.onError = { codes.append($0) }
+        audio.latchEncoderFailure()
+        audio.latchEncoderFailure()
+        audio.clearEncoderFailure()
+        audio.latchEncoderFailure()
+        XCTAssertEqual(codes, [.encoderFailed, .encoderFailed])
+    }
+
     // MARK: - Switch plumbing
 
     func testMuteSwitchIsReadableFromTheCaptureEngineWithoutHardware() {
