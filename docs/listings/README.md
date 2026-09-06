@@ -1,77 +1,44 @@
-# Listing drafts
+# Listing-Checkliste (Owner)
 
-Ready-to-paste texts for announcing TetherCam outside this repo. Each file is a draft
-for one venue. Copy, fill the placeholders, post. Keep the wording honest about the beta
-state; none of these venues rewards superlatives.
+Die fertigen Texte pro Kanal liegen als eigene Datei in diesem Ordner (Englisch, wie
+gepostet wird). Diese Datei ist die Checkliste dazu, auf Deutsch: Reihenfolge und ein
+Satz pro Schritt, was du tust.
 
-| File | Venue | Where to post |
-|---|---|---|
-| `obs-forum-resource.md` | OBS Resources (plugin directory) | https://obsproject.com/forum/resources/ then "Add resource", category "OBS Studio Plugins", platform macOS |
-| `awesome-obs-pr.md` | awesome-obs list on GitHub | Pull request against https://github.com/Pralhad-Nasane/awesome-obs, section "Camera & Video Sources" |
-| `reddit-r-obs.md` | r/obs | https://www.reddit.com/r/obs/submit, text post |
-| `homebrew-decision.md` | (not a post) | Decision memo, not a draft: whether/how to ship a Homebrew cask. Read before touching `packaging/homebrew/`. |
+Stand 2026-09-06: v0.1.0 ist veröffentlicht, signiert und notarisiert
+(https://github.com/Kanevry/tethercam/releases/tag/v0.1.0), TestFlight ist offen
+(https://testflight.apple.com/join/wmT74Ry8), das App-Store-Listing ist noch in Review.
+Alle Download-Links in den Draft-Texten sind damit scharf, keine 404 mehr.
 
-## Prerequisites
+## Reihenfolge
 
-**Do not post the forum resource, the awesome-obs PR or the Reddit post before both of
-these are true:**
+1. **Forum-Resource anlegen.** Öffne `obs-forum-resource.md`, kopiere Titel, Tagline,
+   Beschreibung, Feature-Liste und Feldwerte 1:1 in "Add Resource" unter
+   https://obsproject.com/forum/resources/, Kategorie **OBS Studio Plugins**. Direkt
+   danach zeigt die Resource kurz Status "DELETED"; das ist die normale
+   Moderationswarteschlange, kein Fehler und kein Grund zum Neu-Einreichen.
+2. **r/obs posten.** Lies zuerst die Community-Regeln im eingeloggten Browser (Sidebar
+   von r/obs; von hier aus nicht erreichbar, siehe Verifikationsnotiz in
+   `reddit-r-obs.md`). Trage die Forum-URL aus Schritt 1 in `<FORUM_URL>` ein und poste
+   Titel plus Body als Textpost unter https://www.reddit.com/r/obs/submit, danach die
+   Forum-Resource verlinkt.
+3. **GitHub Social Preview hochladen.** Lade `web/img/og.png` unter den
+   Repo-Einstellungen (Settings, Abschnitt "Social preview") von
+   https://github.com/Kanevry/tethercam hoch, damit geteilte Links ein Bild statt eines
+   leeren Kastens zeigen.
+4. **awesome-obs-PR beobachten.** Ein anderer Agent öffnet diese PR heute; sobald die
+   PR-URL in `awesome-obs-pr.md` eingetragen ist, dort nur den Review-/Merge-Status
+   verfolgen, kein eigener Aktionsschritt.
+5. **Homebrew-Tap ist live.** `brew tap kanevry/tethercam` (ein anderer Agent hat den
+   Tap heute angelegt und bestückt); nichts weiter zu tun, höchstens einmal selbst
+   `brew install --cask tethercam` zur Probe laufen lassen.
 
-1. The tag `v0.1.0` exists and the GitHub release
-   https://github.com/Kanevry/tethercam/releases/tag/v0.1.0 is published with
-   `TetherCam-obs-plugin.pkg` and `TetherCam-obs-plugin.zip` attached.
-2. The one-line installer (`scripts/install.sh`) resolves that release.
+## Nicht vergessen
 
-Until then every download link in the drafts, on https://tethercam.app and in the README
-returns 404 ("v0.1.0, not released yet" is what the site says today). The tag is set on
-purpose only after the Developer ID Installer certificate is in place, see
-`docs/RELEASING.md`. A listing whose first click is a 404 is worse than no listing.
-
-**What may be shared now:** the TestFlight public link
-https://testflight.apple.com/join/wmT74Ry8. Build 0.1.0 (2) is in Beta App Review as of
-2026-09-05; until Apple approves it the link says the beta is not accepting testers.
-Check that the link accepts testers before pasting it anywhere that gets traffic.
-
-State on 2026-09-05: App Store version 0.1.0 and TestFlight build 0.1.0 (2) are both
-`WAITING_FOR_REVIEW`. No GitHub release exists.
-
-**Repo/bundle name note:** this repo and the plugin bundle are named
-`obs-iphone-usb-cam`, carrying the "obs-" prefix the OBS forum's IP policy discourages
-for resource names. That prefix never surfaces as a user-facing product name (the
-product name is "TetherCam" everywhere: forum Title field, cask `name`, app name), it
-only lives in the repo path and the bundle identifier, so it does not block the forum
-listing.
-
-**OBS forum moderation note:** right after submitting the resource, its status shows
-"DELETED" on the forum until a moderator approves it. That is normal queue behaviour,
-not an actual deletion and not something to resubmit over.
-
-## Placeholder checklist
-
-Every draft uses the same placeholders. Replace all of them before posting:
-
-- [ ] `<RELEASE_URL>`: the published release page, expected
-      `https://github.com/Kanevry/tethercam/releases/tag/v0.1.0`
-- [ ] `<RELEASE_DATE>`: date of the v0.1.0 release, ISO format
-- [ ] `<PKG_URL>`: direct link to `TetherCam-obs-plugin.pkg` on that release
-- [ ] `<TAG_URL>`: the v0.1.0 tag source view, expected
-      `https://github.com/Kanevry/tethercam/tree/v0.1.0` (`obs-forum-resource.md`'s
-      Source code URL field; never the default branch)
-- [ ] TestFlight link verified to accept testers (open it in Safari on an iPhone)
-- [ ] `docs/listings/obs-forum-resource.md`: screenshots uploaded (paths listed in the file)
-- [ ] `docs/listings/awesome-obs-pr.md`: list format re-checked against the upstream README
-      on the day of the PR (the section name may have changed), `npx awesome-lint README.md`
-      run clean on the fork
-- [ ] `docs/listings/reddit-r-obs.md`: current r/obs rules read from a logged-in browser
-      immediately before posting; self-promo rules change and could not be verified from
-      this sandbox
-
-## Order
-
-1. GitHub release published and verified (links checked by hand, not just assumed green
-   from CI).
-2. OBS forum resource (the audience that will actually install it).
-3. awesome-obs PR (one line, no urgency).
-4. Reddit, last, and only once the forum page exists so the post can link to it.
-5. Homebrew tap, after v0.1.0 ships signed and notarized; see `homebrew-decision.md`.
-   Not the core `homebrew/cask` repo, which the repo's age and star count rule out for
-   now (see that memo).
+- Reihenfolge einhalten: Forum vor Reddit, weil der Reddit-Post die Forum-Resource
+  verlinkt.
+- `homebrew-decision.md` ist kein Draft zum Posten, sondern das Entscheidungsmemo hinter
+  Schritt 5; nur bei Rückfragen zum Tap-Aufbau lesen.
+- Repo- und Bundle-Name tragen das Präfix `obs-` (`obs-iphone-usb-cam`), was die
+  Forum-Richtlinie für Resource-*Namen* eigentlich meidet; das Präfix taucht aber nie im
+  Produktnamen auf (überall "TetherCam"), nur im Repo-Pfad und in der Bundle-Id, blockiert
+  also nichts.

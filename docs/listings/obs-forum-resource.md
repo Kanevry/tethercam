@@ -1,15 +1,21 @@
 # OBS Resources draft: TetherCam
 
-Venue: https://obsproject.com/forum/resources/. Fields, category name and account
-requirement verified against live listings and the "Forum Resource and IP Policy"
-thread on 2026-09-05.
+Venue: https://obsproject.com/forum/resources/. Fields and account requirement verified
+against live listings and the "Forum Resource and IP Policy" thread on 2026-09-05. The
+category name was re-checked live on 2026-09-06 (`curl -sL
+https://obsproject.com/forum/resources/`, HTTP 200): the sidebar "Categories" block
+lists `OBS Studio Plugins` linking to `/forum/plugins/` with 323 resources filed under
+it, confirming the exact name below. No separate "guidelines" or "rules" page is linked
+from that listing page itself (only the site-wide `Terms and rules` in the footer); the
+account and moderation notes below still rest on the 2026-09-05 thread reading, which
+could not be re-opened this session (forum search needs a logged-in session).
 
 **Before you start:** the forum account needs two-step verification enabled, or "Add
 Resource" is not offered. The button sits top right of the resources page once logged
 in and verified.
 
-Category: **OBS Studio Plugins** (exact name, not "Plugins"). Do not submit before the
-v0.1.0 GitHub release is published (see `README.md` in this folder).
+Category: **OBS Studio Plugins** (exact name, confirmed live 2026-09-06; not "Plugins").
+The v0.1.0 GitHub release is published (below), so this draft is ready to submit as is.
 
 **After submitting:** the resource shows status "DELETED" until a moderator approves
 it. That is normal moderation queue behaviour, not an error and not an actual deletion.
@@ -25,9 +31,9 @@ Do not resubmit or panic if it says that for a day or two.
 | Version | `0.1.0` |
 | Tagline | see below |
 | Minimum OBS Studio Version | `30.0` |
-| Source code URL | `<TAG_URL>` (the v0.1.0 tag, e.g. `https://github.com/Kanevry/tethercam/tree/v0.1.0`; never the default branch) |
+| Source code URL | `https://github.com/Kanevry/tethercam/tree/v0.1.0` (the v0.1.0 tag; never the default branch) |
 | Platforms | macOS 12+ (Apple Silicon and Intel), text field, no platform checkboxes seen on this venue |
-| Download link ("Go to download") | `<PKG_URL>` (direct link to `TetherCam-obs-plugin.pkg` on the v0.1.0 release; external links to GitHub Releases are explicitly the endorsed pattern for this field) |
+| Download link ("Go to download") | `https://github.com/Kanevry/tethercam/releases/download/v0.1.0/TetherCam-obs-plugin.pkg` (external links to GitHub Releases are explicitly the endorsed pattern for this field) |
 | Icon | `docs/images/tethercam-icon-256.png`, 256x256 |
 | Description | rich text, see below, written by hand |
 | Screenshots | gallery, see list below |
@@ -82,8 +88,9 @@ It exists because Continuity Camera stopped working for me after an iOS and macO
 mismatch (iOS 26.6 against macOS 26.5): the handshake succeeded, the picture stayed black.
 The third party apps that fill this gap are paid and closed source. TetherCam is neither.
 
-This is the first release, 0.1.0, and the iPhone app is in a public TestFlight beta.
-Expect rough edges and please report them as GitHub issues.
+This is the first release, 0.1.0. The iPhone app is a free public TestFlight beta,
+open to anyone; the App Store listing is still in review. Expect rough edges and please
+report them as GitHub issues.
 
 Measured on one setup (iPhone 15 Pro Max, M4 Pro Mac, OBS 32.2.2): 1080p30 and 1080p60,
 about 13 Mbit/s HEVC, about 1 ms ping round trip over USB, about 90 ms to the first frame,
@@ -121,17 +128,20 @@ administrator rights, no system extension, no daemon.
 
 **Mac plugin**
 
-1. Download `TetherCam-obs-plugin.pkg` from <PKG_URL> and open it, or run
+1. Download `TetherCam-obs-plugin.pkg` from the v0.1.0 release
+   (https://github.com/Kanevry/tethercam/releases/latest) and open it, or run
    `curl -fsSL https://raw.githubusercontent.com/Kanevry/tethercam/main/scripts/install.sh | bash`.
    Read the script first; it downloads the release bundle and unpacks it into
    `~/Library/Application Support/obs-studio/plugins/`, nothing else.
-2. If the `.pkg` is unsigned, macOS asks once: right-click, then Open.
-3. Restart OBS.
+2. The `.pkg` is signed with a Developer ID Installer certificate and notarized by
+   Apple, so macOS opens it without a warning. Restart OBS.
 
 **iPhone app**
 
 1. Join the free public TestFlight beta: https://testflight.apple.com/join/wmT74Ry8
-   (install TestFlight from the App Store first if you do not have it).
+   (install TestFlight from the App Store first if you do not have it). Build 0.1.0 (2)
+   cleared Beta App Review on 2026-09-06 and the link is open to anyone; the App Store
+   listing is still in review.
 2. Or build it yourself with a free Apple ID and Xcode; steps in the README under
    "Install the iPhone app".
 
@@ -153,8 +163,6 @@ administrator rights, no system extension, no daemon.
 - The app must stay in the foreground on an unlocked phone.
 - Plugin only, no virtual camera: the picture shows up in OBS, not in Zoom or FaceTime.
   A CMIO Camera Extension is on the roadmap, not in this release.
-- The `.pkg` is signed and notarized only if the signing secrets were configured when the
-  release was built; otherwise macOS asks once before opening it.
 
 ## Support and issues
 
@@ -194,8 +202,3 @@ Upload in this order (repo paths):
 Demo video, 54 seconds: https://tethercam.app (embedded), file `web/demo.mp4`. Link it
 in the description text rather than uploading the raw file if the venue has no video
 upload field.
-
-## Placeholders
-
-- `<TAG_URL>`: `https://github.com/Kanevry/tethercam/tree/v0.1.0` once the tag exists.
-- `<PKG_URL>`: direct link to `TetherCam-obs-plugin.pkg` on the v0.1.0 release.

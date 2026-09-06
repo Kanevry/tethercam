@@ -1,22 +1,22 @@
-# Homebrew cask (draft)
+# Homebrew cask (live)
 
 `tethercam-obs.rb` installs the released `TetherCam-obs-plugin.zip` from GitHub
-Releases. **It is an unpublished draft. Do not link to it, do not document
-`brew install` anywhere user-facing yet.** Decision record for the shape below:
-`docs/listings/homebrew-decision.md`.
+Releases. It is published to the personal tap `Kanevry/homebrew-tethercam`
+(https://github.com/Kanevry/homebrew-tethercam):
 
-Two things are false today and both must become true before publishing:
+```sh
+brew tap kanevry/tethercam
+brew install --cask tethercam-obs
+```
 
-1. **The tap does not exist.** There is no `Kanevry/homebrew-tethercam` repository.
-   `brew tap kanevry/tethercam` fails. Creating it is a deliberate decision (a tap is
-   a maintenance commitment, one more thing that rots per release), not a chore to be
-   done in passing.
-2. **The checksum is a placeholder** (`0000...`), so the cask cannot install anything.
+Decision record for the shape below: `docs/listings/homebrew-decision.md` (see the
+"2026-09-06: personal tap live" entry for the audit and install-test results).
 
-The core `homebrew/cask` repo is out of reach regardless: it needs the repo to be at
+The core `homebrew/cask` repo is still out of reach: it needs the repo to be at
 least 30 days old and, since this would be a self-submission, 90 forks, 90 watchers or
 225 stars (not the lower general-submission numbers). `Kanevry/tethercam` was created
-2026-09-05 with 0 stars. Ship the own tap first; revisit core cask much later.
+2026-09-05 with 0 stars. The personal tap above is the primary distribution path for
+now; revisit core cask much later.
 
 ## Install domain: why this is a `zip` cask, not a `pkg` cask
 
@@ -55,29 +55,29 @@ Verified 2026-09-05 both by reading that script and with a local
 `ditto --keepParent` test. That is why the `artifact` stanza's source path is the bare
 `obs-iphone-usb-cam.plugin`, not `TetherCam-obs-plugin/obs-iphone-usb-cam.plugin`.
 
-## Publishing a tap
+## The tap
 
-A tap is a plain Git repo named `homebrew-<tap>`. For `brew install --cask kanevry/tethercam/tethercam-obs`:
+A tap is a plain Git repo named `homebrew-<tap>`. `Kanevry/homebrew-tethercam` holds
+the cask at `Casks/tethercam-obs.rb` (no letter-sharding: that shard-by-first-letter
+layout is a `homebrew/cask` core-tap convention, not required for a personal tap).
 
-1. Create the repo `Kanevry/homebrew-tethercam` on GitHub. It does not exist yet;
-   every command in this section fails until it does.
-2. Put the cask at `Casks/t/tethercam-obs.rb` (Homebrew shards by first letter).
-3. Fill in the real values, from the **zip** asset (not the pkg):
-   ```sh
-   VERSION=0.1.0
-   shasum -a 256 TetherCam-obs-plugin.zip   # paste into sha256
-   ```
-4. Check it locally before pushing:
-   ```sh
-   brew tap kanevry/tethercam https://github.com/Kanevry/homebrew-tethercam
-   brew audit --cask --online kanevry/tethercam/tethercam-obs
-   brew install --cask kanevry/tethercam/tethercam-obs
-   brew uninstall --cask tethercam-obs
-   ```
-5. Wire the release job to bump `version` and `sha256` on every tag, otherwise the
-   cask silently rots one release behind.
+Bumping the cask on a new plugin release, from the **zip** asset (not the pkg):
 
-Do not publish before v0.1.0 ships **signed and notarized** (current blocker: the
-missing Developer ID Installer certificate, `docs/RELEASING.md` step 1b). An unsigned
-`.plugin` bundle fails Gatekeeper for every installer, `brew` included, and
-`brew audit --cask --online` flags it.
+```sh
+VERSION=X.Y.Z
+curl -sL https://github.com/Kanevry/tethercam/releases/download/v$VERSION/TetherCam-obs-plugin.zip -o /tmp/tc.zip
+shasum -a 256 /tmp/tc.zip   # paste into sha256, bump version, commit + push in the tap repo
+```
+
+Verify locally before pushing:
+
+```sh
+brew tap kanevry/tethercam
+brew audit --cask --online kanevry/tethercam/tethercam-obs
+brew style --cask kanevry/tethercam/tethercam-obs
+brew install --cask kanevry/tethercam/tethercam-obs
+brew uninstall --cask tethercam-obs
+```
+
+The release job does not currently bump `version`/`sha256` automatically; each release
+needs a manual tap update, otherwise the cask silently rots one release behind.

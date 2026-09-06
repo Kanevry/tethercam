@@ -116,6 +116,17 @@ cp -R build_macos/RelWithDebInfo/obs-iphone-usb-cam.plugin \
 
 To confirm it loaded, open the newest log under `~/Library/Application Support/obs-studio/logs/` and look for `obs-iphone-usb-cam` under `Loaded Modules:`.
 
+### Option C: Homebrew
+
+```sh
+brew tap kanevry/tethercam
+brew install --cask tethercam-obs
+```
+
+The cask copies the signed bundle straight into your own
+`~/Library/Application Support/obs-studio/plugins/` folder, the same place Option A
+and the one-line installer put it. No admin rights needed.
+
 ## Install the iPhone app
 
 <a id="testflight-link"></a>

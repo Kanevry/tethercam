@@ -48,3 +48,45 @@ are close.
 `artifact` path in the cask is the bare `.plugin` bundle name, not a wrapping folder
 (verified against `packaging/build-pkg.sh`'s `ditto --keepParent` call). The cask
 remains untested end to end: no signed release exists yet to install from.
+
+## 2026-09-06: personal tap live
+
+`v0.1.0` shipped signed and notarized, so the blocker above is cleared. Tap created and
+pushed: https://github.com/Kanevry/homebrew-tethercam (`gh repo view` confirms
+`"visibility":"PUBLIC"`), cask at `Casks/tethercam-obs.rb`, no letter-sharding (that is
+a `homebrew/cask` core-tap convention, not required for a personal tap).
+
+Checksum verified against a fresh download, not copied from the release notes:
+`curl -sL .../TetherCam-obs-plugin.zip | shasum -a 256` reproduced
+`ff7106f81a8ae85f86df2c56621ecaf43507b9c71582a62f868418fcd287679d`, matching the
+published `.zip.sha256` asset. `unzip -l` on that same download confirmed the zip's
+top-level entry is `obs-iphone-usb-cam.plugin/` itself, so the cask's `artifact` stanza
+needed no change.
+
+Audit and style, both clean after two small fixes (deprecated `verified:` url param
+and `>=` string form for `depends_on macos:`, plus a single-element `zap trash:` array
+flagged by `brew style`):
+
+```
+$ brew audit --cask --online kanevry/tethercam/tethercam-obs
+==> Downloading https://github.com/Kanevry/tethercam/releases/download/v0.1.0/TetherCam-obs-plugin.zip
+Already downloaded: ...
+(exit 0, no warnings or errors)
+
+$ brew style --cask kanevry/tethercam/tethercam-obs
+1 file inspected, no offenses detected
+```
+
+Install test: OBS was not running (`pgrep -x OBS` empty) so the test proceeded. The
+existing manually-installed plugin bundle was backed up first
+(`cp -R .../obs-iphone-usb-cam.plugin /tmp/obs-iphone-usb-cam.plugin.bak`).
+`brew install --cask kanevry/tethercam/tethercam-obs` needed `--force` because Homebrew
+does not overwrite a "Generic Artifact" it did not itself install; after that it placed
+the bundle at `~/Library/Application Support/obs-studio/plugins/obs-iphone-usb-cam.plugin`
+and `codesign -dvvv` on the installed bundle showed
+`Authority=Developer ID Application: Bernhard Goetzendorfer (G3QZ66475M)` with
+`TeamIdentifier=G3QZ66475M`, i.e. the signed release bundle, untouched by the cask's
+own copy step. `brew uninstall --cask tethercam-obs` removed it cleanly, the backup was
+restored with `ditto`, and `diff -rq` plus a recursive `find | sort` diff against the
+backup both came back identical: the plugin directory ended the test exactly as it
+started. Tap left in place (`brew untap` not needed).

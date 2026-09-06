@@ -59,3 +59,18 @@ Adds TetherCam, an open-source macOS plugin plus iPhone app that brings the iPho
 
 - `<RELEASE_DATE>`: v0.1.0 release date.
 - `<RELEASE_URL>`: v0.1.0 release page.
+
+## 2026-09-06: PR opened
+
+- PR: https://github.com/Pralhad-Nasane/awesome-obs/pull/10 (fork `Kanevry/awesome-obs`, branch
+  `add-tethercam`, commit "Add TetherCam"), body follows the repo's
+  `.github/pull_request_template.md` with every checklist item ticked.
+- Placement as planned, directly after "iOS Camera Source". Two premises of this draft were
+  wrong in practice: the guidelines file is `contributing.md` (lowercase), and the
+  "Camera & Video Sources" section is not alphabetical (DroidCam, RemoteCam, Spout2, OBS Kinect,
+  iOS Camera Source, OpenVR Input). Thematic placement next to the other USB approach stands.
+- `npx awesome-lint README.md` on the branch and on `main` of the fork report the identical two
+  errors (missing `awesome` / `awesome-list` GitHub topics, which forks do not inherit); the
+  entry adds zero new lint findings. Upstream carries the topics, so upstream CI is unaffected.
+- Next: watch the PR for maintainer feedback; amend the commit if the maintainer asks for wording
+  changes (see contributing.md "Updating your Pull Request").
