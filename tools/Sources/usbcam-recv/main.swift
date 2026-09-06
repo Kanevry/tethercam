@@ -18,6 +18,9 @@ struct Options {
     var fps: UInt16 = 30
     var bitrate: UInt32 = 12000
     var dumpPath: String?
+    var audioDumpPath: String?
+    /// START bit 0 — ask the sender for audio (default on, `--no-audio` clears it).
+    var audio = true
     var seconds: Double?
     var json = false
     var helloTimeout: Double = 3.0
@@ -35,6 +38,8 @@ func usage() -> Never {
       --fps N           Wunsch-Bildrate (Vorgabe 30)
       --bitrate KBPS    Ziel-Bitrate (Vorgabe 12000)
       --dump FILE       Annex-B-HEVC mitschreiben (Parametersaetze vor jedem Keyframe)
+      --dump-audio FILE AAC als ADTS mitschreiben (ffprobe-lesbar)
+      --no-audio        kein Audio anfordern (START-Flag Bit 0 bleibt 0)
       --seconds N       nach N s STOP senden und mit 0 beenden
       --json            eine Zusammenfassungszeile als JSON auf stdout
       --hello-timeout S Wartezeit auf HELLO (Vorgabe 3)
@@ -65,6 +70,8 @@ while let arg = args.first {
     case "--fps": guard let f = UInt16(next(&args)) else { usage() }; opts.fps = f
     case "--bitrate": guard let b = UInt32(next(&args)) else { usage() }; opts.bitrate = b
     case "--dump": opts.dumpPath = next(&args)
+    case "--dump-audio": opts.audioDumpPath = next(&args)
+    case "--no-audio": opts.audio = false
     case "--seconds": guard let s = Double(next(&args)) else { usage() }; opts.seconds = s
     case "--hello-timeout": guard let s = Double(next(&args)) else { usage() }; opts.helloTimeout = s
     case "--json": opts.json = true
@@ -121,6 +128,10 @@ do {
         logLine(String(format: "SUMMARY frames=%d fps=%.1f kbps=%.0f keyframes=%d rtt=%.1f ms first_frame=%.0f ms nals=%d",
                        summary.frames, summary.fps_avg, summary.kbps_avg, summary.keyframes,
                        summary.ping_rtt_ms_avg, summary.first_frame_ms, summary.nals))
+        logLine(String(format: "AUDIO   frames=%d samples=%d rate=%d first_frame=%.0f ms skew=%.1f ms",
+                       summary.audio_frames, summary.audio_decoded_samples,
+                       summary.audio_sample_rate, summary.audio_first_frame_ms,
+                       summary.audio_video_pts_skew_ms))
     }
     exit(0)
 } catch {

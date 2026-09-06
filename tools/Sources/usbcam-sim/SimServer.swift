@@ -15,6 +15,8 @@ final class SimServer {
     private let bindHost: String
     private let port: UInt16
     private let dumpPath: String?
+    /// `--no-audio` sets this false; audio then stays off even if START asks for it.
+    private let audioEnabled: Bool
 
     private var listener: NWListener?
     private var connection: NWConnection?
@@ -33,15 +35,20 @@ final class SimServer {
     private var pingArmed = false
     private var lastPingAt: DispatchTime?
 
+    private var audioEncoder: AacToneEncoder?
+    private var audioConfigSent = false
+    private var audioFrameIndex = 0
+
     private var statFrames = 0
     private var statBytes = 0
     private var statKeyframes = 0
     private var dumpHandle: FileHandle?
 
-    init(bindHost: String, port: UInt16, dumpPath: String?) {
+    init(bindHost: String, port: UInt16, dumpPath: String?, audioEnabled: Bool = true) {
         self.bindHost = bindHost
         self.port = port
         self.dumpPath = dumpPath
+        self.audioEnabled = audioEnabled
     }
 
     // MARK: - Lifecycle
@@ -197,6 +204,18 @@ final class SimServer {
             renderer = nil; encoder = nil
             return
         }
+        // Audio only when the receiver asked for it (START bit 0, PROTOCOL.md 4.2)
+        // and the operator did not switch it off. A failing AAC encoder is not fatal:
+        // the video path keeps running, the receiver just never sees AUDIO_CONFIG.
+        if audioEnabled && start.wantsAudio {
+            do {
+                audioEncoder = try AacToneEncoder()
+            } catch {
+                log("audio encoder setup failed: \(error) — continuing without audio")
+                audioEncoder = nil
+            }
+        }
+
         activeFormat = (start.width, start.height, UInt16(fps))
         sentHvcc = nil
         frameIndex = 0
@@ -215,6 +234,9 @@ final class SimServer {
         renderer = nil
         activeFormat = nil
         sentHvcc = nil
+        audioEncoder = nil
+        audioConfigSent = false
+        audioFrameIndex = 0
     }
 
     private func tick() {
@@ -229,6 +251,7 @@ final class SimServer {
             try encoder.encode(buffer, ptsUs: lastPtsUs) { [weak self] frame in
                 self?.queue.async { self?.emit(frame) }
             }
+            pumpAudio(nowUs: ptsUs)
         } catch {
             log("frame \(index) failed: \(error)")
             send(.error(ErrorMessage(.encoderFailed, "\(error)")))
@@ -246,6 +269,7 @@ final class SimServer {
             send(.config(ConfigMessage(width: format.width, height: format.height,
                                        fps: format.fps, hvcc: hvcc)))
             log("CONFIG sent (hvcC \(hvcc.count) bytes)")
+            sendAudioConfig()
         }
         guard sentHvcc != nil else { return }
 
@@ -254,6 +278,45 @@ final class SimServer {
         statBytes += frame.nalData.count
         if frame.isKeyframe { statKeyframes += 1 }
         writeDump(frame)
+    }
+
+    // MARK: - Audio
+
+    /// AUDIO_CONFIG must precede the first AUDIO (PROTOCOL.md 4.9); it goes out
+    /// directly after CONFIG so the receiver has both cookies before any media.
+    private func sendAudioConfig() {
+        guard !audioConfigSent, let encoder = audioEncoder else { return }
+        do {
+            let asc = try encoder.magicCookie()
+            send(.audioConfig(AudioConfigMessage(sampleRate: UInt32(encoder.sampleRate),
+                                                 channels: UInt8(encoder.channels),
+                                                 codec: .aacLC, asc: asc)))
+            audioConfigSent = true
+            log("AUDIO_CONFIG sent (asc \(asc.count) bytes, \(Int(encoder.sampleRate)) Hz)")
+        } catch {
+            log("audio cookie failed: \(error) — disabling audio")
+            audioEncoder = nil
+        }
+    }
+
+    /// Emits as many 1024-sample AAC frames as the elapsed stream time allows.
+    /// pts is derived from the sample count, so it shares the VIDEO clock and
+    /// stays exactly 48000/1024 frames per second on average.
+    private func pumpAudio(nowUs: UInt64) {
+        guard connection != nil, audioConfigSent, let encoder = audioEncoder else { return }
+        let usPerFrame = Double(AacToneEncoder.samplesPerFrame) * 1_000_000 / encoder.sampleRate
+        while Double(audioFrameIndex) * usPerFrame <= Double(nowUs) {
+            let ptsUs = UInt64((Double(audioFrameIndex) * usPerFrame).rounded())
+            do {
+                let frame = try encoder.nextFrame()
+                send(.audio(AudioMessage(ptsUs: ptsUs, frame: frame)))
+                audioFrameIndex += 1
+            } catch {
+                log("audio encode failed: \(error) — disabling audio")
+                audioEncoder = nil
+                return
+            }
+        }
     }
 
     private func writeDump(_ frame: EncodedFrame) {

@@ -205,6 +205,42 @@ final class ServerStateMachineTests: XCTestCase {
         XCTAssertEqual(m.phase, .streaming(start))
     }
 
+    /// The audio flag must survive the camera-preference rewrite in `handle`.
+    /// Rebuilding `effective` field by field instead of copying START would drop
+    /// it silently: the Mac asks for sound and gets a mute take with no error.
+    func testStartWithAudioFlagReachesCaptureAsWantsAudio() {
+        var m = makeMachine()
+        _ = m.handle(.connectionAccepted(id: 1, nowUs: 0))
+        var withAudio = start
+        withAudio.wantsAudio = true
+        // A phone-side preference is the case that rewrites the params.
+        _ = m.handle(.selectCamera(1))
+        let a = m.handle(.message(.start(withAudio), nowUs: 1))
+        guard case let .startCapture(p) = a.last else { return XCTFail("expected startCapture, got \(a)") }
+        XCTAssertTrue(p.wantsAudio)
+        XCTAssertEqual(p.cameraId, 1)
+    }
+
+    /// An 11-byte START from a protocol-1.0 receiver has no flags byte, so it
+    /// must never switch the microphone on.
+    func testLegacyElevenByteStartAsksForNoAudio() throws {
+        // Little-endian on the wire, see PROTOCOL.md section 2.
+        var payload = Data([0])                                   // cameraId
+        payload.append(contentsOf: [0x80, 0x07, 0x38, 0x04])      // 1920x1080
+        payload.append(contentsOf: [30, 0])                       // 30 fps
+        payload.append(contentsOf: [0xE0, 0x2E, 0, 0])            // 12000 kbps
+        XCTAssertEqual(payload.count, 11)
+        let msg = try IucmCodec.decodePayload(type: IucmType.start.rawValue,
+                                              flags: 0, payload: payload)
+        var m = makeMachine()
+        _ = m.handle(.connectionAccepted(id: 1, nowUs: 0))
+        let a = m.handle(.message(msg, nowUs: 1))
+        guard case let .startCapture(p) = a.last else { return XCTFail("expected startCapture, got \(a)") }
+        XCTAssertFalse(p.wantsAudio)
+        XCTAssertEqual(p.width, 1920)
+        XCTAssertEqual(p.height, 1080)
+    }
+
     func testTickWithoutConnectionDoesNothing() {
         var m = makeMachine()
         XCTAssertTrue(m.handle(.tick(nowUs: 999_999_999)).isEmpty)

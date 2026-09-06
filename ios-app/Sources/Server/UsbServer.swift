@@ -33,6 +33,13 @@ public final class UsbServer {
     private let capture: CaptureEngine
     private let encoder = HevcEncoder()
 
+    /// Latest AUDIO_CONFIG from the audio encoder, kept for the lifetime of the
+    /// take, and the connection it was already delivered to. A reconnect gets a
+    /// fresh copy before its first AUDIO frame — the new receiver has no decoder
+    /// otherwise.
+    private var audioConfig: (sampleRate: UInt32, channels: UInt8, asc: Data)?
+    private var audioConfigSentTo: UInt64?
+
     // Rolling counters for the status line.
     private var frameCount = 0
     private var byteCount = 0
@@ -56,6 +63,18 @@ public final class UsbServer {
             }
         }
         capture.onSampleBuffer = { [weak self] sb in self?.encoder.encode(sb) }
+        capture.audio.onConfig = { [weak self] rate, channels, asc in
+            self?.queue.async {
+                self?.audioConfig = (rate, channels, asc)
+                self?.audioConfigSentTo = nil
+            }
+        }
+        capture.audio.onFrame = { [weak self] ptsUs, frame in
+            self?.queue.async { self?.emitAudio(ptsUs: ptsUs, frame: frame) }
+        }
+        capture.audio.onError = { [weak self] code in
+            self?.queue.async { self?.reportAudioError(code) }
+        }
     }
 
     // MARK: - Lifecycle
@@ -186,6 +205,8 @@ public final class UsbServer {
             case .stopCapture:
                 capture.stop()
                 encoder.stop()
+                audioConfig = nil
+                audioConfigSentTo = nil
             case let .switchCamera(p):
                 switchCamera(p)
             }
@@ -268,6 +289,32 @@ public final class UsbServer {
             byteCount += nal.count
         }
         send(msg, to: id)
+    }
+
+    /// AUDIO down the same path as VIDEO, preceded by AUDIO_CONFIG whenever the
+    /// current receiver has not seen one yet (first frame of a take, or the
+    /// first frame after a reconnect). A frame that arrives before the encoder
+    /// produced its magic cookie is dropped: an AAC access unit without the
+    /// AudioSpecificConfig is undecodable, so sending it would only add noise.
+    private func emitAudio(ptsUs: UInt64, frame: Data) {
+        guard let id = machine.activeConnection, machine.isStreaming else { return }
+        if audioConfigSentTo != id {
+            guard let c = audioConfig else { return }
+            send(.audioConfig(sampleRate: c.sampleRate, channels: c.channels,
+                              codec: IucmAudioCodec.aacLC.rawValue, asc: c.asc), to: id)
+            audioConfigSentTo = id
+        }
+        send(.audio(ptsUs: ptsUs, frame: frame), to: id)
+    }
+
+    /// Audio failures are reported but never stop the take — the picture is what
+    /// the receiver is here for (`IucmErrorCode.micDenied`, spec section 4.9).
+    private func reportAudioError(_ code: IucmErrorCode) {
+        audioConfig = nil
+        audioConfigSentTo = nil
+        guard let id = machine.activeConnection else { return }
+        NSLog("[usbcam] audio unavailable (code=%d) - video continues", Int(code.rawValue))
+        send(.error(code: code.rawValue, text: "audio unavailable"), to: id)
     }
 
     private func send(_ msg: IucmMessage, to id: UInt64, thenClose: Bool = false) {

@@ -22,6 +22,9 @@ let package = Package(
         // Der Shim liegt unter Sources/CUsbmux, kompiliert aber ../../../shared/usbmux.c.
         .target(name: "CUsbmux"),
         .executableTarget(name: "usbcam-recv", dependencies: ["IucmProtocol", "CUsbmux"]),
-        .testTarget(name: "IucmProtocolTests", dependencies: ["IucmProtocol"]),
+        // Die Executables haengen mit drin, damit AacToneEncoder (sim) und
+        // AacDecoder/Adts (recv) testbar sind, ohne Audio-Code in die Lib zu ziehen.
+        .testTarget(name: "IucmProtocolTests",
+                    dependencies: ["IucmProtocol", "usbcam-sim", "usbcam-recv"]),
     ]
 )

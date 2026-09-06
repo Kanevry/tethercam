@@ -36,6 +36,13 @@ struct Summary: Encodable {
     var nals: Int
     var width: Int
     var height: Int
+    var audio_frames: Int
+    var audio_decoded_samples: Int
+    var audio_sample_rate: Int
+    /// Wall time from START to the first AUDIO, in ms; 0 when no audio arrived.
+    var audio_first_frame_ms: Double
+    /// First AUDIO pts minus first VIDEO pts, in ms — the A/V alignment at stream start.
+    var audio_video_pts_skew_ms: Double
 }
 
 final class Receiver {
@@ -43,6 +50,7 @@ final class Receiver {
     private let opts: Options
     private var parser = IucmFrameParser()
     private var writer: AnnexBWriter?
+    private var audioDumpHandle: FileHandle?
 
     // Statistik
     private var frames = 0, keyframes = 0, nals = 0, videoBytes = 0
@@ -56,6 +64,14 @@ final class Receiver {
     private var startSentUs: UInt64 = 0
 
     // Intervall-Statistik fuer die Sekundenzeile
+    // Audio (PROTOCOL.md 4.9/4.10)
+    private var audioConfig: AudioConfigMessage?
+    private var audioDecoder: AacDecoder?
+    private var audioFrames = 0
+    private var audioSamples = 0
+    private var firstAudioPts: UInt64?
+    private var audioFirstFrameMs: Double = 0
+
     private var winFrames = 0, winBytes = 0, winNals = 0
     private var lastTickUs: UInt64 = 0
     private var lastPingUs: UInt64 = 0
@@ -65,9 +81,19 @@ final class Receiver {
         self.fd = fd
         self.opts = opts
         if let p = opts.dumpPath { self.writer = try AnnexBWriter(path: p) }
+        if let p = opts.audioDumpPath {
+            guard FileManager.default.createFile(atPath: p, contents: nil),
+                  let h = FileHandle(forWritingAtPath: p) else {
+                throw RecvError.io("cannot open audio dump file \(p)")
+            }
+            self.audioDumpHandle = h
+        }
     }
 
-    deinit { writer?.close() }
+    deinit {
+        writer?.close()
+        try? audioDumpHandle?.close()
+    }
 
     // MARK: - Socket
 
@@ -125,12 +151,14 @@ final class Receiver {
                 + "app=\(hello.appVersion) cameras=[\(cams)]")
 
         let start = StartMessage(cameraId: opts.camera, width: opts.width, height: opts.height,
-                                 fps: opts.fps, bitrateKbps: opts.bitrate)
+                                 fps: opts.fps, bitrateKbps: opts.bitrate,
+                                 flags: opts.audio ? StartMessage.flagAudio : 0)
         try send(.start(start))
         startSentUs = nowUs()
         lastTickUs = startSentUs
         lastPingUs = startSentUs
-        logLine("START   camera=\(opts.camera) \(opts.width)x\(opts.height)@\(opts.fps) \(opts.bitrate) kbps")
+        logLine("START   camera=\(opts.camera) \(opts.width)x\(opts.height)@\(opts.fps) \(opts.bitrate) kbps "
+                + "audio=\(opts.audio ? "on" : "off")")
 
         try stream()
         return summary()
@@ -188,10 +216,10 @@ final class Receiver {
                                    st.outputWidth, st.outputHeight, st.flags, st.cameraId))
                 case .hello:
                     throw RecvError.protocolViolation("second HELLO during streaming")
-                case .audioConfig, .audio:
-                    // 0x13/0x14, PROTOCOL.md 4.9/4.10 — accepted and ignored until
-                    // the receiver grows an audio path.
-                    break
+                case .audioConfig(let a):
+                    try handleAudioConfig(a)
+                case .audio(let a):
+                    try handleAudio(a)
                 case .start, .stop, .ping:
                     throw RecvError.protocolViolation("unexpected \(msg.type) from sender")
                 }
@@ -226,6 +254,50 @@ final class Receiver {
                 logLine("STOP    sent")
                 return
             }
+        }
+    }
+
+    // MARK: - Audio
+
+    private func handleAudioConfig(_ c: AudioConfigMessage) throws {
+        guard audioConfig == nil else {
+            throw RecvError.protocolViolation("second AUDIO_CONFIG during streaming")
+        }
+        guard c.codec == IucmAudioCodec.aacLC.rawValue else {
+            throw RecvError.protocolViolation("unsupported audio codec \(c.codec) (only 1 = AAC-LC)")
+        }
+        audioConfig = c
+        logLine("AUDIOCFG \(c.sampleRate) Hz ch=\(c.channels) codec=\(c.codec) asc_len=\(c.asc.count)")
+        do {
+            audioDecoder = try AacDecoder(sampleRate: Double(c.sampleRate),
+                                          channels: UInt32(max(1, c.channels)), asc: c.asc)
+        } catch {
+            throw RecvError.protocolViolation("audio decoder setup failed: \(error)")
+        }
+    }
+
+    private func handleAudio(_ a: AudioMessage) throws {
+        guard let config = audioConfig else {
+            throw RecvError.protocolViolation("AUDIO before AUDIO_CONFIG")
+        }
+        if firstAudioPts == nil {
+            firstAudioPts = a.ptsUs
+            audioFirstFrameMs = Double(nowUs() &- startSentUs) / 1000.0
+        }
+        audioFrames += 1
+        if let decoder = audioDecoder {
+            audioSamples += try decoder.decode(frame: a.frame)
+        }
+        if let h = audioDumpHandle {
+            guard let header = Adts.header(payloadLength: a.frame.count,
+                                           sampleRate: Int(config.sampleRate),
+                                           channels: Int(config.channels)) else {
+                throw RecvError.protocolViolation(
+                    "cannot frame AUDIO as ADTS (\(config.sampleRate) Hz, \(config.channels) ch, "
+                    + "\(a.frame.count) bytes)")
+            }
+            h.write(header)
+            h.write(a.frame)
         }
     }
 
@@ -274,6 +346,8 @@ final class Receiver {
     private func summary() -> Summary {
         let span = (frames > 1 && firstPts != nil && lastPts != nil)
             ? Double(lastPts! - firstPts!) / 1e6 : 0
+        let skew: Double = (firstAudioPts != nil && firstPts != nil)
+            ? (Double(firstAudioPts!) - Double(firstPts!)) / 1000.0 : 0
         let rttAvg = rttSamplesUs.isEmpty ? -1
             : Double(rttSamplesUs.reduce(0, +)) / Double(rttSamplesUs.count) / 1000.0
         return Summary(frames: frames,
@@ -283,6 +357,11 @@ final class Receiver {
                        ping_rtt_ms_avg: rttAvg,
                        first_frame_ms: firstFrameMs,
                        nals: nals,
-                       width: configWH.0, height: configWH.1)
+                       width: configWH.0, height: configWH.1,
+                       audio_frames: audioFrames,
+                       audio_decoded_samples: audioSamples,
+                       audio_sample_rate: Int(audioConfig?.sampleRate ?? 0),
+                       audio_first_frame_ms: audioFirstFrameMs,
+                       audio_video_pts_skew_ms: skew)
     }
 }

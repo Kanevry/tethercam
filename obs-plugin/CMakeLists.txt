@@ -41,6 +41,8 @@ target_sources(
   ${CMAKE_PROJECT_NAME}
   PRIVATE
     src/plugin-main.c
+    src/aac_decoder.h
+    src/aac_decoder.mm
     src/hevc_decoder.h
     src/hevc_decoder.mm
     src/iphone_source.h
@@ -62,6 +64,7 @@ target_link_libraries(
   ${CMAKE_PROJECT_NAME}
   PRIVATE
     "$<LINK_LIBRARY:FRAMEWORK,VideoToolbox.framework>"
+    "$<LINK_LIBRARY:FRAMEWORK,AudioToolbox.framework>"
     "$<LINK_LIBRARY:FRAMEWORK,CoreMedia.framework>"
     "$<LINK_LIBRARY:FRAMEWORK,CoreVideo.framework>"
     "$<LINK_LIBRARY:FRAMEWORK,CoreFoundation.framework>"

@@ -127,6 +127,11 @@ public final class CaptureEngine: NSObject {
     private var rotationCoordinator: AVCaptureDevice.RotationCoordinator?
     private var rotationObservation: NSKeyValueObservation?
 
+    /// Microphone half of the session. Only attached while the active START
+    /// asked for audio (`StartParams.wantsAudio`); it hangs off the same
+    /// `AVCaptureSession`, so it is untouched by a lens change.
+    public let audio = AudioCapture()
+
     /// Called on `sampleQueue` for every delivered frame.
     public var onSampleBuffer: ((CMSampleBuffer) -> Void)?
     /// Actually negotiated format after `start` — may differ from the request.
@@ -247,10 +252,19 @@ public final class CaptureEngine: NSObject {
                 session.commitConfiguration()
                 if !session.isRunning { session.startRunning() }
                 currentDevice = cam.device
+                // Audio is attached outside the video transaction, and only for
+                // a START that asked for it. A take without the flag must also
+                // drop a microphone left over from the previous one.
+                if params.wantsAudio {
+                    audio.start(on: session, queue: sessionQueue)
+                } else {
+                    audio.stop()
+                }
                 DispatchQueue.main.async { [self] in rebuildRotationCoordinator() }
                 completion(.success(()))
             } catch {
                 session.commitConfiguration()
+                audio.stop()
                 setEncoding(false)
                 completion(.failure(error))
             }
@@ -269,6 +283,7 @@ public final class CaptureEngine: NSObject {
             // configuration behind us. Dropping to the preview format here would
             // undo it and leak a 720p buffer into the encoder.
             guard !isEncoding else { return }
+            audio.stop()
             activeFormat = nil
             sourceFormat = nil
             resetLeveling()

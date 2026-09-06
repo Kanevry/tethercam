@@ -35,6 +35,7 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_NSCameraUsageDescription: "The camera picture is sent to the Mac over the USB cable."
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: "The microphone audio is sent to the Mac over the USB cable together with the picture."
         INFOPLIST_KEY_NSLocalNetworkUsageDescription: "Local listener on TCP 7878 for the USB connection to the Mac."
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
         INFOPLIST_KEY_UILaunchScreen_Generation: YES

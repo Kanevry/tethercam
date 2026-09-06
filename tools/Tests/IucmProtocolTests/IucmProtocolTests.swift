@@ -1,5 +1,7 @@
 import XCTest
 @testable import IucmProtocol
+@testable import usbcam_recv
+@testable import usbcam_sim
 
 final class CodecRoundTripTests: XCTestCase {
 
@@ -292,5 +294,57 @@ final class FrameParserTests: XCTestCase {
     func testStatsRejectsShortPayload() {
         XCTAssertThrowsError(try IucmCodec.decodePayload(type: 0x12, flags: 0,
                                                          payload: [UInt8](repeating: 0, count: 21)))
+    }
+}
+
+/// Audio side of protocol 1.1 (PROTOCOL.md 4.9/4.10): the sim's AAC tone encoder,
+/// the receiver's ADTS framing, and that one survives the other.
+final class AudioToolingTests: XCTestCase {
+
+    func testToneEncoderProducesCookieAndFrames() throws {
+        let encoder = try AacToneEncoder()
+        let cookie = try encoder.magicCookie()
+        XCTAssertFalse(cookie.isEmpty, "AudioSpecificConfig must not be empty")
+
+        let frame = try encoder.nextFrame()
+        XCTAssertFalse(frame.isEmpty, "AAC access unit must not be empty")
+        // A 1024-sample AAC-LC frame at 64 kbit/s is a few hundred bytes, never 8 kB.
+        XCTAssertLessThan(frame.count, 8192)
+        XCTAssertFalse(try encoder.nextFrame().isEmpty, "encoder must keep producing frames")
+    }
+
+    func testEncodedFrameDecodesTo1024Samples() throws {
+        let encoder = try AacToneEncoder()
+        let cookie = try encoder.magicCookie()
+        let decoder = try AacDecoder(sampleRate: encoder.sampleRate,
+                                     channels: encoder.channels, asc: cookie)
+        // The first access units are encoder priming; by the third the decoder
+        // returns a full 1024-sample block.
+        var samples = 0
+        for _ in 0..<4 { samples = try decoder.decode(frame: try encoder.nextFrame()) }
+        XCTAssertEqual(samples, AacDecoder.samplesPerFrame)
+    }
+
+    func testAdtsHeaderLayout() throws {
+        let payload = 500
+        let h = try XCTUnwrap(Adts.header(payloadLength: payload, sampleRate: 48_000, channels: 1))
+        XCTAssertEqual(h.count, 7)
+        let b = [UInt8](h)
+        XCTAssertEqual(b[0], 0xFF)
+        XCTAssertEqual(b[1] & 0xF6, 0xF0)              // syncword, MPEG-4, layer 00
+        XCTAssertEqual(b[1] & 0x01, 0x01)              // protection absent (no CRC)
+        XCTAssertEqual((b[2] >> 6) & 0x03, 1)          // profile 1 = AAC-LC
+        XCTAssertEqual((b[2] >> 2) & 0x0F, 3)          // sampling index 3 = 48000 Hz
+        let channels = (Int(b[2] & 0x01) << 2) | (Int(b[3] >> 6) & 0x03)
+        XCTAssertEqual(channels, 1)
+        let frameLength = (Int(b[3] & 0x03) << 11) | (Int(b[4]) << 3) | (Int(b[5] >> 5) & 0x07)
+        XCTAssertEqual(frameLength, payload + Adts.headerSize)
+    }
+
+    func testAdtsHeaderRejectsUnsupportedFields() {
+        XCTAssertNil(Adts.header(payloadLength: 100, sampleRate: 47_000, channels: 1))
+        XCTAssertNil(Adts.header(payloadLength: 0, sampleRate: 48_000, channels: 1))
+        XCTAssertNil(Adts.header(payloadLength: 100, sampleRate: 48_000, channels: 0))
+        XCTAssertNil(Adts.header(payloadLength: 1 << 13, sampleRate: 48_000, channels: 1))
     }
 }
