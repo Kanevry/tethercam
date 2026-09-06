@@ -11,8 +11,28 @@ plugin (`obs-plugin/`, GPL-2.0-or-later) and the iOS app (`ios-app/`, MIT). A ta
 
 ## [Unreleased]
 
+### Added
+
+- **Audio from the phone.** The app captures the microphone, encodes AAC-LC 48 kHz mono
+  (96 kbps) and sends it on the same cable; the plugin decodes with AudioToolbox and hands
+  the samples to OBS (`obs_source_output_audio`), so the source shows up in the audio mixer
+  like any other. Protocol 1.1 adds `AUDIO_CONFIG` (0x13), `AUDIO` (0x14), an audio flag in
+  START, `MIC_DENIED` (error 6) and STATS bits for audio active/muted; 1.0 receivers keep
+  working and simply get no audio.
+- **Mute switch** in the app's settings sheet (frame gate, the pts chain stays monotone), a
+  `mic.slash` badge in the status capsule while muted, and a microphone-denied state.
+- **Plugin property "Audio from the phone"** (default on) and the status line reports the
+  audio rate, mute and a denied microphone.
+- `usbcam-sim` sends a 440 Hz AAC tone, `usbcam-recv` decodes and counts it
+  (`audio_frames`, `audio_video_pts_skew_ms`, `--dump-audio` as ADTS) and
+  `tools/integration.sh` asserts the audio path.
+- **Homebrew tap**: `brew tap kanevry/tethercam && brew install --cask tethercam-obs`
+  copies the plugin bundle into the user's own OBS plugin folder, no admin rights.
+
 ### Changed
 
+- The plugin keeps the link on non-fatal peer errors (only BUSY and VERSION_UNSUPPORTED
+  disconnect); before, a denied microphone caused an endless reconnect loop without picture.
 - iOS build number 3 for the next TestFlight upload (build 2 is the one under review).
 - Repository ships `.env.example` for the App Store Connect API variables.
 

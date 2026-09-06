@@ -74,6 +74,10 @@ Connect (kein API) und Developer-ID-Installer-Zertifikat fuer das signierte Plug
 - **`protocol/PROTOCOL.md` ist der Vertrag.** Wer das Wire-Format aendert, aendert zuerst
   dort und danach beide Seiten. Empfaenger reichen alle NALs der VIDEO-Nutzlast durch
   (VideoToolbox stellt jedem VCL-NAL ein Prefix-SEI voran).
+- **Audio laeuft ueber denselben Draht** (Protokoll 1.1: AUDIO_CONFIG 0x13, AUDIO 0x14, START-Flag Bit 0).
+  Audio-pts und Video-pts kommen von derselben Capture-Session-Uhr, beide Seiten rechnen nur
+  `pts_us * 1000`, kein Offset. Der AAC-Decoder im Plugin fordert genau eine Access-Unit
+  (1024 Frames) pro Aufruf an; mehr latcht den AudioConverter auf Stream-Ende.
 - **Rotation gehoert auf die Aufnahmeseite.** Die App richtet ueber
   `AVCaptureDevice.RotationCoordinator` am Horizont aus; aendert sich dadurch die Geometrie,
   wird die Encoder-Session neu gebaut und ein neues CONFIG gesendet. Die Rotation-Property

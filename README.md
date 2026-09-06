@@ -253,7 +253,7 @@ swift build -c release --package-path tools
 
 - Signed and notarized plugin releases.
 - Virtual camera as a macOS Camera Extension (CMIO), so the picture also shows up in Zoom, FaceTime and Safari.
-- Audio from the phone.
+- Audio from the phone: implemented on `main` (AAC-LC over the same cable, mute switch in the app), ships with the next release.
 - Receivers for Windows and Linux. The C core already builds there.
 - App Store listing: 0.1.0 (2) was submitted for App Review on 2026-09-05, still in review; Build 0.1.0 (2) cleared Beta App Review on 2026-09-06, so the TestFlight public beta link above now accepts testers.
 
