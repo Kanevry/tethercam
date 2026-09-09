@@ -41,8 +41,13 @@ final class SimHarness {
             usleep(50_000)
         }
         process.terminate()
-        throw XCTSkip("usbcam-sim did not open port \(port)")
+        process.waitUntilExit()
+        // The binary exists but never listened: that is a failure, not a skip.
+        XCTFail("usbcam-sim did not open port \(port) within 5 s")
+        throw SimHarnessError.noListener(port)
     }
+
+    enum SimHarnessError: Error { case noListener(UInt16) }
 
     func stop() {
         if process.isRunning { process.terminate(); process.waitUntilExit() }

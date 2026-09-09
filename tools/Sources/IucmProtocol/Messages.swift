@@ -10,7 +10,8 @@ public enum Iucm {
     /// 1.1 added AUDIO_CONFIG/AUDIO (PROTOCOL.md 4.9/4.10).
     public static let version: UInt16 = 0x0101
     /// Payloads larger than this are rejected as corrupt rather than buffered.
-    public static let maxPayloadSize = 16 * 1024 * 1024
+    /// 8 MiB, PROTOCOL.md 2; mirrors `IUCM_MAX_PAYLOAD` in shared/frame_parser.h.
+    public static let maxPayloadSize = 8 * 1024 * 1024
     /// A sender drops a connection that has not sent a PING for this long.
     public static let pingTimeout: TimeInterval = 6.0
 }

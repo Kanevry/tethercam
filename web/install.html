@@ -58,7 +58,7 @@
     <p class="eyebrow">Guide</p>
     <h1>Install TetherCam: an iPhone as an OBS camera over USB</h1>
     <p class="lede">No Wi-Fi, no pairing code and no Continuity Camera handshake involved. Everything below travels over one data cable: the plugin on the Mac, the app on the iPhone, and the USB connection between them.</p>
-    <p class="meta">Last updated: 2026-09-05. This is the guide version of the <a href="/#quick-start">quick start on the homepage</a>, with the troubleshooting cases spelled out.</p>
+    <p class="meta">Last updated: 2026-09-09. This is the guide version of the <a href="/#quick-start">quick start on the homepage</a>, with the troubleshooting cases spelled out.</p>
   </div>
 </section>
 
@@ -154,6 +154,20 @@ brew install --cask tethercam-obs</code></pre>
   </div>
 </section>
 
+<section id="video-calls" class="section">
+  <div class="wrap">
+    <p class="eyebrow" data-reveal>Beyond OBS</p>
+    <h2 data-reveal>Zoom, Teams and others today</h2>
+    <p class="lede" data-reveal>TetherCam feeds OBS. To get the picture into a video call, let OBS pass it on as a camera.</p>
+    <ol class="prose" data-reveal>
+      <li>With the TetherCam source live, click <strong>Start Virtual Camera</strong> in the OBS Controls dock.</li>
+      <li>The first time, macOS asks you to enable the OBS camera extension under <strong>System Settings, General, Login Items &amp; Extensions, Camera Extensions</strong>, and wants your administrator password once. Come back to OBS and start the virtual camera again.</li>
+      <li>In Zoom, Teams, Google Meet or FaceTime pick the camera <strong>OBS Virtual Camera</strong>.</li>
+    </ol>
+    <p class="meta" data-reveal>The audio does not travel with the virtual camera; keep the phone's microphone in OBS or use the call's own microphone. A native TetherCam camera extension that needs no OBS is in development, with the code already on <a href="https://github.com/Kanevry/tethercam/tree/main/mac-app">GitHub</a>; there is no download yet.</p>
+  </div>
+</section>
+
 <section id="troubleshooting" class="section">
   <div class="wrap">
     <p class="eyebrow" data-reveal>Troubleshooting</p>
@@ -231,7 +245,7 @@ brew install --cask tethercam-obs</code></pre>
   "name": "Install TetherCam: iPhone as an OBS camera over USB",
   "inLanguage": "en",
   "description": "Step-by-step install guide: the TetherCam plugin on your Mac, the TetherCam app on your iPhone, then connect over USB. No Wi-Fi, no cloud, no pairing code.",
-  "dateModified": "2026-09-05",
+  "dateModified": "2026-09-09",
   "isPartOf": {"@id": "https://tethercam.app/#website"},
   "publisher": {"@id": "https://tethercam.app/#organization"}
 }

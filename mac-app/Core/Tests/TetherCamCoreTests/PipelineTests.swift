@@ -9,17 +9,25 @@ final class PipelineTests: XCTestCase {
     /// is absent (connect() throwing deviceNotFound must not stop the receiver),
     /// or one that "pushes" frames into a sink that is not connected.
     func testLiveSimStreamsWithoutSink() throws {
-        let sim = try SimHarness(port: 7982)
+        let sim = try SimHarness(port: 7983)
         defer { sim.stop() }
 
-        let pipeline = CameraPipeline(endpoint: .tcp(host: "127.0.0.1", port: 7982))
+        let pipeline = CameraPipeline(endpoint: .tcp(host: "127.0.0.1", port: 7983))
         let statuses = Locked<[PipelineStatus]>([])
         pipeline.onStatus = { st in statuses.with { $0.append(st) } }
         pipeline.start()
         defer { pipeline.stop() }
 
+        let devicePresent = CMIOSink.isDevicePresent()
         let deadline = Date().addingTimeInterval(6)
-        while pipeline.currentStatus.received < 10 && Date() < deadline { usleep(20_000) }
+        func settled(_ s: PipelineStatus) -> Bool {
+            guard s.received >= 10 else { return false }
+            // With the extension enabled the sink connects on the streaming
+            // transition, a few frames after the first decoded one.
+            if devicePresent, s.camera == .ready, s.pushed + s.dropped == 0 { return false }
+            return true
+        }
+        while !settled(pipeline.currentStatus) && Date() < deadline { usleep(20_000) }
 
         let final = pipeline.currentStatus
         XCTAssertTrue(statuses.value.map(\.link).contains(.streaming), "statuses: \(statuses.value.map(\.line))")
@@ -27,7 +35,11 @@ final class PipelineTests: XCTestCase {
         XCTAssertEqual(final.resolution, "1920x1080@30")
 
         if CMIOSink.isDevicePresent() {
-            // Extension enabled on this machine: frames must actually reach the sink.
+            // Extension enabled on this machine: frames must actually reach the sink,
+            // unless an installed TetherCam.app already holds the single sink client.
+            if case .error(let why) = final.camera, why.contains("CMIOStreamCopyBufferQueue") {
+                throw XCTSkip("sink is held by another host process (TetherCam.app running?): \(why)")
+            }
             XCTAssertEqual(final.camera, .ready)
             XCTAssertGreaterThan(final.pushed + final.dropped, 0)
         } else {
@@ -35,6 +47,16 @@ final class PipelineTests: XCTestCase {
             XCTAssertEqual(final.pushed, 0)
             XCTAssertEqual(final.dropped, 0)
         }
+    }
+
+    /// Bug caught: the host holding the extension's sink stream open while no
+    /// frames flow (no iPhone, disconnect, BUSY) — the extension stops its
+    /// placeholder as soon as the sink streams, so Zoom would show black.
+    func testSinkFollowsStreamingStateOnly() {
+        for st in [LinkState.noDevice, .waiting, .starting, .incompatible, .busy] {
+            XCTAssertFalse(CameraPipeline.sinkShouldBeConnected(link: st), "\(st)")
+        }
+        XCTAssertTrue(CameraPipeline.sinkShouldBeConnected(link: .streaming))
     }
 
     /// Bug caught: a status line with spaces inside a token breaks the

@@ -29,13 +29,27 @@ final class CameraTests: XCTestCase {
 
     // Bug guarded: the enumeration path crashing or matching a wrong device
     // (this machine has no TetherCam extension installed).
-    func testDeviceAbsentOnThisMachine() throws {
-        XCTAssertFalse(CMIOSink.isDevicePresent())
+    // Environment-aware: without the extension the real enumeration path must
+    // report deviceNotFound; with the extension enabled (developer Mac) the
+    // sink must connect and expose a queue (guards the nil-altered-proc bug:
+    // CMIOStreamCopyBufferQueue returned noErr and no queue).
+    func testSinkConnectMatchesExtensionPresence() throws {
         let sink = CMIOSink()
-        XCTAssertThrowsError(try sink.connect()) { error in
-            XCTAssertEqual(error as? CMIOSinkError, .deviceNotFound)
+        if CMIOSink.isDevicePresent() {
+            do {
+                try sink.connect()
+            } catch CMIOSinkError.osStatus(let code, let call) where call == "CMIODeviceStartStream" || call == "CMIOStreamCopyBufferQueue" {
+                throw XCTSkip("sink held by another host process: \(call) status \(code)")
+            }
+            XCTAssertTrue(sink.isConnected)
+            sink.disconnect()
+            XCTAssertFalse(sink.isConnected)
+        } else {
+            XCTAssertThrowsError(try sink.connect()) { error in
+                XCTAssertEqual(error as? CMIOSinkError, .deviceNotFound)
+            }
+            XCTAssertFalse(sink.isConnected)
         }
-        XCTAssertFalse(sink.isConnected)
         XCTAssertEqual(sink.pushedFrames, 0)
     }
 

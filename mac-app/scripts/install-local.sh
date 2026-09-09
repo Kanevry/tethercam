@@ -51,7 +51,9 @@ open -a "$DEST"
 state=""
 for _ in $(seq 1 20); do
   sleep 1
-  line=$(systemextensionsctl list 2>/dev/null | grep "$EXT_ID" | tail -1 || true)
+  # Whole-field match: the id is followed by a tab, so a longer sibling id
+  # (…camera.debug) cannot satisfy the grep.
+  line=$(systemextensionsctl list 2>/dev/null | grep -F "$EXT_ID (" | grep -F "[activated" | tail -1 || true)
   if [[ -n "$line" ]]; then
     state=$(printf '%s' "$line" | sed -n 's/.*\[\(.*\)\].*/\1/p')
     [[ "$state" == "activated enabled" ]] && break
@@ -72,6 +74,7 @@ case "$state" in
   "")
     say "ERROR: no activation request seen within 20 s. Recent sysextd log:"
     log show --last 2m --predicate 'subsystem == "com.apple.sysextd"' 2>/dev/null | tail -20 || true
+    exit 2
     ;;
   *)
     say "extension state '$state' (see systemextensionsctl list)"

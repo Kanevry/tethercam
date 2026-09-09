@@ -129,6 +129,23 @@ The cask copies the signed bundle straight into your own
 `~/Library/Application Support/obs-studio/plugins/` folder, the same place Option A
 and the one-line installer put it. No admin rights needed.
 
+## Zoom, Teams, FaceTime: the virtual camera (preview)
+
+`mac-app/` is a menu bar app for the Mac that embeds a CoreMediaIO Camera Extension. It receives the same USB stream the OBS plugin does and publishes it as the system camera "TetherCam" (1920x1080, 30 fps), so Zoom, Teams, Google Meet, FaceTime, QuickTime and ffmpeg see the iPhone like any webcam. No OBS involved, no audio on that path (a camera extension carries video only; the OBS plugin keeps the microphone).
+
+It is **not released yet**: the code is on `main`, the signed and notarized `.dmg` is not. The phone serves one receiver at a time, so run either the Mac app or an OBS source with the plugin, not both; the second one reports BUSY. Design, status and open risks: [docs/superpowers/specs/2026-09-09-virtual-camera-cmio.md](docs/superpowers/specs/2026-09-09-virtual-camera-cmio.md).
+
+**Today, without the Mac app:** in OBS choose **Start Virtual Camera** (Controls dock). The TetherCam picture then appears as the camera "OBS Virtual Camera" in Zoom, Teams, Meet and FaceTime. The first time, macOS asks you to enable the OBS camera extension under System Settings > General > Login Items & Extensions > Camera Extensions and wants the admin password once.
+
+Build and install it yourself (Xcode 16 or later, `xcodegen`, an Apple Development signing identity):
+
+```sh
+cd mac-app && xcodegen generate
+bash scripts/install-local.sh    # builds Release, copies to /Applications, launches once
+```
+
+The app must live in `/Applications` and macOS asks you to enable the extension under System Settings > General > Login Items & Extensions > Camera Extensions; the script opens that pane. Details, headless flags and the end to end check without a phone (`bash tools/vcam-test.sh`) are in [mac-app/README.md](mac-app/README.md).
+
 ## Install the iPhone app
 
 <a id="testflight-link"></a>
@@ -215,6 +232,7 @@ Development happens on GitHub (`Kanevry/tethercam`): issues, pull requests and r
 |---|---|
 | `ios-app/` | Swift 6 / SwiftUI capture app, generated Xcode project (MIT) |
 | `obs-plugin/` | OBS source plugin, C and Objective-C++ (GPL-2.0-or-later) |
+| `mac-app/` | macOS menu bar app plus CoreMediaIO Camera Extension, the virtual camera (MIT, preview) |
 | `shared/` | Pure C11 core: IUCM frame parser and usbmuxd client, no Apple frameworks (MIT) |
 | `tools/` | Swift package: protocol codec, sender simulator, CLI receiver (MIT) |
 | `protocol/` | The normative wire protocol spec |
@@ -255,14 +273,14 @@ swift build -c release --package-path tools
 
 - Signed and notarized plugin releases: done since 0.1.0.
 - Audio from the phone: shipped in 0.2.0 (AAC-LC over the same cable, mute switch in the app).
-- Virtual camera as a macOS Camera Extension (CMIO), so the picture also shows up in Zoom, FaceTime and Safari.
+- Virtual camera as a macOS Camera Extension (CMIO), so the picture also shows up in Zoom, FaceTime and Safari: implemented in `mac-app/` (2026-09-09), signed `.dmg` release and device test still open. See [the preview section](#zoom-teams-facetime-the-virtual-camera-preview).
 - Receivers for Windows and Linux. The C core already builds there.
 - App Store listing: 0.1.0 (2) approved by App Review and released 2026-09-09; TestFlight public beta cleared Beta App Review 2026-09-06.
 
 ## License
 
 - `obs-plugin/`: GPL-2.0-or-later, because it links against libobs.
-- Everything else (`shared/`, `ios-app/`, `tools/`, `protocol/`, `docs/`): MIT.
+- Everything else (`shared/`, `ios-app/`, `mac-app/`, `tools/`, `protocol/`, `docs/`): MIT.
 
 ## Support the project
 

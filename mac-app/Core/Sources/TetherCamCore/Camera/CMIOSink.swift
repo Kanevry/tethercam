@@ -32,8 +32,13 @@ public enum CMIOSinkError: Error, Equatable {
 /// callbacks included); `connect()` / `disconnect()` serialize against it.
 public final class CMIOSink {
     /// Direction value of `kCMIOStreamPropertyDirection` for a stream the
-    /// client writes INTO (CMIOHardwareStream.h: 0 = output, 1 = input).
-    static let sinkDirection: UInt32 = 1
+    /// client writes INTO. CMIOHardwareStream.h says "0 = output stream,
+    /// 1 = input stream" and means it from the APP's point of view: a camera's
+    /// capture stream (extension direction .source) reports 1, the extension's
+    /// .sink stream reports 0. Measured on macOS 26.6 against this extension:
+    /// stream[0] (.source) -> 1, stream[1] (.sink) -> 0. Picking 1 started the
+    /// SOURCE stream from the host and the sink never consumed a frame.
+    static let sinkDirection: UInt32 = 0
 
     private let lock = NSLock()
     private var deviceID: CMIOObjectID = 0
@@ -67,9 +72,11 @@ public final class CMIOSink {
         guard let sink = Self.selectSinkStream(streams) else { throw CMIOSinkError.noSinkStream }
 
         var copied: Unmanaged<CMSimpleQueue>?
-        // Passing nil as the altered proc: the host does not need to know when
-        // the extension drained a buffer; back-pressure is handled by count/capacity.
-        let copyStatus = CMIOStreamCopyBufferQueue(sink, nil, nil, &copied)
+        // The altered proc must be non-nil: with nil, CMIOStreamCopyBufferQueue
+        // returns noErr and NO queue (measured on macOS 26.6, both stream
+        // directions). The callback itself is a no-op; back-pressure is handled
+        // by count/capacity in push().
+        let copyStatus = CMIOStreamCopyBufferQueue(sink, { _, _, _ in }, nil, &copied)
         guard copyStatus == noErr, let copied else {
             throw CMIOSinkError.osStatus(copyStatus, "CMIOStreamCopyBufferQueue")
         }

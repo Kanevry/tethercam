@@ -11,6 +11,27 @@ plugin (`obs-plugin/`, GPL-2.0-or-later) and the iOS app (`ios-app/`, MIT). A ta
 
 ## [Unreleased]
 
+### Added
+
+- **macOS virtual camera (preview, `mac-app/`, MIT).** A menu bar host app embeds a
+  CoreMediaIO Camera Extension that publishes the iPhone as the system camera "TetherCam"
+  (1920x1080 NV12 30 fps) for Zoom, Teams, FaceTime, browsers and ffmpeg; the host receives
+  over usbmux like the plugin, decodes with VideoToolbox, letterboxes every geometry into
+  the one format and pushes into the extension's sink stream with host-clock timestamps.
+  `--headless` and `--debug-tcp` flags, `scripts/install-local.sh` for the developer
+  install. Video only; not released yet (no signed `.dmg`); the phone serves one receiver,
+  so the Mac app and the OBS plugin are not used at the same time. (#12)
+- `tools/vcam-test.sh`: end to end check of the virtual camera without a phone
+  (`usbcam-sim` → host app headless → ffmpeg avfoundation capture → resolution, fps and
+  motion assertions, optional browser `getUserMedia` via `VCAM_BROWSER=1`). Verified
+  green on 2026-09-09 with the extension approved: 1920x1080, 30.3 fps, Chrome lists the
+  camera.
+
+### Fixed
+
+- iOS: switching the camera decides on the session queue, so a lens change during a take
+  no longer races the capture session's format selection. (#11)
+
 ## [0.2.0] - 2026-09-09
 
 ### Added

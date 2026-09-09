@@ -15,7 +15,8 @@ verbindet sich, decodiert per VideoToolbox und liefert NV12-Frames als Async-Sou
 | `shared/` | C-Bausteine beider Seiten: `frame_parser`, `usbmux` (+ ctest) | MIT |
 | `ios-app/` | Swift/SwiftUI-App `TetherCam` (Capture, HEVC-Encoder, Server) | MIT |
 | `obs-plugin/` | OBS-Source `TetherCam (iPhone via USB)` (C/ObjC++, CMake) | GPL-2.0-or-later |
-| `tools/` | Swift-Paket: `usbcam-sim`, `usbcam-recv`, `integration.sh` | MIT |
+| `tools/` | Swift-Paket: `usbcam-sim`, `usbcam-recv`, `integration.sh`, `vcam-test.sh` | MIT |
+| `mac-app/` | macOS-Menuleisten-App + CMIO Camera Extension (virtuelle Kamera, Preview, #12) | MIT |
 | `docs/superpowers/specs/` | Design-Spec; Korrekturen datiert anfuegen, nichts umschreiben | n/a |
 | `docs/app-store/` | Store-Metadaten (en-US, de-DE), Review Notes, Klickpfad, `validate.sh` | n/a |
 | `tethercam.pen` + `images/` | Pen-Design-File der App-Store-Frames und Website-Galerie; KI-Szene, nie Gesichter | n/a |
@@ -37,6 +38,13 @@ xcodebuild -scheme TetherCam -configuration Release \
   -destination 'platform=iOS,id=<UDID>' -allowProvisioningUpdates build
 xcrun devicectl device install app --device <DEVICE-ID> <pfad>/TetherCam.app
 xcrun devicectl device process launch --terminate-existing --device <DEVICE-ID> at.gotzendorfer.tethercam
+
+# mac-app (virtuelle Kamera; Spec docs/superpowers/specs/2026-09-09-virtual-camera-cmio.md)
+swift test --package-path mac-app/Core
+cd mac-app && xcodegen generate && xcodebuild -scheme TetherCam -configuration Release \
+  -allowProvisioningUpdates -allowProvisioningDeviceRegistration -derivedDataPath build build
+bash mac-app/scripts/install-local.sh   # Release nach /Applications, startet, zeigt systemextensionsctl
+bash tools/vcam-test.sh                 # Sim -> App headless -> ffmpeg-Aufnahme; Exit 3 = Freigabe fehlt
 
 # obs-plugin
 cd obs-plugin
@@ -87,6 +95,9 @@ PayPal (paypal.me/Kanevry), nur Website/README/FUNDING.yml, nie in der App (3.1.
 - VCS: GitLab primaer (`agents/obs-iphone-usb-cam` auf gitlab.gotzendorfer.at) fuer die
   Entwicklung. `Kanevry/tethercam` auf GitHub ist der oeffentliche Mirror und der
   Release-Host (Actions, Release-Assets). Website: https://tethercam.app
+- **Camera Extension:** `PRODUCT_NAME` der Extension = Bundle-Id (sysextd sucht
+  `<bundle-id>.systemextension`), die App muss in `/Applications` liegen, die Freigabe in
+  Systemeinstellungen > Anmeldeobjekte & Erweiterungen ist manuell (Admin-Passwort), nie automatisierbar.
 - Lizenzen sind gemischt und bleiben es: das OBS-Plugin GPL-2.0-or-later (OBS-Header),
   alles uebrige MIT. Kein GPL-Code ausserhalb `obs-plugin/`.
 - Conventional Commits.

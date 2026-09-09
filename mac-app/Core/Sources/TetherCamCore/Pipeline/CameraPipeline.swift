@@ -74,9 +74,18 @@ public extension CameraStatus {
 /// the sink is thread-safe and drop-on-full, so nothing there can block.
 public final class CameraPipeline: @unchecked Sendable {
 
-    /// Interval between sink connect attempts while the extension is absent:
-    /// the user may approve it in System Settings while the app keeps running.
+    /// Interval between sink connect attempts while the link streams but the
+    /// extension is absent: the user may approve it in System Settings while
+    /// the app keeps running.
     public static let sinkRetryInterval: TimeInterval = 2
+
+    /// The one decision behind the sink lifecycle: the host attaches to the
+    /// extension's SINK stream only while frames actually flow. Any other link
+    /// state leaves the sink stopped, so the extension shows its placeholder
+    /// instead of black (no iPhone, disconnect, BUSY, incompatible).
+    public static func sinkShouldBeConnected(link: LinkState) -> Bool {
+        link == .streaming
+    }
 
     public var onStatus: (@Sendable (PipelineStatus) -> Void)?
     /// Diagnostic lines from the receiver and the pipeline itself.
@@ -94,7 +103,9 @@ public final class CameraPipeline: @unchecked Sendable {
         receiver = Receiver(config: ReceiverConfig(endpoint: endpoint))
         receiver.onLog = { [weak self] line in self?.onLog?("receiver: \(line)") }
         receiver.onState = { [weak self] st in
-            self?.update { $0.link = st; if st != .streaming { $0.fps = 0 } }
+            guard let self else { return }
+            self.update { $0.link = st; if st != .streaming { $0.fps = 0 } }
+            self.syncSink(link: st)
         }
         receiver.onConfig = { [weak self] w, h, f in
             self?.update { $0.resolution = "\(w)x\(h)@\(f)" }
@@ -112,16 +123,21 @@ public final class CameraPipeline: @unchecked Sendable {
     /// Current snapshot (also delivered through `onStatus` on every change).
     public var currentStatus: PipelineStatus { lock.withLock { status } }
 
-    /// Starts receiving immediately and begins the sink connect loop.
+    /// Starts receiving immediately; the sink is connected once the link streams
+    /// (see `sinkShouldBeConnected`).
     public func start() {
         lock.lock()
         guard !running else { lock.unlock(); return }
         running = true
         retryGeneration += 1
-        let generation = retryGeneration
         lock.unlock()
+        // Probe once so the menu shows "install" / "approve" before any iPhone
+        // shows up. probe() shells out to systemextensionsctl: keep it off the caller.
+        queue.async { [weak self] in
+            guard let self, self.lock.withLock({ self.running }), !self.sink.isConnected else { return }
+            self.update { $0.camera = CameraStatus.probe() }
+        }
         receiver.start()
-        queue.async { [weak self] in self?.tryConnectSink(generation: generation) }
     }
 
     /// Stops the receiver, disconnects the sink and cancels pending retries.
@@ -138,8 +154,26 @@ public final class CameraPipeline: @unchecked Sendable {
 
     // MARK: - Sink
 
+    /// Follows the link state (called on the receiver thread): streaming starts
+    /// the connect/retry loop, anything else cancels it and stops the sink
+    /// stream so the extension falls back to its placeholder.
+    private func syncSink(link: LinkState) {
+        lock.lock()
+        guard running else { lock.unlock(); return }
+        retryGeneration += 1   // cancels a pending retry in either direction
+        let generation = retryGeneration
+        lock.unlock()
+        if Self.sinkShouldBeConnected(link: link) {
+            queue.async { [weak self] in self?.tryConnectSink(generation: generation) }
+        } else if sink.isConnected {
+            sink.disconnect()
+            onLog?("sink disconnected (link \(link.shortName)); the camera shows its placeholder")
+        }
+    }
+
     private func tryConnectSink(generation: Int) {
         guard lock.withLock({ running && retryGeneration == generation }) else { return }
+        guard !sink.isConnected else { return }
         do {
             try sink.connect()
             onLog?("sink connected to the TetherCam camera")

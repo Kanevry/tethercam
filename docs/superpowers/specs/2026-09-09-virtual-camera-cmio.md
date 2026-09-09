@@ -1,0 +1,208 @@
+# TetherCam virtual camera for macOS (CoreMediaIO Camera Extension)
+
+Date: 2026-09-09. Status: implemented, not released (GitLab issue #12). Corrections are
+appended dated at the end, nothing above is rewritten. The wire format stays
+[../../../protocol/PROTOCOL.md](../../../protocol/PROTOCOL.md); this spec only adds a
+second receiver on the Mac. The original design is
+[2026-09-05-obs-iphone-usb-cam-design.md](2026-09-05-obs-iphone-usb-cam-design.md).
+
+## Goal
+
+The iPhone picture that TetherCam already delivers to OBS should show up as a system
+camera named "TetherCam" in every macOS app that consumes one: Zoom, Teams, Meet in a
+browser, FaceTime, QuickTime, ffmpeg. Same cable, same iOS app, same protocol; no OBS
+required on the Mac.
+
+## Non-goals (v1)
+
+- **Audio.** A CMIO Camera Extension carries video only. The Mac app sends START with
+  flags 0, so the phone sends no AUDIO messages. The OBS plugin path keeps audio.
+- **Mac App Store.** The host app is unsandboxed (it opens `/var/run/usbmuxd` and TCP
+  sockets exactly like the OBS plugin). MAS would need a sandboxed host and a different
+  usbmux story; that is its own issue.
+- **Dynamic camera formats.** The extension publishes exactly one format. Whatever the
+  phone sends is scaled or letterboxed into it (see Format policy).
+- **Replacing the OBS plugin.** It stays as the direct, lowest-latency, audio-capable path.
+
+## Architecture
+
+### Process model
+
+```
+ iPhone (TetherCam.app)          Mac
+ ┌──────────────────┐            ┌─────────────────────────────────────────────┐
+ │ AVCapture → HEVC │  USB       │ usbmuxd ──► TetherCam.app (host, menu bar)  │
+ │ NWListener :7878 │ ─────────► │            Receiver → HevcDecoder →         │
+ └──────────────────┘  usbmux    │            FrameScaler → CMIOSink           │
+                                 │                     │ CMSampleBuffer         │
+                                 │                     ▼ (sink stream, XPC)     │
+                                 │ registerassistantservice (Apple, sandboxed) │
+                                 │   └─ at.gotzendorfer.tethercam.mac.camera   │
+                                 │      .systemextension: sink ──► source      │
+                                 │                     │                        │
+                                 │                     ▼ AVFoundation client    │
+                                 │ Zoom / Teams / FaceTime / ffmpeg / Chrome   │
+                                 └─────────────────────────────────────────────┘
+```
+
+Three processes on the Mac, three trust levels:
+
+| Piece | Process | Sandbox | Role |
+|---|---|---|---|
+| `mac-app/App` host `TetherCam.app` | own, `LSUIElement` menu bar app | no (hardened runtime, entitlements `system-extension.install` + app group) | receives, decodes, scales, pushes into the sink |
+| `mac-app/Extension` | Apple's `registerassistantservice` | yes (app group only) | publishes device + source stream, owns the sink stream |
+| `mac-app/Core` SwiftPM | linked into both | n/a | `TetherCamContract` (identifiers, format) and `TetherCamCore` (pipeline) |
+
+The extension is embedded at `Contents/Library/SystemExtensions/` of the host and is
+activated through `OSSystemExtensionRequest` on every host launch
+(`ExtensionInstaller`). The two sides never share code paths at runtime; they share
+`TetherCamContract` at compile time (bundle ids, app group = `CMIOExtensionMachServiceName`,
+stable device and stream UUIDs, the one format, sink queue depth 4). That file is
+contract-locked: change it in one commit with both sides.
+
+### Data path
+
+1. `Receiver` mirrors the OBS plugin state machine (`no-device → waiting → starting →
+   streaming`, plus `incompatible` and `busy`) over TCP or usbmux. It reuses
+   `tools`' `IucmProtocol` codec and `CUsbmux` over `shared/usbmux.c`, so there is still
+   exactly one tunnel client and one framer in the repo.
+2. `HevcDecoder` builds a VideoToolbox decompression session from CONFIG (VPS/SPS/PPS)
+   and gates on the first keyframe after each CONFIG, like the plugin.
+3. `FrameScaler` letterboxes or scales every decoded geometry (1920x1080, 1080x1920
+   portrait, 1280x720) into 1920x1080 NV12 with `VTPixelTransferSession`.
+4. `CMIOSink` finds the extension's sink stream by UID, copies its buffer queue
+   (`CMIOStreamCopyBufferQueue`) and enqueues `CMSampleBuffer`s
+   (`CMSimpleQueueEnqueue`). A full queue drops the newest frame instead of blocking the
+   receiver.
+5. In the extension, `StreamSink` consumes the queue and `StreamSource` republishes the
+   buffers to clients. While no host is feeding it, the source emits placeholder frames
+   at 30 fps so the device never goes dark in a client's picker.
+
+`CameraPipeline` glues 1 to 4 together and retries the sink lookup every 2 s until the
+extension is enabled, so the host can start before the user has approved the extension.
+
+### Clocking
+
+Camera clients expect host-clock presentation times. The phone's `pts_us` is unrelated
+to the Mac's clock, so `CameraPipeline` stamps every pushed buffer with the host clock at
+push time. The phone pts is still used inside the decoder for ordering. Audio would need
+the phone clock (as the OBS plugin does); that is one more reason audio is out of scope.
+
+### Format policy
+
+One published format: 1920x1080, `kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange`
+(NV12), 30 fps, defined once in `TetherCamContract`. Reasons: every client accepts it,
+clients remember the format per device UID and misbehave when the list changes, and a
+single format keeps the extension free of negotiation state. Portrait input is
+letterboxed, not rotated: rotation is decided on the phone (see the ARCHITECTURE note on
+`RotationCoordinator`).
+
+## Single-receiver decision
+
+The phone serves one receiver at a time (protocol: a second connection gets `BUSY`).
+Options considered:
+
+- **Extension as the receiver.** Impossible as-is: the extension is sandboxed and cannot
+  open `/var/run/usbmuxd`.
+- **OBS plugin feeds the extension.** Couples the virtual camera to OBS running; defeats
+  the goal.
+- **Host app as the receiver; OBS consumes the system camera.** Chosen. The host owns the
+  phone, the extension publishes it, and OBS picks "TetherCam" up as a normal video
+  capture device. Users who want the lowest latency and audio in OBS keep using the
+  plugin, but then must not run the Mac app at the same time (the phone answers BUSY to
+  whoever connects second, and both receivers show that state).
+
+## Activation and approval UX, and its limits
+
+- The host submits `OSSystemExtensionRequest.activationRequest` on every launch and shows
+  the result in its menu (`missing`, `waiting-for-user`, `ready`, `error`).
+- macOS requires the user to enable the extension once under **System Settings >
+  General > Login Items & Extensions > Camera Extensions** and asks for the admin
+  password. This cannot be automated or scripted; OBS's own virtual camera has the same
+  gate. The host offers a button that opens the pane.
+- `sysextd` only activates extensions embedded in an app under `/Applications`
+  (`OSSystemExtensionErrorUnsupportedParentBundleLocation` otherwise). The DMG therefore
+  ships the usual "drag to Applications" layout and the menu says so when the app runs
+  from elsewhere.
+- `sysextd` looks the bundle up as `<bundle-id>.systemextension`, so the extension's
+  `PRODUCT_NAME` must equal its bundle id; any other name yields
+  `OSSystemExtensionErrorExtensionNotFound`.
+- Updating an already enabled extension can require a reboot before the new binary is
+  the one running (see Open risks).
+
+## Distribution plan
+
+- Developer ID Application signature on host and extension, hardened runtime, notarized,
+  stapled, shipped as a `.dmg` on the GitHub release next to the plugin `.pkg`. No
+  embedded provisioning profile is needed for Developer ID system extensions (verified
+  against OBS.app).
+- Homebrew cask in `kanevry/tethercam` (`tethercam-mac` or similar) once the DMG exists.
+- Local developer install: `mac-app/scripts/install-local.sh` (automatic Apple Development
+  signing, `-allowProvisioningUpdates -allowProvisioningDeviceRegistration` on first
+  build, copies to `/Applications`, launches once, reports `systemextensionsctl list`).
+- Mac App Store: separate issue, blocked on the sandbox question above.
+
+## Test strategy
+
+| Layer | What | How |
+|---|---|---|
+| Unit | contract constants, receiver state machine, decoder keyframe gate, scaler geometries, sink queue behaviour, pipeline status transitions | `swift test --package-path mac-app/Core` |
+| Live sim | pipeline against `usbcam-sim` over `--debug-tcp` | part of the same test target (`PipelineTests`) |
+| End to end | `bash tools/vcam-test.sh`: sim → `TetherCam.app --debug-tcp --headless` → ffmpeg avfoundation capture of "TetherCam" → ffprobe asserts 1920x1080 and ≥25 fps → PSNR of two frames proves motion → optional `VCAM_BROWSER=1` Chrome `getUserMedia` via `agent-browser` | exit 0 PASS, 1 FAIL, 3 extension waiting for approval, 4 not registered |
+| Device matrix | iPhone 15 Pro Max (iOS 26.6) over usbmux; clients FaceTime, Zoom, Chrome, QuickTime; portrait and 720p lens switches trigger CONFIG and must not drop the camera in the client | manual, with the results appended here |
+
+`vcam-test.sh` is repeatable, kills only the processes it started, and writes everything
+under `/tmp/vcam-test/`.
+
+## Open risks
+
+1. **Sink/placeholder handover.** When the host starts pushing, the source switches from
+   placeholder frames to sink frames; when the host stops, it switches back. A client
+   that is mid-frame during that switch may see one duplicated or torn frame. Not observed
+   yet because the full E2E has not run; watch the PSNR check.
+2. **Reboot on extension update.** Measured 2026-09-09 (builds 1 → 2 → 3 → 4, same
+   version 0.1.0): `OSSystemExtensionReplacementActionReplace` swapped the enabled
+   extension without a reboot and without a second approval; the old build is listed as
+   `terminated waiting to uninstall on reboot`. Scripts must therefore read the
+   `[activated ...]` line, not the last line, of `systemextensionsctl list`. A new
+   `CFBundleVersion` per build is what makes the replacement visible.
+3. **Coexistence with the OBS plugin.** Both receivers want the same phone; the second one
+   gets `BUSY`. Both show a clear state, but the user has to know which one to quit.
+   Possible later improvement: the Mac app pauses its receiver while OBS's plugin source
+   is active, signalled through a file in the app group.
+4. **First-run friction.** Two manual gates (drag to Applications, approve in System
+   Settings with the admin password) are more than the plugin ever asked for. The
+   install guide has to carry this.
+5. **Sink authorization.** Any local client may open the sink stream (OBS policy). A
+   `signingID == host bundle id` gate was tried and locked the host out: on macOS 26.6
+   `CMIOExtensionClient.signingID` is nil for the Apple Development-signed host. Revisit
+   with a Developer ID build before shipping.
+6. **Codesign drift.** Any identity or entitlement mismatch between host and extension
+   silently ends in `waiting for user` or `not found`. `install-local.sh` prints the
+   `systemextensionsctl` line and the last sysextd log lines for exactly this reason.
+
+## Status 2026-09-09
+
+- Implemented on `main` (commits `66e95f0`, `83cb747`, `18fce1a` and the finalization
+  commit of this session), Mac app version 0.1.0 build 4, not released.
+- macOS 26.6.2, Xcode 26.0.1: `swift test --package-path mac-app/Core` 16 tests, tools 36,
+  iOS 118, shared ctest 3, `tools/integration.sh` PASS; mac-app Release build 0 warnings.
+- The extension was approved on this Mac (owner entered the admin password), state
+  `[activated enabled]`; `TetherCam` appears in `ffmpeg -f avfoundation -list_devices`.
+- `VCAM_BROWSER=1 bash tools/vcam-test.sh`:
+  `PASS listed_s=1 size=1920x1080 fps=30.31 frames=90 psnr_db=19.70 browser=ok`, host
+  status `link=streaming camera=ready pushed=113 dropped=38`; the captured frame shows the
+  simulator's colour bars, the moving box and the timestamp. Chrome's `enumerateDevices`
+  lists `TetherCam`.
+- Three defects found only by that run, all fixed the same day: (a) `CMIOStreamCopyBufferQueue`
+  returns `noErr` and no queue when the altered proc is nil; (b) `kCMIOStreamPropertyDirection`
+  is app-relative: the extension's `.source` reports 1 and its `.sink` reports 0, so the
+  host must pick direction 0 (the earlier value 1 started the SOURCE stream and the test
+  passed on the placeholder animation); (c) the placeholder also moves, so `vcam-test.sh`
+  now requires `pushed > 0` in the host status line before it reports PASS.
+- Follow-ups: `dropped` ≈ 25 % at 30 fps with the extension's queue of 10 (consume loop
+  timing, see #12); sink authorization (risk 5); the real-device matrix is issue #13; the
+  release pipeline #14; Mac App Store #15.
+- Interim for users today: OBS → Start Virtual Camera already brings the TetherCam
+  picture into Zoom, Teams, Meet and FaceTime (needs the OBS camera extension approved
+  once in the same System Settings pane).

@@ -15,7 +15,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PKG="$ROOT/tools"
-PORT="${IUCM_PORT:-7979}"
+PORT="${IUCM_PORT:-7980}"   # 7979 gehoert integration.sh, beide laufen parallel
 VCAM_NAME="${VCAM_NAME:-TetherCam}"
 VCAM_EXT_ID="${VCAM_EXT_ID:-at.gotzendorfer.tethercam.mac.camera}"
 VCAM_SECONDS="${VCAM_SECONDS:-3}"
@@ -84,7 +84,10 @@ mkdir -p "$OUT"
 rm -f "$SIMLOG" "$APPLOG" "$MP4" "$F1" "$F2" "$HTML"
 
 echo "== extension $VCAM_EXT_ID"
-EXT_LINE="$(systemextensionsctl list 2>/dev/null | grep -F "$VCAM_EXT_ID" | tail -n 1 || true)"
+# Nach einem Update listet sysextd die alte Version als "terminated waiting to
+# uninstall on reboot" hinter der neuen; die aktive Zeile ist die mit "[activated".
+EXT_LINE="$(systemextensionsctl list 2>/dev/null | grep -F "$VCAM_EXT_ID (" | grep -F "[activated" | tail -n 1 || true)"
+[ -n "$EXT_LINE" ] || EXT_LINE="$(systemextensionsctl list 2>/dev/null | grep -F "$VCAM_EXT_ID (" | tail -n 1 || true)"
 if [ -z "$EXT_LINE" ]; then
     blocked 4 "extension not registered, run bash mac-app/scripts/install-local.sh"
 fi
@@ -216,8 +219,13 @@ HTML
     BROWSER_LABEL="ok"
 fi
 
-STATUS="$(grep 'tethercam:' "$APPLOG" | tail -n 1 || true)"
+STATUS="$(grep 'tethercam: link=' "$APPLOG" | tail -n 1 || true)"
 echo
 echo "   ${STATUS:-tethercam: (keine Statuszeile in $APPLOG)}"
+# Placeholder-Schutz: der Extension-Placeholder bewegt sich auch. Nur wenn der
+# Host Frames in den Sink geschoben hat, stammt die Aufnahme vom Simulator.
+PUSHED="$(printf '%s' "$STATUS" | sed -n 's/.*pushed=\([0-9]*\).*/\1/p')"
+[ -n "$PUSHED" ] || die "Statuszeile ohne pushed= (App-Log: $APPLOG)"
+assert "$PUSHED" ">" 0 "pushed (Sink hat Frames vom Host)"
 echo "PASS  listed_s=$LISTED size=${PW}x${PH} fps=$FPS frames=$FRAMES psnr_db=$PSNR browser=$BROWSER_LABEL"
 exit 0

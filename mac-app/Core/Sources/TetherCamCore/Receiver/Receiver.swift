@@ -68,6 +68,10 @@ public final class Receiver: @unchecked Sendable {
         lock.lock()
         if running { lock.unlock(); return }
         running = true
+        // A stop() issued from the receiver thread itself cannot join, so the
+        // thread's final signal stays in the semaphore; drain it or the next
+        // stop() from outside would return before the new thread has exited.
+        while joined.wait(timeout: .now()) == .success {}
         var pipeFds: [Int32] = [-1, -1]
         if pipe(&pipeFds) == 0 {
             wakePipe = pipeFds

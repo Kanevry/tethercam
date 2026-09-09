@@ -23,7 +23,8 @@ public enum HevcDecoderError: Error, CustomStringConvertible {
 
 /// Result of one `decode` call.
 public enum HevcDecodeResult: Equatable, Sendable {
-    /// Submitted to VideoToolbox; `onFrame` fires asynchronously if it decodes.
+    /// Submitted to VideoToolbox; `onFrame` has fired (or the output callback
+    /// reported an error) by the time `decode` returns, see the class doc.
     case accepted
     /// Dropped: no keyframe since (re)creation yet, so this frame has no reference.
     case droppedAwaitingKeyframe
@@ -32,7 +33,17 @@ public enum HevcDecodeResult: Equatable, Sendable {
 }
 
 /// One decoder per CONFIG. Not thread-safe: call `decode` and `close` from one
-/// thread (the receiver thread). `onFrame` fires on VideoToolbox's own thread.
+/// thread (the receiver thread).
+///
+/// Threading of the output callback: `decode` passes only `._1xRealTimePlayback`
+/// and never `._EnableAsynchronousDecompression`, so
+/// VideoToolbox runs the output callback synchronously inside
+/// `VTDecompressionSessionDecodeFrame`, on the calling (receiver) thread; the
+/// frame has been delivered when `decode` returns. Should asynchronous
+/// decompression ever be enabled, the callback would move to a VideoToolbox
+/// thread: `onFrame` consumers then need their own synchronisation and the
+/// error bookkeeping (already under `lock`) would trigger the rebuild on the
+/// next `decode` call instead of the current one.
 public final class HevcDecoder {
 
     /// Decoded frame (NV12, IOSurface-backed) and its pts in microseconds. The
@@ -41,14 +52,19 @@ public final class HevcDecoder {
 
     public let width: Int
     public let height: Int
-    /// Decode errors since init (never reset; for telemetry).
-    public private(set) var totalErrors = 0
+    /// Decode errors since init (never reset; for telemetry): submission
+    /// failures plus errors reported through the output callback.
+    public var totalErrors: Int { lock.withLock { totalErrorCount } }
 
-    /// Consecutive `VTDecompressionSessionDecodeFrame` failures that trigger a rebuild.
+    /// Consecutive decode failures (submission or output callback) that
+    /// trigger a session rebuild.
     public static let maxConsecutiveErrors = 3
 
     private let format: CMVideoFormatDescription
     private var session: VTDecompressionSession?
+    /// Guards the error counters, which the output callback also touches.
+    private let lock = NSLock()
+    private var totalErrorCount = 0
     private var consecutiveErrors = 0
     private var needKeyframe = true
 
@@ -88,7 +104,7 @@ public final class HevcDecoder {
                                               decompressionSessionOut: &s)
         guard st == noErr, let s else { throw HevcDecoderError.sessionCreate(st) }
         session = s
-        consecutiveErrors = 0
+        lock.withLock { consecutiveErrors = 0 }
         needKeyframe = true
     }
 
@@ -139,28 +155,45 @@ public final class HevcDecoder {
                                        sampleBufferOut: &sample)
         guard st == noErr, let sample else { return recordError(st) }
 
+        let errorsBefore = lock.withLock { totalErrorCount }
         st = VTDecompressionSessionDecodeFrame(s, sampleBuffer: sample,
                                                flags: [._1xRealTimePlayback],
                                                infoFlagsOut: nil) { [weak self] status, _, image, pts, _ in
-            guard status == noErr, let image, let self else { return }
+            guard let self else { return }
+            guard status == noErr, let image else {
+                // Counted only: the session must not be rebuilt from inside its
+                // own callback, `decode` does that once DecodeFrame returns.
+                self.lock.withLock { self.totalErrorCount += 1; self.consecutiveErrors += 1 }
+                return
+            }
             let us = pts.timescale == 1_000_000 ? pts.value
                 : Int64((Double(pts.value) / Double(pts.timescale)) * 1e6)
             self.onFrame?(image, us)
         }
         guard st == noErr else { return recordError(st) }
-        consecutiveErrors = 0
+        let (callbackFailed, needRebuild) = lock.withLock {
+            let failed = totalErrorCount != errorsBefore
+            if !failed { consecutiveErrors = 0 }
+            return (failed, consecutiveErrors >= Self.maxConsecutiveErrors)
+        }
+        if callbackFailed && needRebuild { rebuildSession() }
         return .accepted
     }
 
-    /// Counts the error; after `maxConsecutiveErrors` in a row the session is
-    /// rebuilt and the keyframe gate re-armed.
+    /// Counts a submission error; after `maxConsecutiveErrors` in a row the
+    /// session is rebuilt and the keyframe gate re-armed.
     private func recordError(_ st: OSStatus) -> HevcDecodeResult {
-        totalErrors += 1
-        consecutiveErrors += 1
-        if consecutiveErrors >= Self.maxConsecutiveErrors {
-            close()
-            try? createSession()
+        let needRebuild = lock.withLock {
+            totalErrorCount += 1
+            consecutiveErrors += 1
+            return consecutiveErrors >= Self.maxConsecutiveErrors
         }
+        if needRebuild { rebuildSession() }
         return .failed(st)
+    }
+
+    private func rebuildSession() {
+        close()
+        try? createSession()
     }
 }

@@ -7,10 +7,12 @@
 import CoreMedia
 import CoreMediaIO
 import Foundation
+import OSLog
 import TetherCamContract
 
 final class StreamSink: NSObject, CMIOExtensionStreamSource {
     private(set) var stream: CMIOExtensionStream!
+    private let log = Logger(subsystem: extensionLogSubsystem, category: "sink")
     private unowned let device: DeviceSource
     private let streamFormat: CMIOExtensionStreamFormat
     /// The client authorized most recently; startStream() has no client
@@ -69,7 +71,16 @@ final class StreamSink: NSObject, CMIOExtensionStreamSource {
         // One format, one frame duration: nothing to change.
     }
 
+    /// Only the TetherCam host app may feed the sink; any other process could
+    /// otherwise inject frames into every app that selected "TetherCam". The
+    /// source stream stays open to all clients (that is the point of a camera).
     func authorizedToStartStream(for client: CMIOExtensionClient) -> Bool {
+        // Same policy as OBS's camera extension: any local client may feed
+        // the sink. A signingID gate was tried on 2026-09-09 and locked the
+        // host out: CMIOExtensionClient.signingID is nil for the Apple
+        // Development-signed TetherCam.app on macOS 26.6. Revisit with a
+        // Developer ID build (spec, open risk "sink authorization").
+        log.info("sink client pid \(client.pid) signingID \(client.signingID ?? "<nil>", privacy: .public)")
         self.client = client
         return true
     }

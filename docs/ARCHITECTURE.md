@@ -17,6 +17,7 @@ document wins. The original design spec is
 | `obs-plugin/` | C and Objective-C++ | GPL-2.0-or-later | OBS source, VideoToolbox decode, reconnect logic |
 | `tools/usbcam-sim` | Swift | MIT | Sender simulator: moving test pattern, real HEVC, real protocol |
 | `tools/usbcam-recv` | Swift | MIT | CLI receiver over TCP or usbmuxd, emits a JSON summary |
+| `mac-app/` | Swift | MIT | Menu bar host app plus CMIO Camera Extension: the virtual camera, see section 7 |
 
 The split is deliberate. Everything that can be pure C without Apple frameworks is pure C
 in `shared/`, so it compiles and runs under CI on Linux and under sanitizers. Everything
@@ -156,24 +157,30 @@ convention beats a field that both sides can fill in wrongly.
 - **No audio, no orientation control, no exposure or focus control** in version 1.
 - **Self built iOS apps expire** after 7 days when signed with a free Apple ID.
 
-## 7. Future: CMIO extension
+## 7. The macOS virtual camera (CMIO extension)
 
-The obvious next step is a macOS Camera Extension (CMIO) so that the picture appears in
-Zoom, FaceTime, Safari and anything else that consumes a system camera, not just OBS.
+`mac-app/` (MIT) is the second receiver: a menu bar host app `TetherCam.app` that embeds
+a CoreMediaIO Camera Extension, so the picture appears in Zoom, FaceTime, Safari and
+anything else that consumes a system camera, not just OBS. The design and the current
+status live in
+[superpowers/specs/2026-09-09-virtual-camera-cmio.md](superpowers/specs/2026-09-09-virtual-camera-cmio.md).
 
-The receive path is already shaped for it. `shared/usbmux.c` and `shared/frame_parser.c`
-have no dependency on libobs and no dependency on the plugin; the platform specific part
-is the decoder plus the output call. A CMIO extension would reuse both C modules and the
-VideoToolbox decoder, and replace `obs_source_output_video2` with a `CMIOExtensionStream`
-sending `CMSampleBuffer`s.
+The receive path was already shaped for it. The host reuses `shared/usbmux.c` (through
+`tools`' `CUsbmux` shim) and the `IucmProtocol` codec, mirrors the plugin's state machine
+in `Receiver`, decodes with VideoToolbox in `HevcDecoder`, letterboxes every geometry into
+the one published format (1920x1080 NV12 30 fps, `TetherCamContract`) and pushes
+`CMSampleBuffer`s into the extension's sink stream. The extension, sandboxed inside
+Apple's `registerassistantservice`, republishes them on its source stream and shows
+placeholder frames while nothing feeds it. Timestamps handed to the extension are the
+host clock at push time; camera clients expect that, and the phone clock is unrelated.
 
-Two constraints shape that work. First, a Camera Extension runs in its own sandboxed
-process with its own entitlements and must be shipped inside a signed host application, so
-distribution gets harder, not easier. Second, one receiver per phone still holds, which
-means the OBS plugin and the virtual camera cannot both be connected to the same phone at
-the same time. The likely resolution is that the CMIO extension becomes the single
-receiver and the OBS plugin consumes the virtual camera like any other source. That is a
-decision for its own spec, not something to prejudge here.
+The two constraints named in the first draft of this section resolved as follows. The
+extension must ship inside a signed host app located in `/Applications`, and the user
+enables it once in System Settings; the host submits the activation request on every
+launch and points at the pane. One receiver per phone still holds, so the Mac app owns
+the phone and OBS consumes the system camera "TetherCam" like any webcam; the plugin
+stays as the direct, lower-latency path with audio, and whichever receiver connects second
+sees BUSY. The virtual camera carries no audio (CMIO is video only; START flags 0).
 
 ## Frontend integration (obs-frontend-api)
 

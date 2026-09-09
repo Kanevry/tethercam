@@ -29,8 +29,21 @@ final class DeviceSource: NSObject, CMIOExtensionDeviceSource {
     private var sinkClient: CMIOExtensionClient?
     private var sinkStreaming = false
     private var consumeActive = false
+    /// Bumped on every consume-loop start; a consumeSampleBuffer callback that
+    /// was armed by an older generation returns without re-arming, so a sink
+    /// stop -> start while a callback is outstanding cannot leave two loops.
+    private var consumeGeneration: UInt64 = 0
     private var placeholderTimer: DispatchSourceTimer?
     private var placeholderFrame: UInt64 = 0
+
+    /// Watchdog: a host that holds the sink stream open but stops feeding it
+    /// (hung, paused, debugger) must not black out the camera. After
+    /// `sinkStallTimeout` without a sink buffer the placeholder runs again
+    /// until the next buffer arrives.
+    static let sinkStallTimeout: DispatchTimeInterval = .seconds(1)
+    private var stallTimer: DispatchSourceTimer?
+    private var lastSinkBuffer: DispatchTime = .now()
+    private var sinkStalled = false
 
     private let log = Logger(subsystem: extensionLogSubsystem, category: "device")
 
@@ -156,41 +169,89 @@ final class DeviceSource: NSObject, CMIOExtensionDeviceSource {
     private func refresh() {
         let wantsOutput = sourceClientCount > 0
         if wantsOutput && sinkStreaming {
-            stopPlaceholder()
             if !consumeActive {
                 consumeActive = true
-                armConsume()
+                consumeGeneration &+= 1
+                // Grace period: the host gets one full timeout to deliver its
+                // first buffer before the watchdog re-shows the placeholder.
+                lastSinkBuffer = .now()
+                sinkStalled = false
+                stopPlaceholder()
+                startStallWatchdog()
+                armConsume(generation: consumeGeneration)
             }
         } else if wantsOutput {
             consumeActive = false
+            stopStallWatchdog()
             startPlaceholder()
         } else {
             consumeActive = false
+            stopStallWatchdog()
             stopPlaceholder()
         }
     }
 
-    private func armConsume() {
-        guard consumeActive, let client = sinkClient else { return }
+    private func armConsume(generation: UInt64) {
+        guard consumeActive, generation == consumeGeneration, let client = sinkClient else { return }
         sinkStream.stream.consumeSampleBuffer(from: client) { [weak self] sampleBuffer, sequenceNumber, discontinuity, _, error in
             guard let self else { return }
             self.stateQueue.async {
-                guard self.consumeActive else { return }
+                // A stale generation belongs to a loop that was stopped (and
+                // possibly restarted) meanwhile: never re-arm from it.
+                guard self.consumeActive, generation == self.consumeGeneration else { return }
                 if let sampleBuffer {
+                    self.noteSinkBuffer()
                     let hostTime = DeviceSource.hostTimeNanoseconds()
                     self.sourceStream.stream.send(sampleBuffer, discontinuity: discontinuity, hostTimeInNanoseconds: hostTime)
                     let output = CMIOExtensionScheduledOutput(sequenceNumber: sequenceNumber, hostTimeInNanoseconds: hostTime)
                     self.sinkStream.stream.notifyScheduledOutputChanged(output)
-                    self.armConsume()
+                    self.armConsume(generation: generation)
                 } else {
                     if let error {
                         self.log.error("consumeSampleBuffer: \(error.localizedDescription)")
                     }
-                    // Re-arm after a short pause so an erroring sink does not spin.
-                    self.stateQueue.asyncAfter(deadline: .now() + .milliseconds(10)) { self.armConsume() }
+                    // Re-arm after a short pause so an erroring sink does not spin;
+                    // armConsume re-checks the generation after the pause.
+                    self.stateQueue.asyncAfter(deadline: .now() + .milliseconds(10)) {
+                        self.armConsume(generation: generation)
+                    }
                 }
             }
         }
+    }
+
+    // MARK: Sink stall watchdog (stateQueue only)
+
+    private func noteSinkBuffer() {
+        lastSinkBuffer = .now()
+        if sinkStalled {
+            sinkStalled = false
+            stopPlaceholder()
+            log.info("sink resumed, placeholder off")
+        }
+    }
+
+    private func startStallWatchdog() {
+        guard stallTimer == nil else { return }
+        let timer = DispatchSource.makeTimerSource(queue: stateQueue)
+        timer.schedule(deadline: .now() + .milliseconds(250), repeating: .milliseconds(250), leeway: .milliseconds(50))
+        timer.setEventHandler { [weak self] in self?.checkSinkStall() }
+        timer.resume()
+        stallTimer = timer
+    }
+
+    private func stopStallWatchdog() {
+        stallTimer?.cancel()
+        stallTimer = nil
+        sinkStalled = false
+    }
+
+    private func checkSinkStall() {
+        guard consumeActive, !sinkStalled,
+              DispatchTime.now() > lastSinkBuffer + Self.sinkStallTimeout else { return }
+        sinkStalled = true
+        log.info("sink stalled for 1 s, placeholder on until the next buffer")
+        startPlaceholder()
     }
 
     private func startPlaceholder() {

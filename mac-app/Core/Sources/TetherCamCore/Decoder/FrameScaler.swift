@@ -35,7 +35,16 @@ public final class FrameScaler {
 
     private let session: VTPixelTransferSession
     private let pool: CVPixelBufferPool
+    /// Caps live pool buffers at the sink queue depth plus the one in flight
+    /// and one spare: a stalled consumer then drops frames instead of growing.
+    private let poolAuxAttributes: CFDictionary = [
+        kCVPixelBufferPoolAllocationThresholdKey: TetherCamContract.sinkQueueDepth + 2,
+    ] as CFDictionary
     private let lock = NSLock()
+    private var thresholdDrops: UInt64 = 0
+
+    /// Frames dropped because the consumer still held every pool buffer.
+    public var droppedAtAllocationThreshold: UInt64 { lock.withLock { thresholdDrops } }
 
     public init(width: Int = Int(TetherCamContract.width),
                 height: Int = Int(TetherCamContract.height),
@@ -77,13 +86,16 @@ public final class FrameScaler {
     }
 
     /// Returns the input itself when it already matches, else a pool buffer with
-    /// the letterboxed/pillarboxed image. nil when the transfer fails.
+    /// the letterboxed/pillarboxed image. nil when the transfer fails or the
+    /// pool is at its allocation threshold (frame dropped, counted).
     public func scale(_ input: CVPixelBuffer) -> CVPixelBuffer? {
         if isPassThrough(input) { return input }
         lock.lock(); defer { lock.unlock() }
         var out: CVPixelBuffer?
-        guard CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pool, &out) == kCVReturnSuccess,
-              let out else { return nil }
+        let rc = CVPixelBufferPoolCreatePixelBufferWithAuxAttributes(
+            kCFAllocatorDefault, pool, poolAuxAttributes, &out)
+        if rc == kCVReturnWouldExceedAllocationThreshold { thresholdDrops += 1; return nil }
+        guard rc == kCVReturnSuccess, let out else { return nil }
         let st = VTPixelTransferSessionTransferImage(session, from: input, to: out)
         return st == noErr ? out : nil
     }

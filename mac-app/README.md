@@ -35,7 +35,15 @@ bundle whose `CFBundleIdentifier` is `at.gotzendorfer.tethercam.mac`), launches 
 once (which submits the extension activation request) and prints the
 `systemextensionsctl list` line. `activated waiting for user` means: System
 Settings > General > Login Items & Extensions > Camera Extensions > enable
-TetherCam; the script opens that pane.
+TetherCam; the script opens that pane. Exit codes: `1` when the build product is
+missing, `/Applications/TetherCam.app` belongs to another bundle id, or the copy
+fails (it prints the `sudo cp` to run); `2` when no activation request was seen
+within 20 s (it prints the last sysextd log lines); `0` otherwise, including the
+"APPROVAL NEEDED" case, so read the printed state as well.
+
+End to end without a phone: `bash tools/vcam-test.sh` (sim on `IUCM_PORT`,
+default 7980; exit 0 PASS (requires pushed>0 in the host status line, so the extension placeholder never passes), 1 FAIL, 3 extension waiting for approval, 4 extension
+not registered). Artefacts under `/tmp/vcam-test/`.
 
 ## Why /Applications and the System Settings approval
 
