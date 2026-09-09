@@ -65,8 +65,10 @@ im Repo; `.p8`-Inhalte und JWTs werden nie ausgegeben. Logs landen in
 `build/appstore-*.log` (gitignored). Das `.pkg` des OBS-Plugins baut ausschliesslich
 `release-plugin.yml` auf dem `v*`-Tag; danach muss der Draft-Release **veroeffentlicht**
 werden, sonst liefert `releases/latest/download/...` 404 (docs/RELEASING.md, Teil 3).
-Offene Owner-Schritte Stand 2026-09-05 abends: App-Privacy-Fragebogen in App Store
-Connect (kein API) und Developer-ID-Installer-Zertifikat fuer das signierte Plugin-.pkg.
+Stand 2026-09-09: 0.1.0 ist im App Store (https://apps.apple.com/us/app/tethercam/id6808997521),
+0.2.0 (Build 4, Audio + Doppeltipp) ist zur App Review eingereicht und wird nach Freigabe
+MANUELL veroeffentlicht; das Plugin-.pkg wird signiert und notarisiert. Spendenlink ist
+PayPal (paypal.me/Kanevry), nur Website/README/FUNDING.yml, nie in der App (3.1.1).
 
 
 ## Konventionen

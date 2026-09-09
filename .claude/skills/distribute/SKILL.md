@@ -20,8 +20,8 @@ which works on a temp copy. Never print a `.p8` or a JWT.
 | GitHub secrets `ASC_KEY_P8` / `ASC_KEY_ID` / `ASC_ISSUER_ID` | set |
 | GitHub secrets `NOTARY_KEY_P8` / `NOTARY_KEY_ID` / `NOTARY_ISSUER_ID` | set (same key) |
 | Bundle id `at.gotzendorfer.tethercam` | registered (`2G7A77TNZ6`, UNIVERSAL) |
-| App Store Connect **app record** | created 2026-09-05 (app id `6808997521`); build 0.1.0 (2) uploaded, in Beta App Review; public link https://testflight.apple.com/join/wmT74Ry8 |
-| Developer ID **Installer** certificate + `MACOS_INSTALLER_CERT_P12` | **MISSING — the .pkg ships unsigned and unnotarized** |
+| App Store Connect **app record** | app id `6808997521`; 0.1.0 (2) live on the App Store since 2026-09-09; 0.2.0 (4) in App Review since 2026-09-09 (MANUAL release); public link https://testflight.apple.com/join/wmT74Ry8 |
+| Developer ID **Installer** certificate + `MACOS_INSTALLER_CERT_P12` | set since 2026-09-05 evening; v0.1.0 and v0.2.0 .pkg are signed and notarized |
 | Local key | `~/.appstoreconnect/private_keys/AuthKey_<KEYID>.p8`; key id and issuer id live in the git-ignored `.env.local` (`ASC_KEY_ID`, `ASC_ISSUER_ID`) |
 
 Both missing items are **owner steps** — no API key can create them. See
@@ -32,7 +32,8 @@ Both missing items are **owner steps** — no API key can create them. See
 `scripts/asc-listing.py` pushes everything in `docs/app-store/` (both localizations,
 categories, age rating, review notes, price Free, availability, screenshots and the App
 Preview) to App Store Connect and is idempotent. `--dry-run` prints the calls. The App
-Privacy questionnaire has no public API and stays a one-time owner click.
+Privacy questionnaire has no public API and stays a one-time owner click (done, Data Not Collected).
+When no version is editable the script creates the next `appStoreVersions` record itself.
 
 ## A0. Listing metadata
 
