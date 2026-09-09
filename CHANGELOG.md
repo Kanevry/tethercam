@@ -26,6 +26,10 @@ plugin (`obs-plugin/`, GPL-2.0-or-later) and the iOS app (`ios-app/`, MIT). A ta
 - `usbcam-sim` sends a 440 Hz AAC tone, `usbcam-recv` decodes and counts it
   (`audio_frames`, `audio_video_pts_skew_ms`, `--dump-audio` as ADTS) and
   `tools/integration.sh` asserts the audio path.
+- **Double-tap the preview to switch the camera.** The next lens in list order (wide,
+  ultra wide, telephoto, front), a short capsule names it, a light haptic confirms it, and
+  the choice persists like a pick in Settings. Works during a take: the server swaps the
+  lens and OBS gets a fresh CONFIG. (#9, user request after the App Store launch)
 - **Homebrew tap**: `brew tap kanevry/tethercam && brew install --cask tethercam-obs`
   copies the plugin bundle into the user's own OBS plugin folder, no admin rights.
 

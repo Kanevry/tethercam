@@ -8,6 +8,7 @@
 
 "hint.firstRun" = "Öffne OBS am Mac, die Kamera erscheint als TetherCam.";
 "banner.foreground" = "Die App muss im Vordergrund bleiben.";
+"preview.doubleTapHint" = "Doppeltippen wechselt die Kamera";
 
 "perm.denied.title" = "Kamerazugriff verweigert";
 "perm.denied.body" = "Ohne Kamera kann TetherCam kein Bild senden.";

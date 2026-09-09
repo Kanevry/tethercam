@@ -129,14 +129,42 @@ struct ContentView: View {
     @State private var showSettings = false
     @State private var showForegroundBanner = false
     @State private var wasBackgrounded = false
+    /// Name of the lens just switched to by double-tap; nil hides the toast.
+    @State private var cameraToast: String?
+    @State private var cameraToastHide: Task<Void, Never>?
 
     var body: some View {
         ZStack(alignment: .top) {
+            // The preview is the bottom layer, so the double-tap only sees
+            // touches the overlay above did not claim (gear button, settings
+            // button on the permission card). Spacers and padding in the
+            // overlay are not hit-testable and let the tap through.
             CameraPreview(session: model.capture.session) { layer in
                 model.capture.previewLayer = layer
             }
             .background(Color.black)
             .ignoresSafeArea()
+            .contentShape(Rectangle())
+            .onTapGesture(count: 2) { cycleCamera() }
+            .accessibilityLabel(Text("preview.doubleTapHint"))
+
+            // Toast for the lens change, bottom centre and never in the way of
+            // the next double-tap.
+            if let cameraToast {
+                VStack {
+                    Spacer()
+                    Text(cameraToast)
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Capsule().fill(.black.opacity(0.45)))
+                        .padding(.bottom, 24)
+                }
+                .frame(maxWidth: .infinity)
+                .allowsHitTesting(false)
+                .transition(.opacity)
+            }
 
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .top) {
@@ -185,6 +213,26 @@ struct ContentView: View {
             SettingsSheet(model: model, horizonLeveling: $horizonLeveling,
                           audioMuted: $audioMuted,
                           preferredCameraId: $preferredCameraId)
+        }
+    }
+
+    /// Double-tap on the preview: the next lens in list order. Goes through
+    /// `preferredCameraId` so the existing onChange restarts a running stream
+    /// and the choice survives a relaunch, exactly like a pick in Settings.
+    private func cycleCamera() {
+        guard let next = CameraCycle.next(after: model.selectedCameraId, in: model.cameras),
+              let name = model.cameras.first(where: { $0.id == next })?.displayName
+        else { return }
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        preferredCameraId = Int(next)
+        UIAccessibility.post(notification: .announcement, argument: name)
+
+        cameraToastHide?.cancel()
+        withAnimation(.easeOut(duration: 0.15)) { cameraToast = name }
+        cameraToastHide = Task {
+            try? await Task.sleep(nanoseconds: 1_200_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeIn(duration: 0.25)) { cameraToast = nil }
         }
     }
 
