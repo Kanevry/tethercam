@@ -54,7 +54,7 @@
     <p class="eyebrow">Legal</p>
     <h1>Privacy policy</h1>
     <p class="lede">TetherCam collects nothing. This page says so in the detail that an app review and a GDPR reader both need.</p>
-    <p class="meta">Last updated: 2026-09-05. Responsible: Bernhard Goetzendorfer, Austria. Contact: <a href="mailto:office@gotzendorfer.at">office@gotzendorfer.at</a>.</p>
+    <p class="meta">Last updated: 2026-09-09. Responsible: Bernhard Goetzendorfer, Austria. Contact: <a href="mailto:office@gotzendorfer.at">office@gotzendorfer.at</a>.</p>
 
     <div class="legal">
       <h2>What data TetherCam collects</h2>
@@ -63,6 +63,9 @@
       <h2>How the camera is used</h2>
       <p>TetherCam accesses the camera in order to show a live preview on the phone and to encode the picture for transfer to a Mac connected by USB cable. The picture is encoded on the device and sent over the cable to the TetherCam plugin for OBS Studio running on that Mac. It is sent nowhere else. TetherCam operates no server and has no cloud component. The video is not recorded to the photo library and is not written to disk by the app.</p>
 
+      <h2>How the microphone is used</h2>
+      <p>Since version 0.2.0 TetherCam can also access the microphone, in order to send the phone's sound to the Mac together with the picture. The audio is encoded on the device and travels only over the USB cable to the OBS plugin on that Mac. It is not recorded, not written to disk and not sent anywhere else. A mute switch in the app stops the audio at any time, and the app works without microphone access if you decline the permission.</p>
+
       <h2>Network</h2>
       <p>The app opens a TCP listener on port 7878 on the device so that the connected Mac can reach it through the USB connection. iOS classifies a listener of this kind as local network activity, which is why the app asks for local network permission. The app makes no outbound internet connections other than opening the links you tap, such as tethercam.app.</p>
 
@@ -70,7 +73,7 @@
       <p>TetherCam reads device orientation from CoreMotion in order to keep the picture level with the horizon. This data is used in the moment, on the device, and is never stored or transmitted.</p>
 
       <h2>Data retention and deletion</h2>
-      <p>Because no data is collected, there is nothing retained and nothing to delete. Deleting the app removes its local settings from the device. If you wish to withdraw camera or motion access, use Settings, Privacy and Security on the phone.</p>
+      <p>Because no data is collected, there is nothing retained and nothing to delete. Deleting the app removes its local settings from the device. If you wish to withdraw camera, microphone or motion access, use Settings, Privacy and Security on the phone.</p>
 
       <h2>Third parties</h2>
       <p>No user data is shared with any third party, because none is collected. The app contains no analytics or advertising networks.</p>
@@ -100,7 +103,7 @@
         <li><a href="https://github.com/Kanevry/tethercam">GitHub</a></li>
       </ul>
     </div>
-    <p class="foot-mark">&mdash; TetherCam 0.1.0</p>
+    <p class="foot-mark">&mdash; TetherCam 0.2.0</p>
   </div>
 </footer>
 

@@ -11,6 +11,8 @@ plugin (`obs-plugin/`, GPL-2.0-or-later) and the iOS app (`ios-app/`, MIT). A ta
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-09
+
 ### Added
 
 - **Audio from the phone.** The app captures the microphone, encodes AAC-LC 48 kHz mono
@@ -37,7 +39,7 @@ plugin (`obs-plugin/`, GPL-2.0-or-later) and the iOS app (`ios-app/`, MIT). A ta
 
 - The plugin keeps the link on non-fatal peer errors (only BUSY and VERSION_UNSUPPORTED
   disconnect); before, a denied microphone caused an endless reconnect loop without picture.
-- iOS build number 3 for the next TestFlight upload (build 2 is the one on the App Store).
+- iOS build number 4 for the 0.2.0 upload (build 2 is the one on the App Store, 3 was never uploaded).
 - The iOS app is on the App Store since 2026-09-09 (0.1.0 approved on the first submission);
   README and website point at the store, TestFlight stays the pre-release channel.
 - Repository ships `.env.example` for the App Store Connect API variables.
@@ -186,6 +188,7 @@ plugin (`obs-plugin/`, GPL-2.0-or-later) and the iOS app (`ios-app/`, MIT). A ta
   distribution channel outside the App Store and TestFlight.
 
 
-[Unreleased]: https://github.com/Kanevry/tethercam/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Kanevry/tethercam/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Kanevry/tethercam/releases/tag/v0.2.0
 [0.1.0]: https://github.com/Kanevry/tethercam/releases/tag/v0.1.0
 

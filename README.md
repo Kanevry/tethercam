@@ -253,9 +253,9 @@ swift build -c release --package-path tools
 
 ## Roadmap
 
-- Signed and notarized plugin releases.
+- Signed and notarized plugin releases: done since 0.1.0.
+- Audio from the phone: shipped in 0.2.0 (AAC-LC over the same cable, mute switch in the app).
 - Virtual camera as a macOS Camera Extension (CMIO), so the picture also shows up in Zoom, FaceTime and Safari.
-- Audio from the phone: implemented on `main` (AAC-LC over the same cable, mute switch in the app), ships with the next release.
 - Receivers for Windows and Linux. The C core already builds there.
 - App Store listing: 0.1.0 (2) approved by App Review and released 2026-09-09; TestFlight public beta cleared Beta App Review 2026-09-06.
 

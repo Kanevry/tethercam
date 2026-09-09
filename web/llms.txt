@@ -20,7 +20,10 @@ Key properties:
   an Apple Silicon Mac and OBS 32.2.2.
 - Auto horizon leveling on the capture side (CoreMotion plus AVCaptureDevice.RotationCoordinator).
 - Lens and camera picker in the app: Back Wide, Back Ultra Wide, Back Telephoto, Front.
-- Video only. No audio yet.
+- Audio since 0.2.0: the phone sends its microphone as AAC-LC 48 kHz mono on the same cable,
+  the source shows up in the OBS audio mixer, and the app has a mute switch. Needs plugin 0.2.0
+  on the Mac; a 0.1.0 plugin keeps working and simply gets no audio.
+- 0.2.0 also adds double-tap on the preview to switch to the next camera, and it works during a take.
 - macOS only. The shared C core builds on Linux, but no receiver ships for Windows or Linux.
 
 It exists because Continuity Camera broke with iOS 26.6 against macOS 26.5.2: the
@@ -69,9 +72,9 @@ https://tethercam.app/demo.mp4 (MP4, H.264, 1920x1080, about 31 MB).
 1. OBS plugin: download https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-obs-plugin.pkg
    and open it, or run
    `curl -fsSL https://raw.githubusercontent.com/Kanevry/tethercam/main/scripts/install.sh | bash`.
-   Then restart OBS. Both point at the latest release (v0.1.0, signed and notarized).
+   Then restart OBS. Both point at the latest release (v0.2.0, signed and notarized).
    Building from source is also possible: https://github.com/Kanevry/tethercam#install-the-mac-plugin
-2. iPhone app: App Store https://apps.apple.com/us/app/tethercam/id6808997521 (0.1.0, iOS 17+);
+2. iPhone app: App Store https://apps.apple.com/us/app/tethercam/id6808997521 (0.1.0 on the store, 0.2.0 submitted 2026-09-09; iOS 17+);
    public TestFlight beta https://testflight.apple.com/join/wmT74Ry8 carries pre-release builds.
    Alternatively build from source with a free Apple ID (xcodegen generate, then Xcode).
 3. In OBS: Tools, then "TetherCam: Add iPhone camera to current scene". The source

@@ -57,18 +57,25 @@
     <p class="meta">Full history, diffs and release assets: <a href="https://github.com/Kanevry/tethercam/releases">GitHub Releases</a>. This page mirrors <a href="https://github.com/Kanevry/tethercam/blob/main/CHANGELOG.md">CHANGELOG.md</a> in the repository.</p>
 
     <div class="legal">
-      <h2 id="unreleased">Unreleased</h2>
+      <h2 id="v0-2-0">0.2.0 &mdash; 2026-09-09</h2>
+      <p class="meta"><a href="https://github.com/Kanevry/tethercam/releases/tag/v0.2.0">v0.2.0 on GitHub</a></p>
 
       <h3>Added</h3>
       <ul class="prose">
-        <li><b>App Store submission of 0.1.0 (2)</b> on 2026-09-05: listing in en-US and de-DE pushed with <code>scripts/asc-listing.py</code>, five marketing screenshots designed in <code>tethercam.pen</code> (AI-generated studio scene, no people), TestFlight external group &ldquo;Public Beta&rdquo; with the public link <a href="https://testflight.apple.com/join/wmT74Ry8">https://testflight.apple.com/join/wmT74Ry8</a>, Beta App Review and App Review both submitted; Beta App Review approved 2026-09-06, the public link now accepts testers. App Review approved and 0.1.0 released on the App Store on 2026-09-09.</li>
-        <li><b>Local release tooling</b>: <code>scripts/appstore-upload.sh</code> (archive and upload with the App Store Connect API key), <code>scripts/asc-api.sh</code> (JWT helper), <code>.claude/skills/distribute</code>.</li>
-        <li><b>Website</b>: demo video embedded with poster, gallery carousel of the App Store frames, TestFlight button, FAQ answers for the USB and Continuity Camera queries, VideoObject schema, <code>llms.txt</code> discoverable.</li>
+        <li><b>Audio from the phone.</b> The app captures the microphone, encodes AAC-LC 48 kHz mono (96 kbps) and sends it on the same cable. The plugin decodes with AudioToolbox and hands the samples to OBS (<code>obs_source_output_audio</code>), so the source shows up in the audio mixer like any other. Protocol 1.1 adds <code>AUDIO_CONFIG</code> (0x13), <code>AUDIO</code> (0x14), an audio flag in START, <code>MIC_DENIED</code> (error 6) and STATS bits for audio active and muted. 1.0 receivers keep working and simply get no audio.</li>
+        <li><b>Mute switch</b> in the app&rsquo;s settings sheet (frame gate, the pts chain stays monotone), a <code>mic.slash</code> badge in the status capsule while muted, and a microphone-denied state.</li>
+        <li><b>Plugin property &ldquo;Audio from the phone&rdquo;</b> (default on). The status line reports the audio rate, mute and a denied microphone.</li>
+        <li><code>usbcam-sim</code> sends a 440 Hz AAC tone, <code>usbcam-recv</code> decodes and counts it (<code>audio_frames</code>, <code>audio_video_pts_skew_ms</code>, <code>--dump-audio</code> as ADTS) and <code>tools/integration.sh</code> asserts the audio path.</li>
+        <li><b>Double-tap the preview to switch the camera.</b> The next lens in list order (wide, ultra wide, telephoto, front), a short capsule names it, a light haptic confirms it, and the choice persists like a pick in Settings. Works during a take: the server swaps the lens and OBS gets a fresh CONFIG. (<a href="https://github.com/Kanevry/tethercam/issues/9">#9</a>, user request after the App Store launch)</li>
+        <li><b>Homebrew tap</b>: <code>brew tap kanevry/tethercam &amp;&amp; brew install --cask tethercam-obs</code> copies the plugin bundle into the user&rsquo;s own OBS plugin folder, no admin rights.</li>
       </ul>
 
       <h3>Changed</h3>
       <ul class="prose">
-        <li>The App Preview video was withdrawn from the listing (it showed the owner). 0.1.0 ships without an App Preview.</li>
+        <li>The plugin keeps the link on non-fatal peer errors (only BUSY and VERSION_UNSUPPORTED disconnect). Before, a denied microphone caused an endless reconnect loop without picture.</li>
+        <li>iOS build number 3 for the next TestFlight upload (build 2 is the one on the App Store).</li>
+        <li>The iOS app is on the App Store since 2026-09-09 (0.1.0 approved on the first submission). README and website point at the store, TestFlight stays the pre-release channel.</li>
+        <li>Repository ships <code>.env.example</code> for the App Store Connect API variables.</li>
       </ul>
 
       <h2 id="v0-1-0">0.1.0 &mdash; 2026-09-05</h2>
@@ -92,6 +99,9 @@
         <li><b>Developer tools</b> (<code>tools/</code>, Swift package): <code>usbcam-sim</code> (test-pattern sender), <code>usbcam-recv</code> (CLI receiver over TCP or the usbmux tunnel), and <code>integration.sh</code>, an end-to-end acceptance run that needs no iPhone.</li>
         <li><b>Release engineering</b>: installer <code>.pkg</code>, signed and notarized when the release is built with the Apple signing secrets, otherwise unsigned; one-line installer script, TestFlight upload workflow, GitHub Actions CI.</li>
         <li><b>Product name TetherCam</b> and an app icon.</li>
+        <li><b>App Store submission of 0.1.0 (2)</b> on 2026-09-05: listing in en-US and de-DE pushed with <code>scripts/asc-listing.py</code>, five marketing screenshots designed in <code>tethercam.pen</code> (AI-generated studio scene, no people), TestFlight external group &ldquo;Public Beta&rdquo; with the public link <a href="https://testflight.apple.com/join/wmT74Ry8">https://testflight.apple.com/join/wmT74Ry8</a>, Beta App Review and App Review both submitted.</li>
+        <li><b>Local release tooling</b>: <code>scripts/appstore-upload.sh</code> (archive and upload with the App Store Connect API key), <code>scripts/asc-api.sh</code> (JWT helper), <code>.claude/skills/distribute</code>.</li>
+        <li><b>Website</b>: demo video embedded with poster, gallery carousel of the App Store frames, TestFlight button, FAQ answers for the USB and Continuity Camera queries, VideoObject schema, <code>llms.txt</code> discoverable.</li>
       </ul>
 
       <h3>Changed</h3>
@@ -102,6 +112,7 @@
         <li><b>ENABLE_FRONTEND_API</b> defaults to ON in <code>obs-plugin/CMakeLists.txt</code> and the CMake presets.</li>
         <li><b>scripts/install.sh now points at the right repository</b> (<code>OWNER=Kanevry</code>).</li>
         <li><b>TestFlight workflow no longer fails without secrets</b>: a <code>check-secrets</code> job resolves <code>ASC_KEY_P8</code> presence and the upload job is skipped rather than failed.</li>
+        <li>The App Preview video was withdrawn from the listing (it showed the owner). 0.1.0 ships without an App Preview.</li>
       </ul>
 
       <h3>Verified</h3>
@@ -134,7 +145,7 @@
         <li><a href="https://github.com/Kanevry/tethercam">GitHub</a></li>
       </ul>
     </div>
-    <p class="foot-mark">&mdash; TetherCam 0.1.0</p>
+    <p class="foot-mark">&mdash; TetherCam 0.2.0</p>
   </div>
 </footer>
 
@@ -158,7 +169,7 @@
   "name": "Changelog, TetherCam",
   "inLanguage": "en",
   "description": "What changed in TetherCam, release by release: the OBS plugin and the iPhone app, one shared version number.",
-  "dateModified": "2026-09-05",
+  "dateModified": "2026-09-09",
   "isPartOf": {"@id": "https://tethercam.app/#website"},
   "publisher": {"@id": "https://tethercam.app/#organization"}
 }
