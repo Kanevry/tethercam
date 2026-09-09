@@ -182,10 +182,10 @@ def ensure_version(app_id, version_string):
         # After the first release the next version has to be created; the API allows
         # exactly one PREPARE_FOR_SUBMISSION version per platform.
         r = api("POST", "/v1/appStoreVersions", {"data": {"type": "appStoreVersions", "attributes": {"platform": "IOS", "versionString": version_string, "releaseType": "MANUAL", "copyright": COPYRIGHT}, "relationships": {"app": {"data": {"type": "apps", "id": app_id}}}}})
-        print(f"  version {r['data']['id']}: {version_string} created (PREPARE_FOR_SUBMISSION)")
-        global FIRST_VERSION
+        vid = r.get("data", {}).get("id", "dry-run")
+        print(f"  version {vid}: {version_string} created (PREPARE_FOR_SUBMISSION)")
         FIRST_VERSION = False
-        return r["data"]["id"]
+        return vid
     v = editable[0]
     FIRST_VERSION = len(d["data"]) == 1
     attrs = {"releaseType": "MANUAL", "copyright": COPYRIGHT}
