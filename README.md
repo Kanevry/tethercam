@@ -7,6 +7,7 @@
 [![License](https://img.shields.io/badge/license-GPL--2.0%20%2F%20MIT-blue)](#license)
 ![Platform](https://img.shields.io/badge/platform-macOS%2012%2B%20%7C%20OBS%2030%2B%20%7C%20iOS%2017%2B-lightgrey)
 [![Website](https://img.shields.io/badge/website-tethercam.app-blue)](https://tethercam.app)
+[![Buy me a coffee](https://img.shields.io/badge/buy%20me%20a%20coffee-PayPal-ffdd00?logo=paypal&logoColor=003087)](https://paypal.me/Kanevry)
 [![App Store](https://img.shields.io/badge/App%20Store-TetherCam-blue?logo=apple)](https://apps.apple.com/us/app/tethercam/id6808997521)
 
 Use your iPhone as a webcam for OBS over a plain USB cable: a Continuity Camera alternative with no Wi-Fi, no cloud and no pairing screen. Open source, hardware HEVC encoding on the phone, VideoToolbox decoding on the Mac.
@@ -262,6 +263,10 @@ swift build -c release --package-path tools
 
 - `obs-plugin/`: GPL-2.0-or-later, because it links against libobs.
 - Everything else (`shared/`, `ios-app/`, `tools/`, `protocol/`, `docs/`): MIT.
+
+## Support the project
+
+TetherCam is free and open source. If it saved you a cable hunt, you can [buy me a coffee via PayPal](https://paypal.me/Kanevry). Bug reports and pull requests are just as welcome.
 
 ## Credits
 
