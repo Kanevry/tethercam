@@ -164,7 +164,13 @@ public final class UsbServer {
             guard let self else { return }
             if let data, !data.isEmpty, let parser = self.parsers[id] {
                 do {
-                    for msg in try parser.feedMessages(data) {
+                    // A message the parser can frame but not decode is skipped, not
+                    // fatal; log it so a client sending something this build does not
+                    // understand shows up in Console instead of silently doing nothing.
+                    let msgs = try parser.feedMessages(data, onDecodeError: { e in
+                        NSLog("[usbcam] dropped undecodable message from client %llu: %@", id, "\(e)")
+                    })
+                    for msg in msgs {
                         self.apply(self.machine.handle(.message(msg, nowUs: Self.nowUs())))
                     }
                 } catch {

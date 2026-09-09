@@ -119,6 +119,14 @@ Ein Sender darf die kurze Form (11 Byte) verwenden, solange `flags == 0` ist; ge
 die beiden Swift-Implementierungen. So versteht auch eine App der Version 1.0, die
 ueberzaehlige Bytes als Rahmenfehler wertet, ein START ohne Audiowunsch.
 
+**Nachtrag 2026-09-09 (Praxisbefund):** Die ausgelieferte App 1.0 (App Store 0.1.0)
+verwirft ein 12-Byte-START nicht als Rahmenfehler, sondern still als Dekodierfehler: die
+Verbindung bleibt offen, STATS kommen weiter im Sekundentakt, aber CONFIG und VIDEO
+bleiben aus. Ein Sender darf das `flags`-Byte deshalb **nur anhaengen, wenn HELLO
+mindestens 1.1 meldet**; gegenueber 1.0 wird der Audiowunsch fallengelassen und die kurze
+Form geschickt. OBS-Plugin (ab 0.2.1) und `usbcam-recv` tun genau das; die Mac-App sendet
+ohnehin `flags == 0`.
+
 Die App waehlt das naechstliegende unterstuetzte Format und meldet das tatsaechlich aktive
 per CONFIG. Standard fuer 1080p30: `bitrate_kbps = 12000`. **Audio wird ausschliesslich
 gesendet, wenn Bit 0 im letzten START gesetzt war**; ohne das Bit sendet die App weder

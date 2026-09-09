@@ -156,15 +156,18 @@ final class Receiver {
         logLine("HELLO   version=0x\(String(format: "%04x", hello.version)) device=\"\(hello.deviceName)\" "
                 + "app=\(hello.appVersion) cameras=[\(cams)]")
 
+        let flags = Receiver.startFlags(audio: opts.audio, helloVersion: hello.version)
+        if opts.audio && flags == 0 {
+            logLine("NOTE    app speaks protocol 1.\(hello.version & 0xff), audio needs 1.1: video only")
+        }
         let start = StartMessage(cameraId: opts.camera, width: opts.width, height: opts.height,
-                                 fps: opts.fps, bitrateKbps: opts.bitrate,
-                                 flags: opts.audio ? StartMessage.flagAudio : 0)
+                                 fps: opts.fps, bitrateKbps: opts.bitrate, flags: flags)
         try send(.start(start))
         startSentUs = nowUs()
         lastTickUs = startSentUs
         lastPingUs = startSentUs
         logLine("START   camera=\(opts.camera) \(opts.width)x\(opts.height)@\(opts.fps) \(opts.bitrate) kbps "
-                + "audio=\(opts.audio ? "on" : "off")")
+                + "audio=\(flags & StartMessage.flagAudio != 0 ? "on" : "off")")
 
         try stream()
         return summary()
@@ -255,12 +258,34 @@ final class Receiver {
             if t &- lastDataUs > 6_000_000 {
                 throw RecvError.timeout("no message for 6 s")
             }
+            // STATS keep arriving at 1 Hz even when the phone never started the
+            // camera (App Store 0.1.0 dropping a 12-byte START looked exactly like
+            // this), so idle detection alone would wait forever.
+            if !configSeen, t &- startSentUs > Receiver.configTimeoutUs {
+                throw RecvError.timeout("no CONFIG within \(Receiver.configTimeoutUs / 1_000_000) s after START"
+                                        + " (phone accepted the connection but did not start the camera)")
+            }
             if let d = deadline, t >= d {
                 try send(.stop)
                 logLine("STOP    sent")
                 return
             }
         }
+    }
+
+    // MARK: - START flags
+
+    /// How long the phone may take from START to CONFIG before the run is declared
+    /// dead (the sim answers within milliseconds, a real iPhone within ~2 s).
+    static let configTimeoutUs: UInt64 = 8_000_000
+
+    /// The START flags to send for a wish and the HELLO version: the audio bit only
+    /// goes out to apps that announce protocol 1.1 or later. A 1.0 app (App Store
+    /// 0.1.0) treats the 12-byte START as a decode error, drops it silently and never
+    /// starts the camera (observed 2026-09-09). Pure so it is testable.
+    static func startFlags(audio: Bool, helloVersion: UInt16) -> UInt8 {
+        guard audio, helloVersion >= 0x0101 else { return 0 }
+        return StartMessage.flagAudio
     }
 
     // MARK: - Audio

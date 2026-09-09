@@ -206,3 +206,24 @@ under `/tmp/vcam-test/`.
 - Interim for users today: OBS → Start Virtual Camera already brings the TetherCam
   picture into Zoom, Teams, Meet and FaceTime (needs the OBS camera extension approved
   once in the same System Settings pane).
+
+## Correction 2026-09-09 (evening): real-device run
+
+- First run with a real iPhone 15 Pro Max (App Store build 0.1.0) over usbmux, no
+  `--debug-tcp`: the camera "TetherCam" showed the phone picture in QuickTime Player,
+  Photo Booth, FaceTime, Google Meet (Chrome), Safari, Chrome and ffmpeg; issue #13 has
+  the checklist. Zoom and Teams remain untested (not installed). Reconnect after an
+  iOS-app restart and the BUSY answer to a second usbmux client behaved as designed.
+- Open risk 1 (sink/placeholder hand-over) was seen once: the very first capture after
+  the first sink connect delivered a single frame in 4 s; every later capture, including
+  one after 15 s idle, ran at 30 fps. Not reproduced.
+- New: frame accounting is misleading when no app reads the camera. In the pass-through
+  path (landscape) the queue fills and `dropped` climbs into the thousands; in the
+  scaled path (portrait) the `FrameScaler` pool threshold silently discards frames
+  (`droppedAtAllocationThreshold` is not surfaced) and `pushed` freezes at 7 with
+  `dropped=0`. The UI should show "no app is using the camera" and count pool drops.
+- `Logger.info` lines of the extension are not retrievable with `log show --info`;
+  diagnostics need `.notice`/`.error` or a documented `log stream` recipe.
+- The phone lying flat reported 1920x1080, then 1080x1920 after the first CONFIG and
+  1920x1080 again after a restart; both geometries were letterboxed correctly, so the
+  mid-stream CONFIG change is verified on a device.

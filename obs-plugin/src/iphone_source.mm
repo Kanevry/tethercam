@@ -446,7 +446,16 @@ int on_message(void *ctx, const struct iucm_msg *msg)
 			want_audio = s->audio;
 		}
 		/* The flags byte decides the payload length: 12 bytes with the audio
-		 * wish, the 1.0-compatible 11 without it (PROTOCOL.md 4.2). */
+		 * wish, the 1.0-compatible 11 without it (PROTOCOL.md 4.2). A 1.0 app
+		 * (App Store 0.1.0) silently drops the 12-byte form and never starts
+		 * the camera, so the wish is only sent once HELLO announces 1.1. */
+		if (want_audio && IUCM_VERSION_MINOR(hello.version) < 1) {
+			obs_log(LOG_INFO,
+				"[iphone-cam] app %s speaks protocol 1.%u: audio needs 1.1, "
+				"starting video only (update the TetherCam app on the phone)",
+				hello.app_version, (unsigned) IUCM_VERSION_MINOR(hello.version));
+			want_audio = false;
+		}
 		start.flags = want_audio ? (uint8_t) IUCM_START_FLAG_AUDIO : (uint8_t) 0;
 		if (iucm_encode_start(out, sizeof(out), &start, &written) != IUCM_OK ||
 		    !send_all(s, out, written)) {

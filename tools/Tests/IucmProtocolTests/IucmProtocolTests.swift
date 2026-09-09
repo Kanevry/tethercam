@@ -132,6 +132,17 @@ final class CodecRoundTripTests: XCTestCase {
         try roundTrip(.audio(AudioMessage(ptsUs: 0, frame: Data())))
     }
 
+    // MARK: - Receiver START flags: audio bit only for apps announcing 1.1 (2026-09-09 device finding)
+
+    func testReceiverSendsAudioFlagOnlyToProtocol11Apps() {
+        XCTAssertEqual(Receiver.startFlags(audio: true, helloVersion: 0x0100), 0,
+                       "a 1.0 app (App Store 0.1.0) drops a 12-byte START silently: send the short form")
+        XCTAssertEqual(Receiver.startFlags(audio: true, helloVersion: 0x0101), StartMessage.flagAudio)
+        XCTAssertEqual(Receiver.startFlags(audio: true, helloVersion: 0x0102), StartMessage.flagAudio,
+                       "later minors keep the audio bit (version rule PROTOCOL.md 4.1)")
+        XCTAssertEqual(Receiver.startFlags(audio: false, helloVersion: 0x0101), 0)
+    }
+
     // MARK: - Receiver audio decision logic, no socket needed (case a/c review fix)
 
     func testReceiverTreatsSecondAudioConfigAsChange() {

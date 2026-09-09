@@ -11,6 +11,8 @@ plugin (`obs-plugin/`, GPL-2.0-or-later) and the iOS app (`ios-app/`, MIT). A ta
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-09-09
+
 ### Added
 
 - **macOS virtual camera (preview, `mac-app/`, MIT).** A menu bar host app embeds a
@@ -19,8 +21,13 @@ plugin (`obs-plugin/`, GPL-2.0-or-later) and the iOS app (`ios-app/`, MIT). A ta
   over usbmux like the plugin, decodes with VideoToolbox, letterboxes every geometry into
   the one format and pushes into the extension's sink stream with host-clock timestamps.
   `--headless` and `--debug-tcp` flags, `scripts/install-local.sh` for the developer
-  install. Video only; not released yet (no signed `.dmg`); the phone serves one receiver,
-  so the Mac app and the OBS plugin are not used at the same time. (#12)
+  install. Video only (a camera extension carries no audio); the phone serves one receiver,
+  so the Mac app and the OBS plugin are not used at the same time. Verified on 2026-09-09
+  with a real iPhone 15 Pro Max in QuickTime Player, Photo Booth, FaceTime, Google Meet
+  (Chrome), Safari, Chrome and ffmpeg, portrait and landscape, reconnect after an app
+  restart. Ships as the Developer ID signed and notarized `TetherCam-mac.dmg` on the
+  GitHub release (`scripts/mac-app-release.sh`); drag to Applications, open, approve the
+  camera extension once in System Settings, then pick "TetherCam" in any app. (#12, #13, #14)
 - `tools/vcam-test.sh`: end to end check of the virtual camera without a phone
   (`usbcam-sim` → host app headless → ffmpeg avfoundation capture → resolution, fps and
   motion assertions, optional browser `getUserMedia` via `VCAM_BROWSER=1`). Verified
@@ -29,6 +36,15 @@ plugin (`obs-plugin/`, GPL-2.0-or-later) and the iOS app (`ios-app/`, MIT). A ta
 
 ### Fixed
 
+- **Plugin: black source with the App Store app 0.1.0.** Plugin 0.2.0 sent the 12-byte
+  START (audio wish) to every phone; the shipped 1.0 app drops it as a decode error and
+  never starts the camera, so OBS showed a black source with no error. The audio bit is
+  now only sent when HELLO announces protocol 1.1 or later; against a 1.0 app the plugin
+  logs "audio needs 1.1, starting video only" and streams video. `usbcam-recv` gates the
+  same way and fails after 8 s without CONFIG instead of hanging on STATS. PROTOCOL.md 4.2
+  carries the dated note. Found with the real device on 2026-09-09.
+- iOS: a message the parser frames but cannot decode is now logged
+  (`[usbcam] dropped undecodable message`) instead of vanishing silently.
 - iOS: switching the camera decides on the session queue, so a lens change during a take
   no longer races the capture session's format selection. (#11)
 
