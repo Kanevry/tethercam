@@ -51,3 +51,5 @@ AuthKey_*
 web/.vercel/
 
 __pycache__/
+.claude/worktrees/
+.claude/filescopes/

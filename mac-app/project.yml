@@ -1,0 +1,101 @@
+name: TetherCam
+options:
+  bundleIdPrefix: at.gotzendorfer
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+  developmentLanguage: en
+  xcodeVersion: "1600"
+
+# Local SwiftPM package: TetherCamContract (identifiers + the published format,
+# compiled into BOTH targets) and TetherCamCore (receiver, decoder, CMIO sink;
+# links usbmux + IucmProtocol and therefore stays out of the sandboxed extension).
+packages:
+  TetherCamCore:
+    path: Core
+
+settings:
+  base:
+    DEVELOPMENT_TEAM: G3QZ66475M
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "5.0"
+    ENABLE_HARDENED_RUNTIME: YES
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    GENERATE_INFOPLIST_FILE: YES
+
+targets:
+  TetherCam:
+    type: application
+    platform: macOS
+    sources:
+      - path: App
+    # The host is deliberately NOT sandboxed: it opens /var/run/usbmuxd and TCP
+    # sockets, exactly like the OBS plugin does. Hardened runtime stays on.
+    entitlements:
+      path: App/TetherCam.entitlements
+      properties:
+        com.apple.developer.system-extension.install: true
+        com.apple.security.application-groups:
+          - $(TeamIdentifierPrefix)at.gotzendorfer.tethercam
+    dependencies:
+      - package: TetherCamCore
+        product: TetherCamCore
+      - package: TetherCamCore
+        product: TetherCamContract
+      # A CMIO Camera Extension is a system extension: it lives in
+      # Contents/Library/SystemExtensions of the host and is signed by the host.
+      - target: TetherCamCamera
+        embed: true
+        codeSign: false
+        copy:
+          destination: wrapper
+          subpath: Contents/Library/SystemExtensions
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: at.gotzendorfer.tethercam.mac
+        PRODUCT_NAME: TetherCam
+        INFOPLIST_KEY_CFBundleDisplayName: TetherCam
+        INFOPLIST_KEY_LSUIElement: YES
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.video
+        INFOPLIST_KEY_NSHumanReadableCopyright: "Copyright (c) 2026 Bernhard Goetzendorfer. MIT License."
+        INFOPLIST_KEY_NSSystemExtensionUsageDescription: "TetherCam installs a Camera Extension so your iPhone appears as a camera in every Mac app."
+
+  TetherCamCamera:
+    type: system-extension
+    platform: macOS
+    sources:
+      - path: Extension
+    entitlements:
+      path: Extension/TetherCamCamera.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.application-groups:
+          - $(TeamIdentifierPrefix)at.gotzendorfer.tethercam
+    dependencies:
+      - package: TetherCamCore
+        product: TetherCamContract
+    info:
+      path: Extension/Info.plist
+      properties:
+        CFBundleDisplayName: TetherCam Camera
+        CFBundlePackageType: SYSX
+        CFBundleExecutable: $(EXECUTABLE_NAME)
+        CMIOExtension:
+          # Must equal the app group; the host reaches the extension over this
+          # mach service and the shared group container.
+          CMIOExtensionMachServiceName: $(TeamIdentifierPrefix)at.gotzendorfer.tethercam
+        NSSystemExtensionUsageDescription: "Provides the TetherCam camera."
+        NSHumanReadableCopyright: "Copyright (c) 2026 Bernhard Goetzendorfer. MIT License."
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: at.gotzendorfer.tethercam.mac.camera
+        PRODUCT_NAME: TetherCamCamera
+        SKIP_INSTALL: YES
+        WRAPPER_EXTENSION: systemextension
+
+schemes:
+  TetherCam:
+    build:
+      targets:
+        TetherCam: all
