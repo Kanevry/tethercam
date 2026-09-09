@@ -220,20 +220,20 @@ public final class UsbServer {
     /// device cannot honour the format, the old stop/start sequence is the
     /// fallback — a black frame beats a stuck stream.
     private func switchCamera(_ p: StartParams) {
-        let before = capture.activeFormat
+        // No format snapshot here: `activeFormat` is written on the engine's
+        // sessionQueue, so a read on `queue` could be stale when two lens swaps
+        // arrive back to back (GitLab #11). The engine decides `formatChanged`
+        // itself, on its own queue, and hands the result over.
         capture.switchCamera(to: p.cameraId) { [weak self] result in
             guard let self else { return }
             self.queue.async {
                 switch result {
-                case .success:
-                    let f = self.capture.activeFormat ?? (p.width, p.height, p.fps)
-                    let unchanged = before.map {
-                        $0.width == f.width && $0.height == f.height && $0.fps == f.fps
-                    } ?? false
+                case let .success(outcome):
+                    let f = outcome.format
                     NSLog("[usbcam] switch cam=%d %dx%d@%d encoder=%@",
                           Int(p.cameraId), Int(f.width), Int(f.height), Int(f.fps),
-                          unchanged ? "kept" : "restarted")
-                    guard !unchanged else { return }
+                          outcome.formatChanged ? "restarted" : "kept")
+                    guard outcome.formatChanged else { return }
                     do {
                         try self.encoder.start(width: f.width, height: f.height,
                                                fps: f.fps, bitrateKbps: p.bitrateKbps)

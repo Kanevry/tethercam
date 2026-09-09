@@ -6,6 +6,7 @@ import Combine
 import Foundation
 import OSLog
 import TetherCamContract
+import TetherCamCore
 
 /// Observable state of the host app, shown by MenuBarView and printed to stderr
 /// in --headless mode.
@@ -13,8 +14,13 @@ import TetherCamContract
 final class AppState: ObservableObject {
     static let shared = AppState(arguments: CommandLine.arguments)
 
+    /// Skips the OSSystemExtension activation request (scripts that only want
+    /// the pipeline, e.g. tests on a machine where approval is pending).
+    static let noActivateFlag = "--no-activate"
+
     enum ExtensionState: Equatable {
         case notInstalled
+        case requested
         case waitingForUser
         case enabled
         case error(String)
@@ -22,6 +28,7 @@ final class AppState: ObservableObject {
         var label: String {
             switch self {
             case .notInstalled: return "Camera extension not installed"
+            case .requested: return "Installing camera extension"
             case .waitingForUser: return "Waiting for approval in System Settings"
             case .enabled: return "Camera extension enabled"
             case .error(let message): return "Error: \(message)"
@@ -32,24 +39,25 @@ final class AppState: ObservableObject {
     @Published var extensionState: ExtensionState = .notInstalled {
         didSet { report("extension: \(extensionState.label)") }
     }
-    @Published var linkState: String = "Waiting for iPhone" {
-        didSet { report("link: \(linkState)") }
-    }
-    @Published var resolution: String = "-" {
-        didSet { report("resolution: \(resolution)") }
+    /// Live pipeline snapshot; every change is one stderr line in headless mode.
+    @Published var status = PipelineStatus() {
+        didSet { report(status.line) }
     }
 
     /// HOST:PORT from `--debug-tcp`, nil when the usbmux path is used.
     let debugTCP: String?
     /// `--headless`: no interaction expected, state changes go to stderr.
     let headless: Bool
+    let activateOnStart: Bool
 
     private let log = Logger(subsystem: TetherCamContract.hostBundleID, category: "state")
-    private var activation: ExtensionActivation?
+    private var installer: ExtensionInstaller?
+    private var pipeline: CameraPipeline?
     private var started = false
 
     init(arguments: [String]) {
         headless = arguments.contains(TetherCamContract.headlessFlag)
+        activateOnStart = !arguments.contains(Self.noActivateFlag)
         if let index = arguments.firstIndex(of: TetherCamContract.debugTCPFlag),
            arguments.indices.contains(index + 1) {
             debugTCP = arguments[index + 1]
@@ -66,31 +74,64 @@ final class AppState: ObservableObject {
     func start() {
         guard !started else { return }
         started = true
-        installExtension()
-        // TODO(W3): wire TetherCamCore — create Receiver (usbmux or debugTCP),
-        // HevcDecoder and CMIOSink; update linkState/resolution from their callbacks.
+        if activateOnStart { installExtension() }
+        startPipeline()
     }
 
     /// Submits (or re-submits) the system extension activation request.
     func installExtension() {
-        let activation = ExtensionActivation { [weak self] state in
-            self?.extensionState = state
+        let installer = ExtensionInstaller()
+        installer.onChange = { [weak self] state in
+            // OSSystemExtensionRequest was created with queue: .main, but the
+            // delegate contract is not annotated, so hop explicitly.
+            Task { @MainActor in self?.extensionState = Self.map(state) }
         }
-        self.activation = activation
-        activation.activate()
+        self.installer = installer
+        installer.activate()
     }
 
     /// Opens System Settings > Login Items & Extensions where the user approves
     /// the camera extension.
     func openExtensionSettings() {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-        process.arguments = ["x-apple.systempreferences:com.apple.LoginItems-Settings.extension"]
-        do {
-            try process.run()
-        } catch {
-            log.error("open System Settings failed: \(error.localizedDescription)")
+        ExtensionInstaller.openSystemSettings()
+    }
+
+    private func startPipeline() {
+        let endpoint: Endpoint
+        if let debugTCP {
+            guard let parsed = Self.parseHostPort(debugTCP) else {
+                report("invalid --debug-tcp value '\(debugTCP)', expected HOST:PORT")
+                return
+            }
+            endpoint = .tcp(host: parsed.host, port: parsed.port)
+        } else {
+            endpoint = .usbmux(serial: nil)
         }
+        let pipeline = CameraPipeline(endpoint: endpoint)
+        pipeline.onLog = { [log] line in log.info("\(line)") }
+        pipeline.onStatus = { [weak self] st in
+            Task { @MainActor in self?.status = st }
+        }
+        self.pipeline = pipeline
+        pipeline.start()
+    }
+
+    static func map(_ state: ExtensionInstaller.State) -> ExtensionState {
+        switch state {
+        case .idle: return .notInstalled
+        case .requested: return .requested
+        case .needsUserApproval: return .waitingForUser
+        case .activated: return .enabled
+        case .willCompleteAfterReboot: return .error("restart the Mac to finish installing the camera extension")
+        case .failed(let message): return .error(message)
+        }
+    }
+
+    static func parseHostPort(_ text: String) -> (host: String, port: UInt16)? {
+        guard let colon = text.lastIndex(of: ":"),
+              let port = UInt16(text[text.index(after: colon)...]),
+              colon > text.startIndex else { return nil }
+        return (String(text[..<colon]), port)
     }
 
     private func report(_ message: String) {

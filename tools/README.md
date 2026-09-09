@@ -143,6 +143,37 @@ Simulator, per gemerkter PID, nie per `pkill`. Pfade zu ffmpeg/ffprobe ueber
 bash tools/integration.sh
 ```
 
+## vcam-test.sh
+
+`tools/vcam-test.sh` ist die simulierte Abnahme der macOS-Virtual-Camera
+(`mac-app/`, CoreMediaIO-Camera-Extension "TetherCam") ohne iPhone: startet
+`usbcam-sim` (Port 7979, `IUCM_PORT`), laesst die Host-App headless mit
+`--debug-tcp 127.0.0.1:PORT` den Strom in die Extension schieben, wartet bis
+`ffmpeg -f avfoundation -list_devices` die Kamera "TetherCam" listet (max 20 s),
+nimmt 3 s (`VCAM_SECONDS`) in `1920x1080` NV12 nach `/tmp/vcam-test/cam.mp4` auf
+und prueft per `ffprobe` `1920x1080`, `fps >= 25`, `frames >= 50`; danach muessen
+zwei Frames (0,3 s und 1,5 s) per PSNR unter 45 dB liegen (`inf` = Standbild =
+FAIL). Mit `VCAM_BROWSER=1` zaehlt zusaetzlich `agent-browser` die Kamera per
+`getUserMedia`/`enumerateDevices` auf. Bei jedem Fehler kommt der Schluss von
+`/tmp/vcam-test/app.log`, bei PASS die letzte `tethercam:`-Statuszeile der App.
+
+Vorbedingungen (einmalig): Extension per `bash mac-app/scripts/install-local.sh`
+registrieren und unter System Settings > General > Login Items & Extensions >
+Camera Extensions freigeben; das Terminal braucht Kamera-Zugriff (Privacy &
+Security > Camera). App-Pfad: `/Applications/TetherCam.app`, sonst
+`mac-app/build/Build/Products/Release/TetherCam.app`, per `VCAM_APP` uebersteuerbar.
+
+Exit-Codes: `0` PASS, `1` FAIL (Klartext, App-Log-Tail), `3` Extension wartet auf
+die Freigabe in den Systemeinstellungen (`BLOCKED: approve ...`), `4` Extension
+nicht registriert (`BLOCKED: extension not registered ...`). Beendet werden nur
+die selbst gestarteten Prozesse per PID. Weitere Variablen: `VCAM_NAME`,
+`VCAM_EXT_ID`, `FFMPEG`, `FFPROBE`, `AGENT_BROWSER`.
+
+```sh
+bash tools/vcam-test.sh
+VCAM_BROWSER=1 bash tools/vcam-test.sh
+```
+
 ## Protokoll-Probe
 
 `scripts/probe_sim.py` ist ein Smoke-Test ohne Abhaengigkeiten (nur Python-stdlib):

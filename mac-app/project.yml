@@ -90,7 +90,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: at.gotzendorfer.tethercam.mac.camera
-        PRODUCT_NAME: TetherCamCamera
+        PRODUCT_NAME: at.gotzendorfer.tethercam.mac.camera   # sysextd looks up <bundle-id>.systemextension
         SKIP_INSTALL: YES
         WRAPPER_EXTENSION: systemextension
 

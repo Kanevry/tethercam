@@ -323,13 +323,35 @@ public final class CaptureEngine: NSObject {
         }
     }
 
+    /// What a lens swap left behind, decided on `sessionQueue` in the same
+    /// transaction that changed the input — so two back-to-back swaps cannot
+    /// compare against a stale snapshot taken on some other queue (GitLab #11).
+    public struct SwitchOutcome {
+        /// Format the session runs at after the swap.
+        public let format: (width: UInt16, height: UInt16, fps: UInt16)
+        /// True when the new lens negotiated other dimensions or rate than the
+        /// one before it, i.e. the encoder has to be rebuilt.
+        public let formatChanged: Bool
+    }
+
+    /// Pure "did the lens swap change the format?" decision. A missing
+    /// `before` counts as changed: nothing to compare against, so the encoder
+    /// is rebuilt rather than fed frames of unknown size.
+    static func formatChanged(before: (width: UInt16, height: UInt16, fps: UInt16)?,
+                              after: (width: UInt16, height: UInt16, fps: UInt16)) -> Bool {
+        guard let b = before else { return true }
+        return b.width != after.width || b.height != after.height || b.fps != after.fps
+    }
+
     /// Swaps the lens under a running take, keeping the negotiated format.
     /// One configuration transaction: input out, input in, device format
     /// re-applied from `lastParams`. Never touches `configurePreview`, so the
     /// encoder never sees a 720p preview buffer in between (the CONFIG leak
-    /// behind obs-iphone-usb-cam#4). Completion runs on `sessionQueue`.
+    /// behind obs-iphone-usb-cam#4). Completion runs on `sessionQueue`; the
+    /// before/after format comparison happens there too, never on the caller's
+    /// queue.
     public func switchCamera(to cameraId: UInt8,
-                             completion: @escaping (Result<Void, Error>) -> Void) {
+                             completion: @escaping (Result<SwitchOutcome, Error>) -> Void) {
         guard let cam = cameras.first(where: { $0.id == cameraId }) else {
             completion(.failure(CaptureError.noSuchCamera(cameraId)))
             return
@@ -345,8 +367,13 @@ public final class CaptureEngine: NSObject {
         lastParams = next
         previewCameraId = cam.id
         sessionQueue.async { [self] in
+            // Snapshot on sessionQueue, right before the swap: the only place
+            // where `activeFormat` is guaranteed to reflect the previous swap.
+            let before = activeFormat
             guard currentInput?.device !== cam.device else {
-                completion(.success(()))
+                completion(.success(SwitchOutcome(
+                    format: before ?? (next.width, next.height, next.fps),
+                    formatChanged: false)))
                 return
             }
             let previous = currentInput
@@ -370,7 +397,10 @@ public final class CaptureEngine: NSObject {
                 session.commitConfiguration()
                 currentDevice = cam.device
                 DispatchQueue.main.async { [self] in rebuildRotationCoordinator() }
-                completion(.success(()))
+                let after = activeFormat ?? (next.width, next.height, next.fps)
+                completion(.success(SwitchOutcome(
+                    format: after,
+                    formatChanged: Self.formatChanged(before: before, after: after))))
             } catch {
                 // Put the old lens back so the fallback stop/start has a sane
                 // session to work from.
