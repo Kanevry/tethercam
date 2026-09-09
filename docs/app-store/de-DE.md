@@ -23,29 +23,34 @@ Same in every localization; the name field is not translated.
 ## Subtitle (limit 30)
 
 ```
-Kabelkamera für OBS
+USB-Webcam für Mac und OBS
 ```
 
 ## Keywords (limit 100)
 
 ```
-usb,kabel,tether,webcam,stream,streaming,aufnahme,hevc,kamera,video,studio,live,cam,mac
+kabel,tether,kabelgebunden,camcorder,streaming,aufnahme,videoanruf,konferenz,meeting,video,live,cam
 ```
 
-Comma separated, no spaces after commas. "obs" bleibt bewusst draussen, siehe `en-US.md`.
+Comma separated, no spaces after commas, 99 von 100 Zeichen. `usb`, `webcam` und `mac`
+stehen jetzt im Untertitel und werden dadurch schon indexiert, deshalb sind sie aus dem
+Keyword-Feld entfernt; der freigewordene Platz geht an die Videoanruf-Absicht
+(`videoanruf`, `konferenz`, `meeting`). "obs" bleibt bewusst draussen, siehe `en-US.md`;
+Markennamen wie Zoom, Google Meet, Teams, FaceTime oder Continuity Camera stehen nur in
+der Beschreibung als sachliche Kompatibilitaetsangabe. Begruendung: `KEYWORDS-RATIONALE.md`.
 
 ## Promotional text (limit 170)
 
 ```
-iPhone per Kabel an den Mac stecken und das Kamerabild landet in OBS. Kein WLAN, keine Cloud, keine Netzwerklatenz. Gratis, quelloffen, Vorschau ab dem Start.
+Das iPhone per USB-Kabel zur Webcam am Mac: in OBS Studio, und über die virtuelle OBS-Kamera in Videoanrufe. Kein WLAN, keine Cloud, keine Latenz. Gratis und quelloffen.
 ```
 
 ## Description (limit 4000)
 
 ```
-TetherCam macht aus dem iPhone eine kabelgebundene Kamera für Live-Produktionen am Mac.
+TetherCam macht aus dem iPhone eine kabelgebundene USB-Webcam für den Mac.
 
-Das Telefon wird mit dem vorhandenen USB-Kabel angeschlossen. TetherCam nimmt das Kamerabild auf, kodiert es in Hardware und übergibt es dem kostenlosen TetherCam-Plugin für OBS Studio am Mac. Nichts läuft über WLAN, nichts läuft über einen Server, nichts wird irgendwohin hochgeladen. Das Kabel ist der gesamte Weg, deshalb bleibt das Bild auch in einem vollen Raum stabil, in dem drahtlose Kameras zu stocken beginnen.
+Das Telefon wird mit dem vorhandenen USB-Kabel angeschlossen. TetherCam nimmt das Kamerabild auf, kodiert es in Hardware und übergibt es dem kostenlosen TetherCam-Plugin für OBS Studio am Mac; von OBS aus geht dasselbe Bild über die virtuelle OBS-Kamera weiter in einen Videoanruf, eine Bildschirmaufnahme oder einen Livestream. Nichts läuft über WLAN, nichts läuft über einen Server, nichts wird irgendwohin hochgeladen. Das Kabel ist der gesamte Weg, deshalb bleibt das Bild auch in einem vollen Raum stabil, in dem drahtlose Kameras zu stocken beginnen.
 
 AM TELEFON
 

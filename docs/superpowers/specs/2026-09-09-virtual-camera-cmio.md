@@ -227,3 +227,12 @@ under `/tmp/vcam-test/`.
 - The phone lying flat reported 1920x1080, then 1080x1920 after the first CONFIG and
   1920x1080 again after a restart; both geometries were letterboxed correctly, so the
   mid-stream CONFIG change is verified on a device.
+- Distribution, same evening: `scripts/mac-app-release.sh` produces the Developer ID
+  signed, notarized and stapled `TetherCam-mac.dmg` (0.2.1 build 6); installed from the
+  dmg it replaced the enabled extension without a second approval and streamed the phone
+  at 30 fps. Mac App Store is out for now: the sandbox profile denies the usbmuxd socket
+  for the host and `cmioextension.sb` denies it for the extension, so the
+  host-bridges-frames design is the only possible one under any distribution channel
+  (docs/mac-app-store-feasibility.md, issue #15). One user-facing trap: a quarantined
+  copy that was not dragged by Finder is run through App Translocation and the host
+  reports "must be in /Applications" although it is; the install guide names the fix.

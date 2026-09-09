@@ -1,8 +1,10 @@
 # Releasing TetherCam
 
-One tag `vX.Y.Z` releases both artefacts: the macOS OBS plugin (signed, notarized
-`.pkg` on a GitHub release) and the iOS app (TestFlight). Everything below is a
-one-time setup except part 3, which is the recurring runbook.
+One tag `vX.Y.Z` releases three artefacts: the macOS OBS plugin (signed, notarized
+`.pkg` on a GitHub release), the iOS app (TestFlight, then the App Store) and, since
+0.2.1, the macOS menu bar app with the virtual camera (signed, notarized
+`TetherCam-mac.dmg` on the same GitHub release, part 6). Everything below is a
+one-time setup except parts 3 and 6, which are the recurring runbooks.
 
 Repository layout for remotes: the public GitHub repository **`Kanevry/tethercam`** is
 the source of truth and the release host, because GitHub Actions provides free macOS runners and a
@@ -309,6 +311,61 @@ den Schluessel dagegen wie erwartet zweimal (`grep -c "ToolsMenu.HintNoSource"` 
 Log unter `logs/` enthaelt die Zeile und `plugin_config/obs-iphone-usb-cam/` existiert
 nicht, weil bislang jede Sammlung eine TetherCam-Quelle hatte. Das Rezept oben ist nach
 dem naechsten OBS-Neustart mit der neuen Plugin-Version einmal durchzulaufen.
+
+---
+
+## 6. The macOS app (virtual camera) as a `.dmg`
+
+Since 0.2.1 the release carries a third artefact: `TetherCam-mac.dmg`, the menu bar
+app with the CoreMediaIO Camera Extension, Developer ID signed, notarized and
+stapled. It is **not** built by a workflow; one local script does the whole thing:
+
+```bash
+scripts/mac-app-release.sh                  # archive, export, dmg, notarize, staple
+scripts/mac-app-release.sh --upload v0.2.1  # ... and attach it to that release
+scripts/mac-app-release.sh --skip-notarize  # packaging smoke test only
+```
+
+It needs `xcodegen`, Xcode, a *Developer ID Application* identity in the login
+keychain and the notarization key referenced from `.env.local` (`ASC_KEY_ID`,
+`ASC_ISSUER_ID`, `ASC_KEY_PATH`) — the same key the iOS upload uses, never in the
+repository. Output: `dist/TetherCam-mac.dmg` plus `dist/TetherCam-mac.dmg.sha256`,
+log under `build/mac-app-release-*.log`.
+
+Checklist per release:
+
+1. **Bump `mac-app/project.yml`**: `MARKETING_VERSION` *and* `CURRENT_PROJECT_VERSION`.
+   The build number is not cosmetic here: `sysextd` only replaces an already installed
+   camera extension when its `CFBundleVersion` changed. Ship the same build number
+   twice and users keep running the old extension while the host app looks updated.
+2. Run `scripts/mac-app-release.sh --upload vX.Y.Z` **after** `release-plugin.yml`
+   has created the draft release, so there is a release to attach to.
+3. Verify the artefact exactly as Gatekeeper would on a machine that has never seen
+   the certificate:
+
+   ```bash
+   shasum -a 256 -c dist/TetherCam-mac.dmg.sha256
+   spctl -a -t open --context context:primary-signature -vv dist/TetherCam-mac.dmg
+   #   expected: accepted, source=Notarized Developer ID
+   xcrun stapler validate dist/TetherCam-mac.dmg
+   ```
+
+4. Publish the draft release, then verify the stable download URL:
+
+   ```bash
+   curl -sI https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-mac.dmg
+   #   expected: 302. A 404 means the draft is still unpublished.
+   ```
+
+5. **Update the Homebrew cask `tethercam`** in the `kanevry/homebrew-tethercam` tap:
+   new `version`, and the `sha256` taken from the published `TetherCam-mac.dmg.sha256`
+   asset. The cask `tethercam-obs` (the OBS plugin) is a separate formula and gets
+   its own bump.
+
+The app requires **macOS 14 or newer** and ships as a universal binary (Apple
+silicon and Intel). Users drag it into `/Applications` with Finder and approve the
+camera extension once; see [../mac-app/README.md](../mac-app/README.md) for the
+user-facing steps and the App Translocation gotcha.
 
 ---
 

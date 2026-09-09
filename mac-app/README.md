@@ -6,7 +6,47 @@ and feeds the frames into the extension's sink stream; the extension publishes t
 iPhone as the camera "TetherCam" (1920x1080, NV12, 30 fps) to every app on the Mac
 (Zoom, Teams, FaceTime, ffmpeg, ...). No OBS required.
 
-Layout: `Core/` is the SwiftPM package (`TetherCamContract` = identifiers and the
+## Install (users)
+
+Download **[TetherCam-mac.dmg](https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-mac.dmg)**
+(0.2.1, build 6; Developer ID signed, notarized and stapled; macOS 14 or newer,
+Apple silicon and Intel; free, MIT). The checksum sits next to it as
+`TetherCam-mac.dmg.sha256`. Homebrew works too:
+`brew tap kanevry/tethercam && brew install --cask tethercam`.
+
+1. Install TetherCam on the iPhone from the [App Store](https://apps.apple.com/us/app/tethercam/id6808997521) and open it.
+2. Plug the iPhone into the Mac with the USB cable, tap **Trust** on the phone the first time.
+3. Open the `.dmg` and **drag TetherCam into Applications with Finder**, then open it. It lives in the menu bar and has no window.
+4. macOS asks once to allow the camera extension: System Settings > General >
+   Login Items & Extensions > Camera Extensions > enable TetherCam (admin
+   password once). The menu bar app has a button that opens that pane.
+5. In any app pick the camera **TetherCam**: Zoom (camera menu), Google Meet
+   (arrow next to the camera button), FaceTime (Video menu), QuickTime Player
+   (New Movie Recording, arrow next to the record button), Photo Booth (Camera
+   menu), Safari and Chrome (the site's camera picker), Teams (Settings >
+   Devices).
+
+The camera carries **video only** (a macOS camera extension cannot carry audio),
+the output is a fixed 1920x1080 at 30 fps (a portrait phone is pillarboxed), and
+the phone serves **one receiver at a time**: run either this app or the OBS
+plugin source, not both, or the second one gets BUSY.
+
+Troubleshooting:
+
+- **"Error: TetherCam.app must be in /Applications"** although it is there: the
+  app was copied by something other than Finder while it still carried the
+  quarantine flag, so macOS App Translocation runs it from a random path. Drag it
+  in with Finder, or `xattr -dr com.apple.quarantine /Applications/TetherCam.app`.
+- **No "TetherCam" camera in any app:** the extension is not enabled yet (step 4),
+  or the app that should show it was launched before the extension appeared — quit
+  and reopen it, camera lists are read at launch.
+- **BUSY:** another receiver holds the phone; close the OBS TetherCam source first.
+- **Nothing arrives:** open TetherCam on the phone and leave it in the foreground,
+  iOS suspends the listener in the background.
+
+## Layout (developers)
+
+`Core/` is the SwiftPM package (`TetherCamContract` = identifiers and the
 published format, compiled into both targets; `TetherCamCore` = receiver, decoder,
 sink bridge). `App/` is the host, `Extension/` the camera extension.
 

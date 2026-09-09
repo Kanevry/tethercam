@@ -16,24 +16,31 @@ TetherCam
 ## Subtitle (limit 30)
 
 ```
-Wired camera for OBS
+USB webcam for Mac and OBS
 ```
 
 ## Keywords (limit 100)
 
 ```
-usb,cable,tether,webcam,stream,broadcast,capture,hevc,camera,video,studio,live,wired,cam
+cable,tether,wired,camcorder,streaming,capture,meeting,conference,call,video,live,studio,cam,mic
 ```
 
-Comma separated, no spaces after commas. Words from the name and the subtitle are not
-repeated; Apple indexes those already. "obs" is deliberately absent from the keyword field:
-it is a third-party trademark and 2.3.7 warns against packing metadata with trademarked
-terms. It stays in the subtitle and the description as a factual compatibility statement.
+Comma separated, no spaces after commas, 96 of 100 characters. Words from the name and the
+subtitle are not repeated; Apple indexes those already, which is why `usb`, `webcam`, `mac`
+and `obs` no longer appear here: the subtitle "USB webcam for Mac and OBS" carries all four.
+That freed the field for the intents the old list missed, above all the video-call side
+(`meeting`, `conference`, `call`) and `mic` for the audio feature added in 0.2.0.
+
+Third-party and Apple trademarks stay out of the keyword field. "Zoom", "Google Meet",
+"Teams", "FaceTime" and "Continuity Camera" would all match real search intent, but 2.3.7
+warns against packing metadata with trademarked terms, so they appear only in the
+description as factual compatibility statements. "OBS" is the one exception and lives in
+the subtitle, as it did before. Reasoning and A/B candidates: `KEYWORDS-RATIONALE.md`.
 
 ## Promotional text (limit 170)
 
 ```
-Plug the iPhone into the Mac and the camera picture lands in OBS. No Wi-Fi, no cloud, no network lag. Free, open source, and previewing the moment you launch it.
+Turn the iPhone into a USB webcam for the Mac: into OBS Studio, and into video calls through the OBS virtual camera. No Wi-Fi, no cloud, no lag. Free and open source.
 ```
 
 Editable at any time without shipping a new version.
@@ -41,9 +48,9 @@ Editable at any time without shipping a new version.
 ## Description (limit 4000)
 
 ```
-TetherCam turns your iPhone into a wired camera for live production on the Mac.
+TetherCam turns your iPhone into a wired USB webcam for the Mac.
 
-Connect the phone with the USB cable you already own. TetherCam captures the camera, encodes the picture in hardware, and hands it to the free TetherCam plugin for OBS Studio on the Mac. Nothing travels over Wi-Fi, nothing passes through a server, and nothing is uploaded anywhere. The cable is the whole path, so the picture stays stable in a crowded room where wireless cameras start to stutter.
+Connect the phone with the USB cable you already own. TetherCam captures the camera, encodes the picture in hardware, and hands it to the free TetherCam plugin for OBS Studio on the Mac; from OBS the same picture goes on into a video call, a screen recording or a live stream through the OBS virtual camera. Nothing travels over Wi-Fi, nothing passes through a server, and nothing is uploaded anywhere. The cable is the whole path, so the picture stays stable in a crowded room where wireless cameras start to stutter.
 
 ON THE PHONE
 

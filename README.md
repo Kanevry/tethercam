@@ -2,6 +2,16 @@
 
 # TetherCam
 
+**Use your iPhone as a webcam on your Mac over a plain USB cable.** The picture goes into OBS Studio directly, and from OBS into video calls as a virtual camera. It is a Continuity Camera alternative with no Wi-Fi, no cloud, no pairing code and no shared Apple Account: hardware HEVC encoding on the phone, VideoToolbox decoding on the Mac. Free and open source.
+
+**Works with:** OBS Studio &middot; Zoom\* &middot; Google Meet\* &middot; Microsoft Teams\* &middot; FaceTime\* &middot; QuickTime Player\* &middot; Photo Booth\* &middot; Safari\* &middot; Chrome\* &nbsp;(\* either through OBS &rarr; **Start Virtual Camera**, or with no OBS at all through the [TetherCam Mac app](#zoom-meet-facetime-and-every-other-mac-app-the-tethercam-virtual-camera), a free menu bar app with its own macOS camera extension, released since 0.2.1)
+
+**For:** streamers, remote workers and anyone whose Continuity Camera or webcam gives up, on macOS 12+ with an iPhone on iOS 17+.
+
+**Install, two steps:** run `curl -fsSL https://raw.githubusercontent.com/Kanevry/tethercam/main/scripts/install.sh | bash` and restart OBS, then get the free [TetherCam app on the App Store](https://apps.apple.com/us/app/tethercam/id6808997521). In OBS: *Tools &rarr; TetherCam: Add iPhone camera to current scene*. Full guide: https://tethercam.app/install.
+
+Website and downloads: https://tethercam.app. Prebuilt `.pkg` and `.zip` bundles are also on the latest GitHub release: https://github.com/Kanevry/tethercam/releases/latest.
+
 [![CI](https://github.com/Kanevry/tethercam/actions/workflows/ci-plugin.yml/badge.svg)](https://github.com/Kanevry/tethercam/actions/workflows/ci-plugin.yml)
 [![Latest release](https://img.shields.io/github/v/release/Kanevry/tethercam?include_prereleases)](https://github.com/Kanevry/tethercam/releases/latest)
 [![License](https://img.shields.io/badge/license-GPL--2.0%20%2F%20MIT-blue)](#license)
@@ -9,10 +19,6 @@
 [![Website](https://img.shields.io/badge/website-tethercam.app-blue)](https://tethercam.app)
 [![Buy me a coffee](https://img.shields.io/badge/buy%20me%20a%20coffee-PayPal-ffdd00?logo=paypal&logoColor=003087)](https://paypal.me/Kanevry)
 [![App Store](https://img.shields.io/badge/App%20Store-TetherCam-blue?logo=apple)](https://apps.apple.com/us/app/tethercam/id6808997521)
-
-Use your iPhone as a webcam for OBS over a plain USB cable: a Continuity Camera alternative with no Wi-Fi, no cloud and no pairing screen. Open source, hardware HEVC encoding on the phone, VideoToolbox decoding on the Mac.
-
-Website and downloads: https://tethercam.app. Prebuilt `.pkg` and `.zip` bundles are also on the latest GitHub release: https://github.com/Kanevry/tethercam/releases/latest.
 
 <br clear="left">
 
@@ -129,22 +135,67 @@ The cask copies the signed bundle straight into your own
 `~/Library/Application Support/obs-studio/plugins/` folder, the same place Option A
 and the one-line installer put it. No admin rights needed.
 
-## Zoom, Teams, FaceTime: the virtual camera (preview)
+## Zoom, Meet, FaceTime and every other Mac app: the TetherCam virtual camera
 
-`mac-app/` is a menu bar app for the Mac that embeds a CoreMediaIO Camera Extension. It receives the same USB stream the OBS plugin does and publishes it as the system camera "TetherCam" (1920x1080, 30 fps), so Zoom, Teams, Google Meet, FaceTime, QuickTime and ffmpeg see the iPhone like any webcam. No OBS involved, no audio on that path (a camera extension carries video only; the OBS plugin keeps the microphone).
+**Your iPhone in every Mac app, no OBS involved.** `TetherCam-mac.dmg` is a free menu bar app that embeds a CoreMediaIO Camera Extension. It receives the same USB stream the OBS plugin does and publishes it as the system camera "TetherCam" (1920x1080, 30 fps), so Zoom, Teams, Google Meet, FaceTime, QuickTime and ffmpeg see the iPhone like any webcam.
 
-It is **not released yet**: the code is on `main`, the signed and notarized `.dmg` is not. The phone serves one receiver at a time, so run either the Mac app or an OBS source with the plugin, not both; the second one reports BUSY. Design, status and open risks: [docs/superpowers/specs/2026-09-09-virtual-camera-cmio.md](docs/superpowers/specs/2026-09-09-virtual-camera-cmio.md).
+**[Download TetherCam-mac.dmg](https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-mac.dmg)** &middot; version 0.2.1 (build 6), Developer ID signed, notarized and stapled &middot; macOS 14 or newer, Apple silicon and Intel &middot; free, MIT. The checksum is next to it as [`TetherCam-mac.dmg.sha256`](https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-mac.dmg.sha256).
 
-**Today, without the Mac app:** in OBS choose **Start Virtual Camera** (Controls dock). The TetherCam picture then appears as the camera "OBS Virtual Camera" in Zoom, Teams, Meet and FaceTime. The first time, macOS asks you to enable the OBS camera extension under System Settings > General > Login Items & Extensions > Camera Extensions and wants the admin password once.
+### Five steps
 
-Build and install it yourself (Xcode 16 or later, `xcodegen`, an Apple Development signing identity):
+1. Install **TetherCam** on the iPhone from the [App Store](https://apps.apple.com/us/app/tethercam/id6808997521) and open it.
+2. Plug the iPhone into the Mac with the USB cable. The first time, tap **Trust** on the phone.
+3. Download `TetherCam-mac.dmg`, **drag TetherCam into Applications with Finder**, then open it. It lives in the menu bar and has no window.
+4. macOS asks once to allow the camera extension: **System Settings > General > Login Items & Extensions > Camera Extensions > enable TetherCam** (admin password once). The menu bar app has a button that opens exactly that pane.
+5. In any app, pick the camera **TetherCam**. That is it; the camera reconnects by itself when the phone app is restarted.
+
+Alternative install path, same signed app:
+
+```sh
+brew tap kanevry/tethercam
+brew install --cask tethercam
+```
+
+### Where to pick the camera
+
+| App | Where |
+|---|---|
+| Zoom | camera menu (video arrow, "Select a Camera") |
+| Google Meet | arrow next to the camera button |
+| FaceTime | Video menu |
+| QuickTime Player | New Movie Recording, arrow next to the record button |
+| Photo Booth | Camera menu |
+| Safari and Chrome | the site's own camera picker, or the camera icon in the address bar |
+| Microsoft Teams | Settings > Devices |
+
+**Verified on 2026-09-09 with a real iPhone 15 Pro Max** in QuickTime Player, Photo Booth, FaceTime, Google Meet in Chrome, Safari, Chrome and ffmpeg. Zoom and Microsoft Teams were not tested by us, because neither was installed on the test machine; they use the same system camera API, so they should work, but that is not verified by us.
+
+### Limits
+
+- **Video only.** A macOS camera extension cannot carry audio. For sound in a call, use the phone's microphone via Continuity or the Mac microphone; for audio *and* video together, use the OBS plugin.
+- **One receiver at a time.** The phone serves one connection: run either the Mac app or the OBS plugin source, not both. The second one reports BUSY.
+- **Fixed output format.** 1920x1080 at 30 fps. A portrait phone is pillarboxed into that frame.
+
+### Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| The menu says "Error: TetherCam.app must be in /Applications" although it is there | The app was copied by something other than Finder while it still carried the quarantine flag, so macOS App Translocation runs it from a random read-only path. Drag it into `/Applications` with **Finder**, or run `xattr -dr com.apple.quarantine /Applications/TetherCam.app` and open it again |
+| The camera "TetherCam" does not appear in any app | The extension is not enabled yet. System Settings > General > Login Items & Extensions > Camera Extensions > enable TetherCam, then quit and reopen the app that should show the camera |
+| The picture stays black and the menu says BUSY | Another receiver already holds the phone. Close the OBS TetherCam source (or the other app) first |
+| Nothing happens after plugging the phone in | Open TetherCam on the phone and leave it in the foreground; iOS suspends the listener in the background |
+| The camera list in an app is stale | Camera lists are read at app launch. Quit and reopen that app |
+
+**Instead of the Mac app, via OBS:** choose **Start Virtual Camera** (Controls dock). The TetherCam picture then appears as the camera "OBS Virtual Camera". That path carries the phone's audio as well, because the audio comes in through the OBS plugin.
+
+Build it yourself (Xcode 16 or later, `xcodegen`, an Apple Development signing identity):
 
 ```sh
 cd mac-app && xcodegen generate
 bash scripts/install-local.sh    # builds Release, copies to /Applications, launches once
 ```
 
-The app must live in `/Applications` and macOS asks you to enable the extension under System Settings > General > Login Items & Extensions > Camera Extensions; the script opens that pane. Details, headless flags and the end to end check without a phone (`bash tools/vcam-test.sh`) are in [mac-app/README.md](mac-app/README.md).
+Details, headless flags and the end to end check without a phone (`bash tools/vcam-test.sh`) are in [mac-app/README.md](mac-app/README.md). Design, status and open risks: [docs/superpowers/specs/2026-09-09-virtual-camera-cmio.md](docs/superpowers/specs/2026-09-09-virtual-camera-cmio.md).
 
 ## Install the iPhone app
 
@@ -218,6 +269,7 @@ The app's own gear icon has a matching Diagnostics sheet, useful when the phone 
 | Symptom | Likely cause |
 |---|---|
 | Black source, no log lines | TetherCam is not in the foreground on the phone, or the phone is locked |
+| Black source with plugin 0.2.0 and the App Store app 0.1.0 | Fixed in plugin 0.2.1: 0.2.0 asked for audio in a way the 1.0 app dropped silently. Update the plugin (`brew upgrade --cask tethercam-obs`, or the new `.pkg`) and update the phone app once 0.2.0 is out on the store |
 | Nothing in the device list | Cable is charge only, phone not trusted, or Developer Mode is off |
 | `ERROR 1 BUSY` in the OBS log | Another receiver is already connected. Only one receiver per phone. Close the other OBS source or the CLI receiver |
 | Picture sideways or upside down | The app follows the phone orientation automatically (Auto-Rotation, on by default). Lying flat on a table there is no horizon, so mount the phone first. Override with the manual 0/90/180/270 picker in the app or the Rotation setting in the OBS source |
@@ -232,7 +284,7 @@ Development happens on GitHub (`Kanevry/tethercam`): issues, pull requests and r
 |---|---|
 | `ios-app/` | Swift 6 / SwiftUI capture app, generated Xcode project (MIT) |
 | `obs-plugin/` | OBS source plugin, C and Objective-C++ (GPL-2.0-or-later) |
-| `mac-app/` | macOS menu bar app plus CoreMediaIO Camera Extension, the virtual camera (MIT, preview) |
+| `mac-app/` | macOS menu bar app plus CoreMediaIO Camera Extension, the virtual camera (MIT, released since 0.2.1) |
 | `shared/` | Pure C11 core: IUCM frame parser and usbmuxd client, no Apple frameworks (MIT) |
 | `tools/` | Swift package: protocol codec, sender simulator, CLI receiver (MIT) |
 | `protocol/` | The normative wire protocol spec |
@@ -273,7 +325,7 @@ swift build -c release --package-path tools
 
 - Signed and notarized plugin releases: done since 0.1.0.
 - Audio from the phone: shipped in 0.2.0 (AAC-LC over the same cable, mute switch in the app).
-- Virtual camera as a macOS Camera Extension (CMIO), so the picture also shows up in Zoom, FaceTime and Safari: implemented in `mac-app/` (2026-09-09), signed `.dmg` release and device test still open. See [the preview section](#zoom-teams-facetime-the-virtual-camera-preview).
+- Virtual camera as a macOS Camera Extension (CMIO), so the picture also shows up in Zoom, FaceTime and Safari: released in 0.2.1 as the signed and notarized `TetherCam-mac.dmg`. See [the virtual camera section](#zoom-meet-facetime-and-every-other-mac-app-the-tethercam-virtual-camera). A Mac App Store listing is a separate, open idea ([#15](https://github.com/Kanevry/tethercam/issues/15)).
 - Receivers for Windows and Linux. The C core already builds there.
 - App Store listing: 0.1.0 (2) approved by App Review and released 2026-09-09; TestFlight public beta cleared Beta App Review 2026-09-06.
 

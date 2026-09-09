@@ -964,3 +964,52 @@ pre code { font-size: inherit; }
 .gallery-item figure { margin: 0; }
 .gallery-item img { display: block; width: 100%; height: auto; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--card); box-shadow: var(--shadow-md); }
 @media (min-width: 900px) { .gallery-item { flex-basis: min(72%, 880px); } }
+
+/* --- comparison table ------------------------------------------------------ */
+.cmp-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--card);
+  margin: 2rem 0 1rem;
+  -webkit-overflow-scrolling: touch;
+}
+.cmp {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  min-width: 46rem;
+}
+.cmp caption {
+  caption-side: top;
+  text-align: left;
+  padding: 1rem 1.1rem 0.25rem;
+  color: var(--fg-muted);
+  font-size: var(--t-meta);
+}
+.cmp th,
+.cmp td {
+  padding: 0.7rem 1.1rem;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border);
+}
+.cmp thead th {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.875rem;
+  letter-spacing: 0.01em;
+  border-bottom: 1px solid var(--border-strong);
+  white-space: nowrap;
+}
+.cmp tbody th {
+  font-weight: 600;
+  color: var(--fg);
+  white-space: nowrap;
+}
+.cmp td { color: var(--fg-muted); }
+.cmp tbody tr:last-child th,
+.cmp tbody tr:last-child td { border-bottom: 0; }
+.cmp .cmp-self { color: var(--fg); }
+.cmp thead .cmp-self { color: var(--accent); }
