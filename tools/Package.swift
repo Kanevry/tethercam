@@ -13,6 +13,7 @@ let package = Package(
     platforms: [.macOS(.v13)],
     products: [
         .library(name: "IucmProtocol", targets: ["IucmProtocol"]),
+        .library(name: "CUsbmux", targets: ["CUsbmux"]),
         .executable(name: "usbcam-sim", targets: ["usbcam-sim"]),
         .executable(name: "usbcam-recv", targets: ["usbcam-recv"]),
     ],
