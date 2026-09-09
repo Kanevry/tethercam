@@ -588,3 +588,16 @@ Third-party: [Celluloid on MAS](https://apps.apple.com/us/app/celluloid-camera-f
 Forums [72330 (DTS on temporary-exception.sbpl)](https://developer.apple.com/forums/thread/72330),
 [94744 (Apple Media Engineer: "you'll need to beam them over yourself")](https://developer.apple.com/forums/thread/94744) ·
 [Camo macOS download](https://releases.reincubate.com/camo-macos-latest.dmg)
+
+## Addendum 2026-09-09 (spike run the same evening, details on GitLab #15, #17, #18)
+
+- **Sandbox + usbmuxd is measured, not assumed.** The same C binary connects to
+  `/var/run/usbmuxd` as a plain executable and fails with `errno=1 Operation not permitted`
+  inside a signed `.app` carrying `com.apple.security.app-sandbox`. No entitlement lifts it.
+- **A sandboxed host CAN feed the camera extension's sink**, contrary to the earlier risk
+  estimate, but only with `com.apple.security.device.camera`. Without that entitlement the
+  sandboxed host sees no camera devices at all and fails silently (`camera=error pushed=0`,
+  no `deny` line in the log). With it: `camera=ready`, frames flow. So the host + extension
+  architecture survives the sandbox; only the USB transport does not.
+- Follow-ups: #17 (Bonjour-over-cable transport spike, needs a phone), #18 (spec: the
+  extension can never own usbmux under any channel, host-bridged is the only design).
