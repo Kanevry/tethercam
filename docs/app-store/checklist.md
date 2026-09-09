@@ -66,8 +66,8 @@ API, so the record itself is unavoidably manual (section 2.1, step O4).
 | 30 | App Review Information > Notes: paste `docs/app-store/review-notes.md`, contact `office@gotzendorfer.at`, phone as required by the form | DONE 2026-09-05 via API | 3.10, 4.7 |
 | 31 | Version Release: **Manually release this version**, so the page goes live when the website and the plugin download are ready | DONE 2026-09-05 via API (releaseType MANUAL) | 3.11 |
 | 32 | Build: select the processed build, confirm export compliance shows as answered | DONE 2026-09-05 via API (build attached) | 3.12 |
-| 33 | **Add for Review > Submit**. Blocked only by step 11 (App Privacy has no API). After step 11 either click Add for Review, or let the agent finish the prepared review submission `776750a6-a640-4696-92bf-c53cb4d21a14` via API | OWNER | 3.13 |
-| 34 | On rejection under 4.2.3 or 2.1: reply in the Resolution Center with the standalone feature list and a timestamp into the demo video. Do not resubmit an unchanged binary | OWNER | 3, closing paragraph |
+| 33 | **Add for Review > Submit**. Blocked only by step 11 (App Privacy has no API). After step 11 either click Add for Review, or let the agent finish the prepared review submission `776750a6-a640-4696-92bf-c53cb4d21a14` via API | DONE 2026-09-09: APPROVED, released manually by the owner, live at https://apps.apple.com/us/app/tethercam/id6808997521 | 3.13 |
+| 34 | On rejection under 4.2.3 or 2.1: reply in the Resolution Center with the standalone feature list and a timestamp into the demo video. Do not resubmit an unchanged binary | DONE 2026-09-09: not needed, 0.1.0 (2) APPROVED on the first submission, released manually by the owner, live at https://apps.apple.com/us/app/tethercam/id6808997521 | 3, closing paragraph |
 
 ## Verification
 
@@ -83,5 +83,5 @@ Offene Owner-Schritte, gesammelt nach dem Einreichen des iOS-Listings:
 |---|---|---|---|
 | 35 | Developer ID Installer Zertifikat: `.cer` von developer.apple.com holen (aus der CSR unter `~/.appstoreconnect/certs/developer-id-installer.certSigningRequest`) und Developer ID Application Zertifikat als `.p12` exportieren, beides nach `~/.appstoreconnect/certs/` | OWNER | RELEASING.md 1b |
 | 36 | GitHub-Secrets `MACOS_CERT_P12`, `MACOS_CERT_PASSWORD`, `MACOS_CODESIGN_IDENT`, `MACOS_INSTALLER_CERT_P12`, `MACOS_INSTALLER_CERT_PASSWORD` setzen, sobald die Dateien aus Schritt 35 vorliegen | AUTOMATED sobald Dateien existieren (Agent setzt sie) | RELEASING.md 1a, 1b |
-| 37 | Der leere macOS-Review-Submission-Entwurf `776750a6-a640-4696-92bf-c53cb4d21a14` (Plattform MAC_OS, Status READY_FOR_REVIEW laut API am 2026-09-05; die iOS-Einreichung ist `0e749dcd-74bb-43c1-a597-2d64408dfc87`, WAITING_FOR_REVIEW) in App Store Connect verwerfen; per API weder loeschbar noch abbrechbar. Blockiert nichts | OWNER | 3.13 |
+| 37 | Der leere macOS-Review-Submission-Entwurf `776750a6-a640-4696-92bf-c53cb4d21a14` (Plattform MAC_OS, Status READY_FOR_REVIEW laut API am 2026-09-05; die iOS-Einreichung ist `0e749dcd-74bb-43c1-a597-2d64408dfc87`, WAITING_FOR_REVIEW am 2026-09-05, APPROVED und veroeffentlicht am 2026-09-09) in App Store Connect verwerfen; per API weder loeschbar noch abbrechbar. Blockiert nichts | OWNER | 3.13 |
 | 38 | GitHub Social Preview hochladen: Settings > General > Social preview, Bilddatei `web/img/og.png` | OWNER | n/a |

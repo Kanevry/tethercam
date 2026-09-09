@@ -69,6 +69,15 @@ TetherCam for iPhone is free and open source under the MIT licence at github.com
 ## What's New (limit 4000)
 
 ```
+Audio from the phone. The microphone is sent over the same USB cable and shows up in the OBS audio mixer next to the picture. Needs OBS plugin 0.2.0.
+Mute switch in the settings sheet, with a badge in the status capsule while muted.
+Double-tap the preview to switch to the next camera. A short note names the lens.
+The link now survives a denied microphone and other non-fatal errors instead of reconnecting in a loop.
+```
+
+Text used for 0.1.0 (first public release):
+
+```
 First public release.
 
 Live preview while the app waits for the Mac, so you can frame the shot before OBS is connected.

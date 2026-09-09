@@ -33,7 +33,9 @@ plugin (`obs-plugin/`, GPL-2.0-or-later) and the iOS app (`ios-app/`, MIT). A ta
 
 - The plugin keeps the link on non-fatal peer errors (only BUSY and VERSION_UNSUPPORTED
   disconnect); before, a denied microphone caused an endless reconnect loop without picture.
-- iOS build number 3 for the next TestFlight upload (build 2 is the one under review).
+- iOS build number 3 for the next TestFlight upload (build 2 is the one on the App Store).
+- The iOS app is on the App Store since 2026-09-09 (0.1.0 approved on the first submission);
+  README and website point at the store, TestFlight stays the pre-release channel.
 - Repository ships `.env.example` for the App Store Connect API variables.
 
 ## [0.1.0] - 2026-09-05

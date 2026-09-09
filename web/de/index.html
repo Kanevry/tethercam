@@ -225,8 +225,8 @@
       <article class="step s1" data-reveal>
         <span class="step-n">02</span>
         <h3>Die iPhone-App holen</h3>
-        <p>Kostenlose öffentliche Beta auf TestFlight, offen für alle. Build 0.1.0 (2) hat die Beta App Review am 2026-09-06 bestanden; der App-Store-Eintrag befindet sich noch in der Prüfung. Die App lässt sich auch mit einer kostenlosen Apple-ID selbst aus dem Quelltext bauen.</p>
-        <p><a id="testflight-link" class="btn btn-primary" href="https://testflight.apple.com/join/wmT74Ry8" rel="noopener">Der TestFlight-Beta beitreten</a></p>
+        <p>Seit 2026-09-09 kostenlos im App Store, für iPhones ab iOS 17. Die TestFlight-Beta trägt die nächsten Builds, bevor sie in den Store kommen. Die App lässt sich auch mit einer kostenlosen Apple-ID selbst aus dem Quelltext bauen.</p>
+        <p class="actions"><a id="appstore-link" class="btn btn-primary" href="https://apps.apple.com/us/app/tethercam/id6808997521" rel="noopener">Im App Store laden</a> <a id="testflight-link" class="btn btn-secondary" href="https://testflight.apple.com/join/wmT74Ry8" rel="noopener">TestFlight-Beta (Vorabversionen)</a></p>
         <figure>
           <div class="device">
             <picture>
@@ -391,8 +391,8 @@
             <span class="btn-sub" data-release="zip">v0.1.0, Developer-ID-signiertes Bundle</span>
           </a>
         </p>
-        <p class="notice" data-reveal>Bis die erste Version veröffentlicht ist, <a href="https://github.com/Kanevry/tethercam#install-the-mac-plugin">selbst aus dem Quelltext bauen (5 Minuten)</a>. Die beiden Links oben zeigen bereits auf die endgültigen Release-Adressen und funktionieren, sobald v0.1.0 getaggt ist.</p>
-        <p data-reveal>Der Einzeiler-Installer wartet aus demselben Grund noch auf diese erste Version:</p>
+        <p class="notice" data-reveal>Beide Links zeigen auf das aktuelle Release, signiert und notarisiert. <a href="/install">Vollständige Installationsanleitung und Fehlersuche</a>.</p>
+        <p data-reveal>Der Einzeiler-Installer holt dasselbe Release:</p>
         <div class="code-block" data-reveal>
           <pre tabindex="0"><code id="install-cmd">curl -fsSL https://raw.githubusercontent.com/Kanevry/tethercam/main/scripts/install.sh | bash</code></pre>
           <button class="copy-btn" type="button" data-copy="install-cmd" aria-live="polite">Kopieren</button>
@@ -479,8 +479,9 @@
     <p class="lede" data-reveal>Das Übertragungsprotokoll lesen, beide Seiten selbst bauen, oder einen eigenen Empfänger schreiben.</p>
     <ul class="links" data-reveal>
       <li><a href="https://github.com/Kanevry/tethercam"><span class="lk">GitHub: Kanevry/tethercam</span> <span class="lm">Quelltext, Issues, Releases</span></a></li>
-      <li><a href="https://github.com/Kanevry/tethercam/releases"><span class="lk">Releases und Notizen</span> <span class="lm">v0.1.0 ausstehend</span></a></li>
+      <li><a href="https://github.com/Kanevry/tethercam/releases"><span class="lk">Releases und Notizen</span> <span class="lm">v0.1.0 veröffentlicht</span></a></li>
       <li><a href="https://github.com/Kanevry/tethercam/issues"><span class="lk">Issues und Fehlerberichte</span> <span class="lm">github issues</span></a></li>
+      <li><a href="https://apps.apple.com/us/app/tethercam/id6808997521" rel="noopener"><span class="lk">App Store: TetherCam</span> <span class="lm">iOS 17+, kostenlos</span></a></li>
     </ul>
     <p class="meta" data-reveal>Lizenzen: <a href="https://www.gnu.org/licenses/old-licenses/gpl-2.0.html">GPL-2.0-or-later</a> für <code>obs-plugin/</code>, weil es gegen libobs linkt. <a href="https://opensource.org/licenses/MIT">MIT</a> für die iPhone-App, den gemeinsamen C-Code, die Werkzeuge und die Protokollspezifikation.</p>
   </div>
@@ -498,6 +499,7 @@
         <li><a href="/">English</a></li>
         <li><a href="/privacy">Privacy policy</a></li>
         <li><a href="https://github.com/Kanevry/tethercam">GitHub</a></li>
+        <li><a href="https://apps.apple.com/us/app/tethercam/id6808997521" rel="noopener">App Store</a></li>
       </ul>
     </div>
     <p class="foot-mark">&mdash; TetherCam 0.1.0</p>
@@ -517,6 +519,7 @@
   "softwareVersion": "0.1.0",
   "downloadUrl": "https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-obs-plugin.pkg",
   "installUrl": "https://github.com/Kanevry/tethercam/releases",
+  "sameAs": ["https://apps.apple.com/us/app/tethercam/id6808997521"],
   "softwareHelp": "https://tethercam.app/de/#faq",
   "isAccessibleForFree": true,
   "license": ["https://www.gnu.org/licenses/old-licenses/gpl-2.0.html", "https://opensource.org/licenses/MIT"],
@@ -602,7 +605,7 @@
       "url": "https://tethercam.app/",
       "logo": "https://tethercam.app/favicon.png",
       "founder": {"@type": "Person", "name": "Bernhard Goetzendorfer", "url": "https://gotzendorfer.at"},
-      "sameAs": ["https://github.com/Kanevry/tethercam", "https://gotzendorfer.at"]
+      "sameAs": ["https://github.com/Kanevry/tethercam", "https://apps.apple.com/us/app/tethercam/id6808997521", "https://gotzendorfer.at"]
     },
     {
       "@type": "WebSite",

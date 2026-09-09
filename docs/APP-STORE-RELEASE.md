@@ -626,3 +626,12 @@ tried and both failed: `DELETE` returns HTTP 403 `FORBIDDEN_ERROR` ("does not al
 untouched at both attempts; it carries no items and is unrelated to the real iOS
 submission `0e749dcd-74bb-43c1-a597-2d64408dfc87`, so it is inert stray state rather than a
 blocker, and clearing it (if desired) needs the App Store Connect web UI, not this API key.
+
+---
+
+## 2026-09-09: Approved and released
+
+Submission `0e749dcd-74bb-43c1-a597-2d64408dfc87` (0.1.0, build 2) was approved by App
+Review on the first pass and released manually by the owner on 2026-09-09. Live at
+https://apps.apple.com/us/app/tethercam/id6808997521 (HTTP 200 verified). TestFlight stays the
+pre-release channel.

@@ -225,8 +225,8 @@
       <article class="step s1" data-reveal>
         <span class="step-n">02</span>
         <h3>Get the iPhone app</h3>
-        <p>Free public beta on TestFlight, open to anyone. Build 0.1.0 (2) cleared Beta App Review on 2026-09-06; the App Store listing is still in review. You can also build the app from source with a free Apple ID.</p>
-        <p><a id="testflight-link" class="btn btn-primary" href="https://testflight.apple.com/join/wmT74Ry8" rel="noopener">Join the TestFlight beta</a></p>
+        <p>Free on the App Store since 2026-09-09, for iPhones with iOS 17 or later. The TestFlight beta carries the next builds before they reach the store. You can also build the app from source with a free Apple ID.</p>
+        <p class="actions"><a id="appstore-link" class="btn btn-primary" href="https://apps.apple.com/us/app/tethercam/id6808997521" rel="noopener">Download on the App Store</a> <a id="testflight-link" class="btn btn-secondary" href="https://testflight.apple.com/join/wmT74Ry8" rel="noopener">TestFlight beta (early builds)</a></p>
         <figure>
           <div class="device">
             <picture>
@@ -391,8 +391,8 @@
             <span class="btn-sub" data-release="zip">v0.1.0, Developer ID signed bundle</span>
           </a>
         </p>
-        <p class="notice" data-reveal>Until the first release is published, <a href="https://github.com/Kanevry/tethercam#install-the-mac-plugin">build from source (5 minutes)</a>. The two links above point at the final release URLs and will start working the moment v0.1.0 is tagged. <a href="/install">Full install guide and troubleshooting</a>.</p>
-        <p data-reveal>The one-line installer, for the same reason, also waits for that first release:</p>
+        <p class="notice" data-reveal>Both links point at the latest release, signed and notarized. <a href="/install">Full install guide and troubleshooting</a>.</p>
+        <p data-reveal>The one-line installer fetches the same release:</p>
         <div class="code-block" data-reveal>
           <pre tabindex="0"><code id="install-cmd">curl -fsSL https://raw.githubusercontent.com/Kanevry/tethercam/main/scripts/install.sh | bash</code></pre>
           <button class="copy-btn" type="button" data-copy="install-cmd" aria-live="polite">Copy</button>
@@ -487,8 +487,9 @@
     <p class="lede" data-reveal>Read the wire protocol, build both sides yourself, or write your own receiver.</p>
     <ul class="links" data-reveal>
       <li><a href="https://github.com/Kanevry/tethercam"><span class="lk">GitHub: Kanevry/tethercam</span> <span class="lm">source, issues, releases</span></a></li>
-      <li><a href="https://github.com/Kanevry/tethercam/releases"><span class="lk">Releases and notes</span> <span class="lm">v0.1.0 pending</span></a></li>
+      <li><a href="https://github.com/Kanevry/tethercam/releases"><span class="lk">Releases and notes</span> <span class="lm">v0.1.0 published</span></a></li>
       <li><a href="https://github.com/Kanevry/tethercam/issues"><span class="lk">Issues and bug reports</span> <span class="lm">github issues</span></a></li>
+      <li><a href="https://apps.apple.com/us/app/tethercam/id6808997521" rel="noopener"><span class="lk">App Store: TetherCam</span> <span class="lm">iOS 17+, free</span></a></li>
     </ul>
     <p class="meta" data-reveal>Licenses: <a href="https://www.gnu.org/licenses/old-licenses/gpl-2.0.html">GPL-2.0-or-later</a> for <code>obs-plugin/</code>, because it links against libobs. <a href="https://opensource.org/licenses/MIT">MIT</a> for the iPhone app, the shared C code, the tools and the protocol spec.</p>
   </div>
@@ -504,6 +505,7 @@
       <ul class="foot-links">
         <li><a href="/privacy">Privacy policy</a></li>
         <li><a href="https://github.com/Kanevry/tethercam">GitHub</a></li>
+        <li><a href="https://apps.apple.com/us/app/tethercam/id6808997521" rel="noopener">App Store</a></li>
       </ul>
     </div>
     <p class="foot-mark">&mdash; TetherCam 0.1.0</p>
@@ -523,6 +525,7 @@
   "softwareVersion": "0.1.0",
   "downloadUrl": "https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-obs-plugin.pkg",
   "installUrl": "https://github.com/Kanevry/tethercam/releases",
+  "sameAs": ["https://apps.apple.com/us/app/tethercam/id6808997521"],
   "softwareHelp": "https://github.com/Kanevry/tethercam#quick-start",
   "isAccessibleForFree": true,
   "license": ["https://www.gnu.org/licenses/old-licenses/gpl-2.0.html", "https://opensource.org/licenses/MIT"],
@@ -617,7 +620,7 @@
       "url": "https://tethercam.app/",
       "logo": "https://tethercam.app/favicon.png",
       "founder": {"@type": "Person", "name": "Bernhard Goetzendorfer", "url": "https://gotzendorfer.at"},
-      "sameAs": ["https://github.com/Kanevry/tethercam", "https://gotzendorfer.at"]
+      "sameAs": ["https://github.com/Kanevry/tethercam", "https://apps.apple.com/us/app/tethercam/id6808997521", "https://gotzendorfer.at"]
     },
     {
       "@type": "WebSite",

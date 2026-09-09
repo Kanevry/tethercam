@@ -69,12 +69,11 @@ https://tethercam.app/demo.mp4 (MP4, H.264, 1920x1080, about 31 MB).
 1. OBS plugin: download https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-obs-plugin.pkg
    and open it, or run
    `curl -fsSL https://raw.githubusercontent.com/Kanevry/tethercam/main/scripts/install.sh | bash`.
-   Then restart OBS. Note: v0.1.0 is not published yet, so those two URLs return 404
-   today. Until the first release is tagged, build the plugin from source, about five
-   minutes: https://github.com/Kanevry/tethercam#install-the-mac-plugin
-2. iPhone app: public TestFlight beta at https://testflight.apple.com/join/wmT74Ry8 (build 0.1.0 (2), in Beta App Review
-   since 2026-09-05; App Store submission prepared). Alternatively build from source with a
-   free Apple ID (xcodegen generate, then Xcode).
+   Then restart OBS. Both point at the latest release (v0.1.0, signed and notarized).
+   Building from source is also possible: https://github.com/Kanevry/tethercam#install-the-mac-plugin
+2. iPhone app: App Store https://apps.apple.com/us/app/tethercam/id6808997521 (0.1.0, iOS 17+);
+   public TestFlight beta https://testflight.apple.com/join/wmT74Ry8 carries pre-release builds.
+   Alternatively build from source with a free Apple ID (xcodegen generate, then Xcode).
 3. In OBS: Tools, then "TetherCam: Add iPhone camera to current scene". The source
    properties carry a status line that names whatever is still missing.
 

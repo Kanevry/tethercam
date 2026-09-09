@@ -175,12 +175,18 @@ def find_app(app_id):
 
 
 def ensure_version(app_id, version_string):
+    global FIRST_VERSION
     d = api("GET", f"/v1/apps/{app_id}/appStoreVersions?filter[platform]=IOS&limit=5")
     editable = [v for v in d["data"] if v["attributes"]["appStoreState"] in ("PREPARE_FOR_SUBMISSION", "DEVELOPER_REJECTED", "REJECTED", "METADATA_REJECTED")]
     if not editable:
-        sys.exit("error: no editable App Store version; create one in App Store Connect")
+        # After the first release the next version has to be created; the API allows
+        # exactly one PREPARE_FOR_SUBMISSION version per platform.
+        r = api("POST", "/v1/appStoreVersions", {"data": {"type": "appStoreVersions", "attributes": {"platform": "IOS", "versionString": version_string, "releaseType": "MANUAL", "copyright": COPYRIGHT}, "relationships": {"app": {"data": {"type": "apps", "id": app_id}}}}})
+        print(f"  version {r['data']['id']}: {version_string} created (PREPARE_FOR_SUBMISSION)")
+        global FIRST_VERSION
+        FIRST_VERSION = False
+        return r["data"]["id"]
     v = editable[0]
-    global FIRST_VERSION
     FIRST_VERSION = len(d["data"]) == 1
     attrs = {"releaseType": "MANUAL", "copyright": COPYRIGHT}
     if v["attributes"]["versionString"] != version_string:
