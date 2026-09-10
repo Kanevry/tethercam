@@ -111,8 +111,12 @@ published, `releases/latest/download/...` — which the website and
 ## D. Verify before announcing
 
 ```bash
-# The one check that catches an unpublished draft. Expect 302, not 404.
-curl -sI https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-obs-plugin.pkg | head -1
+# The one check that catches an unpublished draft: the redirect TARGET must carry the
+# new tag. A bare 302 proves nothing, "latest" happily points at the previous release
+# while the new one is still a draft (bitten on 2026-09-10: gh release edit --draft=false
+# had failed silently, the 302 went to v0.2.1). Expect vX.Y.Z here, and allow ~10 s of CDN lag.
+curl -sI https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-obs-plugin.pkg | grep -i '^location' | grep -o 'v[0-9.]*'
+gh release list --repo Kanevry/tethercam -L 2      # the new tag must say Latest, not Draft
 
 gh release download v0.1.1 --repo Kanevry/tethercam --dir /tmp/verify && cd /tmp/verify
 shasum -a 256 -c TetherCam-obs-plugin.pkg.sha256
@@ -128,6 +132,6 @@ certificate will say. A signed-but-unnotarized `.pkg` fails here, correctly.
 - Version and build number, and which of the two artefacts actually shipped.
 - The `.ipa` path and the codesign Authority line (dry run), or the App Store Connect
   processing state (real upload).
-- The `curl -sI` status code for the plugin asset: 302 or 404.
+- The tag in the `Location` header of the latest/download redirect for all three assets (dmg, pkg, zip), not just the status code.
 - Any owner step still blocking: app record, installer certificate.
 - Never paste key material, a JWT, or the contents of `build/appstore-*.log`.
