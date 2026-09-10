@@ -373,8 +373,12 @@ HELLO (§4.1): u8-Laengenpraefix, UTF-8, **ohne** abschliessendes NUL.
 - *(Ergaenzt 2026-09-10, klarstellend, keine Semantikaenderung.)* `name_len` und
   `version_len` sind u8, also bis 255 Byte. Ein Empfaenger mit kuerzeren Puffern
   **kuerzt beim Lesen** und darf die Nachricht deswegen nicht verwerfen; `shared/frame_parser.c`
-  behaelt hoechstens 63 Namens- und 31 Versionsbyte. Gekuerzt wird nur auf der Empfangsseite,
-  auf der Leitung stehen immer alle Bytes.
+  behaelt hoechstens 63 Namens- und 31 Versionsbyte. Gekuerzt wird **an einer
+  UTF-8-Zeichengrenze**: es bleibt nie eine angeschnittene Mehrbyte-Sequenz stehen, ein
+  gekuerzter Name kann also auch etwas kuerzer als 63 Byte sein. `name` und `version` dienen
+  ausschliesslich der Anzeige, das Kuerzen aendert daher kein Verhalten. Gekuerzt wird nur auf
+  der Empfangsseite, auf der Leitung stehen immer alle Bytes. Swift-Empfaenger (iOS-App,
+  `usbcam-recv`, Mac-App) legen die Zeichenkette vollstaendig ab und kuerzen gar nicht.
 
 ## 5. Ablauf
 

@@ -19,6 +19,9 @@ public final class ExtensionInstaller: NSObject, OSSystemExtensionRequestDelegat
         case needsUserApproval
         case activated
         case willCompleteAfterReboot
+        /// The user dismissed the macOS confirmation dialog. Nothing changed:
+        /// an extension that was running keeps running.
+        case canceled
         case failed(String)
     }
 
@@ -82,7 +85,19 @@ public final class ExtensionInstaller: NSObject, OSSystemExtensionRequestDelegat
     }
 
     public func request(_ request: OSSystemExtensionRequest, didFailWithError error: Error) {
-        state = .failed(Self.message(for: error))
+        state = Self.state(for: error)
+    }
+
+    /// Maps a delegate error to a state. A canceled confirmation is not a
+    /// failure and above all not a completed request: the extension is
+    /// untouched, so callers must fall back to the state they had before.
+    static func state(for error: Error) -> State {
+        let nsError = error as NSError
+        if nsError.domain == OSSystemExtensionErrorDomain,
+           OSSystemExtensionError.Code(rawValue: nsError.code) == .requestCanceled {
+            return .canceled
+        }
+        return .failed(message(for: error))
     }
 
     /// Human-readable failure text; the parent-bundle case is the one users

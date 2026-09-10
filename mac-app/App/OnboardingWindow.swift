@@ -28,6 +28,13 @@ enum OnboardingStrings {
         + "not something TetherCam can do for you."
     static let step2Done = "The camera extension is approved and running."
     static let step2Button = "Open System Settings"
+    /// #32: activated, but macOS started no camera device.
+    static let noDeviceBody = "macOS activated the extension but started no camera device. That is a known "
+        + "macOS glitch after an app update. \"Restart camera extension\" switches it off and on again — "
+        + "macOS asks you to confirm both steps."
+    static let noDeviceAfterRestartBody = "Still no camera device after restarting the extension. Restart the "
+        + "Mac: after a boot macOS starts the camera extension cleanly."
+    static let restartExtensionButton = "Restart camera extension"
 
     static let step3Title = "Connect the iPhone"
     static let step3Body = "Install TetherCam from the App Store on the iPhone, connect it with the cable "
@@ -42,9 +49,10 @@ enum OnboardingStrings {
 
     static let noteAudio = "The virtual camera carries no audio. For sound from the phone use the "
         + "TetherCam OBS plugin."
-    static let noteMissingCamera = "Camera still missing in Zoom or Teams after reopening the app? Restart "
-        + "the Mac: macOS finishes registering a newly installed or updated camera extension only at "
-        + "the next boot."
+    static let noteMissingCamera = "Camera still missing in Zoom or Teams after reopening the app? Use "
+        + "\"\(restartExtensionButton)\" in step 2 or in the menu first — after an update macOS sometimes "
+        + "activates the extension without starting a camera device. If it stays away, restart the Mac: "
+        + "macOS finishes registering a newly installed or updated camera extension only at the next boot."
     static let noteSingleReceiver = "Do not run the OBS plugin at the same time: the phone accepts one "
         + "receiver, the second one gets BUSY."
 
@@ -108,11 +116,25 @@ struct OnboardingWindow: View {
                         text: OnboardingStrings.step2Body,
                         isDone: state.extensionState == .enabled,
                         doneText: OnboardingStrings.step2Done) {
-                    HStack(spacing: 8) {
-                        Button(OnboardingStrings.step2Button) { state.openExtensionSettings() }
-                        Text(state.extensionState.label)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 8) {
+                            Button(OnboardingStrings.step2Button) { state.openExtensionSettings() }
+                            if case .activatedNoDevice = state.extensionState {
+                                Button(OnboardingStrings.restartExtensionButton) { state.restartExtension() }
+                            }
+                            Text(state.extensionState.label)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        // #32: activated without a camera device is its own
+                        // state, not "waiting for approval".
+                        if case .activatedNoDevice(let restartAttempted) = state.extensionState {
+                            Text(restartAttempted ? OnboardingStrings.noDeviceAfterRestartBody
+                                                  : OnboardingStrings.noDeviceBody)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                     .padding(.top, 2)
                 }

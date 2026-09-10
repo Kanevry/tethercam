@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 import CoreMedia
 import CoreVideo
+import SystemExtensions
 import XCTest
 @testable import TetherCamCore
 
@@ -101,6 +102,106 @@ final class CameraTests: XCTestCase {
         }
         if case .error = CameraStatus.interpret(state: "terminated waiting to uninstall on reboot", devicePresent: false) {} else {
             XCTFail("unknown state must be an error")
+        }
+    }
+}
+
+// #32: "activated enabled" without a camera device.
+final class DevicePresenceWatcherTests: XCTestCase {
+    // Bug guarded: the watcher declaring the device absent although it appeared
+    // one poll later (the app would then offer a restart on a healthy install).
+    func testDeviceAppearingWithinBudgetIsPresent() {
+        let watcher = DevicePresenceWatcher(pollInterval: 1, budget: 10)
+        var probes = 0
+        var sleeps: [TimeInterval] = []
+        let outcome = watcher.wait(isPresent: { probes += 1; return probes >= 3 },
+                                   sleep: { sleeps.append($0) })
+        XCTAssertEqual(outcome, .present)
+        XCTAssertEqual(probes, 3)
+        XCTAssertEqual(sleeps, [1, 1], "one sleep between two probes, none after the hit")
+    }
+
+    // Bug guarded: an immediately present device still waiting out the budget.
+    func testDevicePresentOnFirstProbeDoesNotSleep() {
+        let watcher = DevicePresenceWatcher(pollInterval: 1, budget: 10)
+        var sleeps = 0
+        XCTAssertEqual(watcher.wait(isPresent: { true }, sleep: { _ in sleeps += 1 }), .present)
+        XCTAssertEqual(sleeps, 0)
+    }
+
+    // Bug guarded: a device that never appears reported as present (the #32
+    // state would never be named), or the loop polling past the budget.
+    func testDeviceNeverAppearingIsAbsentAfterBudget() {
+        let watcher = DevicePresenceWatcher(pollInterval: 1, budget: 10)
+        var probes = 0
+        var slept: TimeInterval = 0
+        let outcome = watcher.wait(isPresent: { probes += 1; return false }, sleep: { slept += $0 })
+        XCTAssertEqual(outcome, .absent)
+        XCTAssertEqual(probes, watcher.attempts)
+        XCTAssertEqual(probes, 11, "one immediate probe plus one per second of the 10 s budget")
+        XCTAssertEqual(slept, 10, accuracy: 0.001)
+    }
+
+    // Bug guarded: a degenerate configuration trapping instead of probing.
+    // Without the clamp in init, pollInterval 0 makes budget/pollInterval
+    // infinite and Int(.infinity) traps — the app would crash on the very path
+    // that is supposed to diagnose a broken extension.
+    func testDegenerateConfigurationStillProbesExactlyOnce() {
+        let zeroInterval = DevicePresenceWatcher(pollInterval: 0, budget: 10)
+        XCTAssertEqual(zeroInterval.pollInterval, 0.01)
+        XCTAssertEqual(zeroInterval.attempts, 1001)
+
+        let noBudget = DevicePresenceWatcher(pollInterval: 1, budget: -5)
+        XCTAssertEqual(noBudget.budget, 0)
+        XCTAssertEqual(noBudget.attempts, 1)
+        var probes = 0
+        var sleeps = 0
+        XCTAssertEqual(noBudget.wait(isPresent: { probes += 1; return false }, sleep: { _ in sleeps += 1 }), .absent)
+        XCTAssertEqual(probes, 1, "a zero budget still gets the immediate probe")
+        XCTAssertEqual(sleeps, 0)
+    }
+
+    func testAsyncDriverReportsAbsentWithoutBlockingTooLong() async {
+        let watcher = DevicePresenceWatcher(pollInterval: 0.01, budget: 0.03)
+        let outcome = await watcher.waitForDevice(isPresent: { false })
+        XCTAssertEqual(outcome, .absent)
+        XCTAssertEqual(watcher.attempts, 4)
+    }
+}
+
+// #25 item 5: a canceled macOS confirmation must not read as a finished request.
+final class ExtensionRequestErrorTests: XCTestCase {
+    // Bug guarded: OSSystemExtensionError.requestCanceled (code 11) mapped to a
+    // failure — the caller then cannot restore the state the system still has,
+    // and "Remove camera extension" would show "not installed" while the
+    // extension keeps running.
+    func testCanceledRequestIsItsOwnState() {
+        let canceled = NSError(domain: OSSystemExtensionErrorDomain,
+                               code: OSSystemExtensionError.Code.requestCanceled.rawValue)
+        XCTAssertEqual(ExtensionInstaller.state(for: canceled), .canceled)
+    }
+
+    // Bug guarded: the domain check dropped from state(for:), so any error that
+    // happens to carry code 11 (requestCanceled's raw value) reads as "user
+    // canceled, nothing changed" — the app would then keep showing the old
+    // state after a real activation failure.
+    func testForeignErrorWithTheCanceledCodeIsNotCanceled() {
+        let impostor = NSError(domain: NSPOSIXErrorDomain,
+                               code: OSSystemExtensionError.Code.requestCanceled.rawValue)
+        guard case .failed = ExtensionInstaller.state(for: impostor) else {
+            return XCTFail("only the SystemExtensions domain may map to .canceled")
+        }
+    }
+
+    func testOtherErrorsStayFailures() {
+        let notInApplications = NSError(domain: OSSystemExtensionErrorDomain,
+                                        code: OSSystemExtensionError.Code.unsupportedParentBundleLocation.rawValue)
+        XCTAssertEqual(ExtensionInstaller.state(for: notInApplications),
+                       .failed("TetherCam.app must be in /Applications"))
+
+        let foreign = NSError(domain: "at.gotzendorfer.test", code: 42)
+        guard case .failed = ExtensionInstaller.state(for: foreign) else {
+            return XCTFail("a foreign error must stay a failure")
         }
     }
 }

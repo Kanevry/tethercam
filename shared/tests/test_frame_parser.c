@@ -699,6 +699,145 @@ static void test_client_info_long_name_is_truncated(void) {
                  (int)('0' + ((IUCM_APP_VERSION_MAX - 2) % 10)));
 }
 
+/* Bug: cur_str_trunc cut on a raw byte, so a name whose 64th byte sits inside a
+ * 3-byte UTF-8 character left a partial sequence in the NUL-terminated buffer.
+ * PROTOCOL.md 4.11 requires the cut on a character boundary. */
+static void test_client_info_truncation_cuts_on_utf8_boundary(void) {
+    struct iucm_client_info back;
+    /* 'a' plus 30 times U+20AC (E2 82 AC): byte 63 falls into the 21st euro
+     * sign, so the boundary-safe cut keeps 1 + 20*3 = 61 bytes. */
+    uint8_t payload[2 + 1 + 30 * 3 + 1 + 1];
+    size_t  i, off = 0;
+
+    payload[off++] = IUCM_CLIENT_MAC_APP;
+    payload[off++] = (uint8_t)(1 + 30 * 3);
+    payload[off++] = 'a';
+    for (i = 0; i < 30; i++) {
+        payload[off++] = 0xE2;
+        payload[off++] = 0x82;
+        payload[off++] = 0xAC;
+    }
+    payload[off++] = 1;
+    payload[off++] = '9';
+    CHECK_EQ_INT((int)off, (int)sizeof(payload));
+
+    CHECK_EQ_INT(iucm_parse_client_info(payload, (uint32_t)sizeof(payload), &back), IUCM_OK);
+    CHECK_EQ_INT((int)strlen(back.name), 61);
+    CHECK_EQ_INT((unsigned char)back.name[58], 0xE2);
+    CHECK_EQ_INT((unsigned char)back.name[59], 0x82);
+    CHECK_EQ_INT((unsigned char)back.name[60], 0xAC);
+    /* The cursor still walked all 91 name bytes, so version parsed. */
+    CHECK_EQ_STR(back.version, "9");
+}
+
+/* Builds a CLIENT_INFO payload with the given raw name bytes and the version
+ * "9", so the UTF-8 cut can be exercised with exact byte patterns. Returns the
+ * payload length. */
+static uint32_t t_build_client_info(const uint8_t *name, uint8_t name_len, uint8_t *out) {
+    size_t off = 0, i;
+    out[off++] = IUCM_CLIENT_MAC_APP;
+    out[off++] = name_len;
+    for (i = 0; i < name_len; i++) out[off++] = name[i];
+    out[off++] = 1;
+    out[off++] = '9';
+    return (uint32_t)off;
+}
+
+/* Bug: a 4-byte character (emoji) whose last byte sits exactly on the 64th byte
+ * survived as 1-3 orphan continuation bytes, because the walk back over
+ * continuation bytes stopped after fewer than three steps. The name then is not
+ * valid UTF-8 any more. */
+static void test_client_info_truncation_drops_straddling_emoji(void) {
+    struct iucm_client_info back;
+    uint8_t                 name[74], payload[2 + 74 + 2];
+    uint32_t                len;
+    size_t                  i;
+
+    for (i = 0; i < 60; i++) name[i] = 'a';
+    name[60] = 0xF0; /* U+1F600, bytes 60..63: the cut at 63 is its last byte */
+    name[61] = 0x9F;
+    name[62] = 0x98;
+    name[63] = 0x80;
+    for (i = 64; i < 74; i++) name[i] = 'b';
+    len = t_build_client_info(name, 74, payload);
+
+    CHECK_EQ_INT(iucm_parse_client_info(payload, len, &back), IUCM_OK);
+    CHECK_EQ_INT((int)strlen(back.name), 60);
+    CHECK_EQ_INT((unsigned char)back.name[59], (int)'a');
+    CHECK_EQ_INT((unsigned char)back.name[60], 0);
+    /* The cursor still walked all 74 name bytes, so version parsed. */
+    CHECK_EQ_STR(back.version, "9");
+}
+
+/* Bug: a cut landing exactly behind a complete multi-byte character dropped that
+ * character too (a walk back to the previous lead byte without checking whether
+ * the sequence was actually cut), so names silently lost their last character. */
+static void test_client_info_truncation_keeps_character_ending_at_the_cut(void) {
+    struct iucm_client_info back;
+    uint8_t                 name[66], payload[2 + 66 + 2];
+    uint32_t                len;
+    size_t                  i;
+
+    for (i = 0; i < 60; i++) name[i] = 'a';
+    name[60] = 0xE2; /* U+20AC, bytes 60..62: complete inside the 63 kept bytes */
+    name[61] = 0x82;
+    name[62] = 0xAC;
+    name[63] = 0xE2; /* the next euro sign starts exactly on the cut */
+    name[64] = 0x82;
+    name[65] = 0xAC;
+    len = t_build_client_info(name, 66, payload);
+
+    CHECK_EQ_INT(iucm_parse_client_info(payload, len, &back), IUCM_OK);
+    CHECK_EQ_INT((int)strlen(back.name), 63);
+    CHECK_EQ_INT((unsigned char)back.name[60], 0xE2);
+    CHECK_EQ_INT((unsigned char)back.name[61], 0x82);
+    CHECK_EQ_INT((unsigned char)back.name[62], 0xAC);
+    CHECK_EQ_STR(back.version, "9");
+}
+
+/* Bug: malformed input walked the cut back without a bound and produced an empty
+ * name (or read before the buffer). A garbled name must stay a best-effort
+ * prefix; PROTOCOL.md 4.11 does not let a bad name kill the field. */
+static void test_client_info_truncation_malformed_bytes_stay_best_effort(void) {
+    struct iucm_client_info back;
+    uint8_t                 name[70], payload[2 + 70 + 2];
+    uint32_t                len;
+    size_t                  i;
+
+    /* Nothing but continuation bytes: no boundary exists anywhere. */
+    for (i = 0; i < 70; i++) name[i] = 0xBF;
+    len = t_build_client_info(name, 70, payload);
+    CHECK_EQ_INT(iucm_parse_client_info(payload, len, &back), IUCM_OK);
+    CHECK_EQ_INT((int)strlen(back.name), 60); /* 63 minus the three-byte bound */
+    CHECK_EQ_STR(back.version, "9");
+
+    /* A lone lead byte right before the cut is an unfinished sequence and must
+     * not end up as the last byte of the NUL-terminated name. */
+    for (i = 0; i < 70; i++) name[i] = 'a';
+    name[62] = 0xC3; /* lead byte, followed by ASCII instead of a continuation */
+    len = t_build_client_info(name, 70, payload);
+    CHECK_EQ_INT(iucm_parse_client_info(payload, len, &back), IUCM_OK);
+    CHECK_EQ_INT((int)strlen(back.name), 62);
+    CHECK_EQ_INT((unsigned char)back.name[61], (int)'a');
+    CHECK_EQ_STR(back.version, "9");
+}
+
+/* A name_len that promises more bytes than the payload carries stays an error:
+ * tolerance is about buffer size, not about short frames. */
+static void test_client_info_short_payload_is_truncated_error(void) {
+    struct iucm_client_info back;
+    uint8_t                 payload[2 + 50];
+    size_t                  i, off = 0;
+
+    payload[off++] = IUCM_CLIENT_OBS_PLUGIN;
+    payload[off++] = 100; /* claims 100 bytes, only 50 follow */
+    for (i = 0; i < 50; i++) payload[off++] = 'x';
+    CHECK_EQ_INT((int)off, (int)sizeof(payload));
+
+    CHECK_EQ_INT(iucm_parse_client_info(payload, (uint32_t)sizeof(payload), &back),
+                 IUCM_ERR_TRUNCATED);
+}
+
 int main(void) {
     RUN(test_header_roundtrip);
     RUN(test_version_constant);
@@ -706,6 +845,11 @@ int main(void) {
     RUN(test_roundtrip_start_stop);
     RUN(test_client_info_roundtrip_and_fixture);
     RUN(test_client_info_long_name_is_truncated);
+    RUN(test_client_info_truncation_cuts_on_utf8_boundary);
+    RUN(test_client_info_truncation_drops_straddling_emoji);
+    RUN(test_client_info_truncation_keeps_character_ending_at_the_cut);
+    RUN(test_client_info_truncation_malformed_bytes_stay_best_effort);
+    RUN(test_client_info_short_payload_is_truncated_error);
     RUN(test_start_flags_lengths);
     RUN(test_parse_audio_config_and_audio);
     RUN(test_roundtrip_config);

@@ -34,22 +34,65 @@ struct MenuBarView: View {
                 Label("Debug TCP \(debugTCP)", systemImage: "network")
                     .foregroundStyle(.secondary)
             }
-            Divider()
-            Button(installTitle) { state.installExtension() }
-            Button("Open Camera Extensions settings") { state.openExtensionSettings() }
-            Button(OnboardingStrings.menuItem) { state.showOnboarding() }
-            Divider()
-            Toggle("Launch at Login", isOn: Binding(
-                get: { state.launchAtLogin },
-                set: { state.setLaunchAtLogin($0) }))
-                .toggleStyle(.checkbox)
-            if let error = state.launchAtLoginError {
-                Text(error)
+            if case .activatedNoDevice(let restartAttempted) = state.extensionState {
+                // #32: macOS says "activated" while no camera device exists.
+                // Name it and offer the deactivate/activate revival.
+                Text(restartAttempted ? OnboardingStrings.noDeviceAfterRestartBody
+                                      : OnboardingStrings.noDeviceBody)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            Button("Remove camera extension…") { confirmRemoveExtension() }
+            if case .activatedNoDevice = state.extensionState {
+                // The one maintenance action that belongs next to the status:
+                // in this state it is what the user has to do right now.
+                Button(OnboardingStrings.restartExtensionButton) { state.restartExtension() }
+            }
+            Divider()
+            Button(OnboardingStrings.menuItem) { state.showOnboarding() }
+            if let update = state.updateAvailable {
+                // #27: the only update mechanism the app has — it points at the
+                // release page, downloading and installing stays manual.
+                Button("Update available: \(Self.displayVersion(update.version))") {
+                    NSWorkspace.shared.open(update.url)
+                }
+            }
+            Divider()
+            // #33: maintenance actions move off the top level — the overview
+            // shows status plus the two things a user opens daily.
+            Menu("Camera extension") {
+                if case .activatedNoDevice = state.extensionState {
+                    Button(OnboardingStrings.restartExtensionButton) { state.restartExtension() }
+                }
+                Button(installTitle) { state.installExtension() }
+                Button("Open Camera Extensions settings") { state.openExtensionSettings() }
+                Divider()
+                Button("Remove camera extension…") { confirmRemoveExtension() }
+            }
+            .fixedSize()
+            Menu("Settings") {
+                Toggle("Launch at Login", isOn: Binding(
+                    get: { state.launchAtLogin },
+                    set: { state.setLaunchAtLogin($0) }))
+                if let error = state.launchAtLoginError {
+                    Text(error)
+                }
+                if state.performsUpdateCheck {
+                    // Opt-out for the silent daily check only — the manual
+                    // check below keeps working while this is off.
+                    Toggle("Check for updates automatically", isOn: Binding(
+                        get: { state.checksForUpdatesAutomatically },
+                        set: { state.checksForUpdatesAutomatically = $0 }))
+                    Button(state.isCheckingForUpdates ? "Checking for updates…" : "Check for updates now") {
+                        state.checkForUpdatesNow()
+                    }
+                    .disabled(state.isCheckingForUpdates)
+                    if let message = state.updateCheckMessage {
+                        Text(message)
+                    }
+                }
+            }
+            .fixedSize()
             Divider()
             Text("TetherCam \(state.versionString)")
                 .font(.caption)
@@ -59,6 +102,15 @@ struct MenuBarView: View {
         }
         .padding(12)
         .frame(width: 320)
+        // The device can disappear while the app runs (#32); the activation
+        // watch only probes once, so re-probe whenever the menu is opened.
+        .onAppear { state.refreshDevicePresence() }
+    }
+
+    /// Release tags carry a leading "v" ("v0.4.0"); the menu shows the plain
+    /// number so it reads like the version row right below it.
+    static func displayVersion(_ tag: String) -> String {
+        (tag.hasPrefix("v") || tag.hasPrefix("V")) ? String(tag.dropFirst()) : tag
     }
 
     /// Deactivating the extension kills the virtual camera for every app, so it
@@ -115,16 +167,16 @@ struct MenuBarView: View {
     private var extensionSymbol: String {
         switch state.extensionState {
         case .enabled: return "checkmark.circle"
-        case .waitingForUser, .requested: return "hourglass"
+        case .waitingForUser, .requested, .verifyingDevice: return "hourglass"
         case .notInstalled: return "circle"
-        case .error: return "exclamationmark.triangle"
+        case .activatedNoDevice, .error: return "exclamationmark.triangle"
         }
     }
 
     private var installTitle: String {
         switch state.extensionState {
-        case .waitingForUser, .requested: return "Retry camera extension activation"
-        case .enabled: return "Reinstall camera extension"
+        case .waitingForUser, .requested, .verifyingDevice: return "Retry camera extension activation"
+        case .enabled, .activatedNoDevice: return "Reinstall camera extension"
         case .notInstalled, .error: return "Activate camera extension"
         }
     }

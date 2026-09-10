@@ -146,7 +146,9 @@ struct iucm_hello {
  * The wire allows up to 255 bytes for name and for version. These fixed buffers
  * are smaller, so this C side keeps at most IUCM_NAME_MAX-1 (63) name bytes and
  * IUCM_APP_VERSION_MAX-1 (31) version bytes plus the terminating NUL; longer
- * fields are truncated by iucm_parse_client_info, never rejected. */
+ * fields are truncated by iucm_parse_client_info, never rejected. The cut lands
+ * on a UTF-8 character boundary, so a kept name may be shorter than 63 bytes
+ * and never ends in a partial multi-byte sequence. Both fields are display-only. */
 struct iucm_client_info {
     uint8_t kind;
     char    name[IUCM_NAME_MAX];
@@ -242,8 +244,8 @@ int iucm_parse_hello(const uint8_t *payload, uint32_t len, struct iucm_hello *ou
 /* Accepts 11 and 12 bytes; 11 yields flags == 0, anything beyond 12 is ignored. */
 int iucm_parse_start(const uint8_t *payload, uint32_t len, struct iucm_start *out);
 /* Trailing bytes are ignored: later minor versions may append fields (4.11).
- * name and version longer than the struct's buffers are truncated (see
- * struct iucm_client_info), not rejected. */
+ * name and version longer than the struct's buffers are truncated at a UTF-8
+ * character boundary (see struct iucm_client_info), not rejected. */
 int iucm_parse_client_info(const uint8_t *payload, uint32_t len,
                            struct iucm_client_info *out);
 int iucm_parse_config(const uint8_t *payload, uint32_t len, struct iucm_config *out);

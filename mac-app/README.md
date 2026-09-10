@@ -141,6 +141,36 @@ CoreMediaIO actually handed over (measured 10 on macOS 26.6), not the
 `TetherCamContract.sinkQueueDepth` of 4 the extension requests through
 `CMIOExtensionStreamProperties.sinkBufferQueueSize` — the system may grant more.
 
+## Update check
+
+The app asks `api.github.com` for the latest `Kanevry/tethercam` release at most once
+per day and shows "Update available: x.y.z" in the menu; the download stays manual
+(.dmg or `brew upgrade --cask tethercam`). No telemetry: the request carries nothing
+but the GitHub URL and a `TetherCam/<version>` User-Agent, no identifier is sent, no
+answer is uploaded anywhere, and `--headless` / `--debug-tcp` runs never check at all.
+
+What leaves the Mac, exactly: one `GET
+https://api.github.com/repos/Kanevry/tethercam/releases/latest` with
+`Accept: application/vnd.github+json` and `User-Agent: TetherCam/<version>` — at most
+once per 24 h, and only when the app is launched.
+
+Off switch: the menu has "Check for updates automatically". Unchecking it stops the
+silent daily check; "Check for updates…" still works on demand. It is stored as the
+`UserDefaults` boolean `checkForUpdatesAutomatically` in the app's domain (absent = on):
+
+```bash
+defaults write at.gotzendorfer.tethercam.mac checkForUpdatesAutomatically -bool false
+```
+
+## Sink authorization
+
+Any local client may open the extension's sink stream; the extension logs the client
+but does not gate it. A `signingID == at.gotzendorfer.tethercam.mac` gate was measured
+twice (2026-09-09 Apple Development, 2026-09-10 Developer ID, macOS 26.6.2) and
+`CMIOExtensionClient.signingID` carried no usable value either time, so the gate would
+lock out the host itself. Details in
+`docs/superpowers/specs/2026-09-09-virtual-camera-cmio.md`.
+
 ## Extension logs
 
 The extension runs sandboxed inside `registerassistantservice`, where `Logger.info`

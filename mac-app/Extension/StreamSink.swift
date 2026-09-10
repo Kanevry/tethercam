@@ -18,6 +18,9 @@ final class StreamSink: NSObject, CMIOExtensionStreamSource {
     /// The client authorized most recently; startStream() has no client
     /// parameter, so the authorization callback records it (OBS does the same).
     private var client: CMIOExtensionClient?
+    /// pid of the client whose authorization was already logged (see
+    /// `authorizedToStartStream`), so a restart does not spam the log.
+    private var loggedClientPID: pid_t?
 
     init(streamID: UUID, streamFormat: CMIOExtensionStreamFormat, device: DeviceSource) {
         self.device = device
@@ -75,12 +78,28 @@ final class StreamSink: NSObject, CMIOExtensionStreamSource {
     /// otherwise inject frames into every app that selected "TetherCam". The
     /// source stream stays open to all clients (that is the point of a camera).
     func authorizedToStartStream(for client: CMIOExtensionClient) -> Bool {
-        // Same policy as OBS's camera extension: any local client may feed
-        // the sink. A signingID gate was tried on 2026-09-09 and locked the
-        // host out: CMIOExtensionClient.signingID is nil for the Apple
-        // Development-signed TetherCam.app on macOS 26.6. Revisit with a
-        // Developer ID build (spec, open risk "sink authorization").
-        log.notice("sink client pid \(client.pid) signingID \(client.signingID ?? "<nil>", privacy: .public)")
+        // Same policy as OBS's camera extension: any local client may feed the
+        // sink. A signingID gate was measured twice and stays impossible here:
+        // 2026-09-09 with an Apple Development build and 2026-09-10 with a
+        // Developer ID build (macOS 26.6.2/25G83, simulated *and* live iPhone
+        // stream) CMIOExtensionClient.signingID carries no usable value, so a
+        // gate would lock out the host itself. See the dated addendum in
+        // docs/superpowers/specs/2026-09-09-virtual-camera-cmio.md (#28).
+        //
+        // One line per client, not per start: the callback fires again on every
+        // stream start, and the value only ever changes with the client.
+        if loggedClientPID != client.pid {
+            loggedClientPID = client.pid
+            let signingID = client.signingID
+            // `present` is logged separately because the unified log renders an
+            // absent %{public}s as "unknown" — indistinguishable from a literal
+            // fallback string, which cost an hour on 2026-09-10.
+            log.notice("""
+                sink client pid \(client.pid, privacy: .public) \
+                signingID present \(signingID != nil, privacy: .public) \
+                value '\(signingID ?? "", privacy: .public)'
+                """)
+        }
         self.client = client
         return true
     }

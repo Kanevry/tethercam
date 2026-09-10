@@ -30,3 +30,68 @@ public enum CameraStatus: Equatable {
         return .error("extension state: \(state)")
     }
 }
+
+/// Waits for the CMIO camera device to appear after an activation.
+///
+/// Why this exists: when the camera extension is replaced in place (an app
+/// update), launchd sometimes rejects the new CMIOExtension job with EALREADY
+/// while the old job of the same label is still being torn down, and
+/// `registerassistantservice` never resubmits it. `systemextensionsctl` then
+/// reports the new build as `[activated enabled]` while no extension process
+/// runs and no camera device exists. Polling for the device is the only way the
+/// app can tell that state apart from a healthy activation.
+///
+/// The poll loop is separated from the clock and from CMIO so it can be tested:
+/// `wait(isPresent:sleep:)` is pure, `waitForDevice(isPresent:)` is the async
+/// production driver on top of the same `attempts` budget.
+public struct DevicePresenceWatcher: Sendable {
+    public enum Outcome: Equatable {
+        /// The device showed up within the budget.
+        case present
+        /// The budget elapsed without the device ever appearing.
+        case absent
+    }
+
+    /// Seconds between two probes.
+    public let pollInterval: TimeInterval
+    /// Total seconds the device gets to appear.
+    public let budget: TimeInterval
+
+    /// - Parameters:
+    ///   - pollInterval: seconds between probes, clamped to at least 10 ms.
+    ///   - budget: total seconds before the device counts as absent.
+    public init(pollInterval: TimeInterval = 1, budget: TimeInterval = 10) {
+        self.pollInterval = Swift.max(0.01, pollInterval)
+        self.budget = Swift.max(0, budget)
+    }
+
+    /// Number of probes: one immediately, then one per poll interval in budget.
+    public var attempts: Int {
+        1 + Int((budget / Swift.max(0.01, pollInterval)).rounded(.down))
+    }
+
+    /// Pure poll loop: probes `isPresent` up to `attempts` times and calls
+    /// `sleep` between two probes (never after the last one).
+    public func wait(isPresent: () -> Bool, sleep: (TimeInterval) -> Void) -> Outcome {
+        for attempt in 0..<attempts {
+            if isPresent() { return .present }
+            if attempt < attempts - 1 { sleep(pollInterval) }
+        }
+        return .absent
+    }
+
+    /// Production driver: same budget, `Task.sleep` as the clock. Cancellation
+    /// ends the wait with `.absent`; callers check `Task.isCancelled` themselves.
+    public func waitForDevice(isPresent: () -> Bool = CMIOSink.isDevicePresent) async -> Outcome {
+        for attempt in 0..<attempts {
+            if isPresent() { return .present }
+            guard attempt < attempts - 1 else { break }
+            do {
+                try await Task.sleep(nanoseconds: UInt64(pollInterval * 1_000_000_000))
+            } catch {
+                return .absent
+            }
+        }
+        return .absent
+    }
+}

@@ -293,3 +293,36 @@ under `/tmp/vcam-test/`.
   the Mac app and the App Store for the iOS app. The stale macOS review submission in
   App Store Connect is to be deleted by the owner in the UI (the API reports
   "not in cancellable state"). Re-open only if Apple changes the sandbox rule.
+
+## Measurement 2026-09-10: sink authorization stays open (Open Risk 5, #28)
+
+Open Risk 5 asked to retry the `signingID` gate with a Developer ID build. Done, and
+the answer is the same as on 2026-09-09 — the gate is not implementable on this OS.
+
+- **Setup.** macOS 26.6.2 (build 25G83). Host archived and exported with
+  `method: developer-id`, verified `Authority=Developer ID Application: Bernhard
+  Goetzendorfer (G3QZ66475M)`, `Identifier=at.gotzendorfer.tethercam.mac`, hardened
+  runtime on. The already installed extension (0.3.0/9, pid 43130) served both runs;
+  it was not replaced, so the known launchd EALREADY race was never touched.
+- **Run A, simulated stream.** `VCAM_APP=<devid export> bash tools/vcam-test.sh` →
+  `PASS listed_s=1 size=1920x1080 fps=29.68 frames=89 psnr_db=20.86`. Log:
+  `sink client pid 87954 signingID unknown`.
+- **Run B, live iPhone stream over USB** (owner started the iOS app):
+  `sink client pid 88424 signingID unknown`, followed by `sink started, client pid 88424`;
+  host status `link=streaming camera=ready res=1920x1080@30 fps=31.0`.
+- **What "unknown" means.** It is not a fallback string from our code: the extension
+  binary contains `<nil>` and no `unknown` (`strings -a … | grep -i unknown` → empty),
+  and `log show --style json` shows `formatString: "sink client pid %d signingID
+  %{public}s"` with `eventMessage: "… signingID unknown"`. The unified log renders an
+  unresolvable `%{public}s` argument that way — i.e. `CMIOExtensionClient.signingID`
+  hands the extension no usable string, with a Developer ID host either.
+- **Decision (2026-09-10).** Keep the open policy, same as the OBS camera extension.
+  A `signingID` equality gate would return false for the legitimate host and brick the
+  camera. The threat it would stop (a local process feeding frames into the sink)
+  already requires local code execution with camera access.
+- **Change made.** `StreamSink.authorizedToStartStream` now logs once per client pid
+  instead of once per stream start, and logs `signingID present <bool>` next to the
+  value, because "unknown" and a literal fallback string are indistinguishable in the
+  log. Retries must read the boolean, not the rendered value.
+- **Next retry, if any.** Only worth repeating when Apple documents a populated
+  `signingID`; a blind retry costs a build, an install and the extension race.

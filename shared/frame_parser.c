@@ -84,14 +84,34 @@ static int cur_str(struct cur *c, uint32_t n, char *dst, size_t cap) {
     return IUCM_OK;
 }
 
+/* Largest prefix of s of at most n bytes that ends on a UTF-8 character boundary, so a cut never leaves a partial multi-byte
+ * sequence behind. Only the last up-to-three bytes can belong to an unfinished
+ * character; on malformed input the walk stops there and the result is a
+ * best-effort prefix rather than an empty string. */
+static size_t utf8_floor(const uint8_t *s, size_t n) {
+    size_t steps;
+    /* Step back over the continuation bytes (10xxxxxx) that would start the cut. */
+    for (steps = 0; n > 0 && steps < 3 && (s[n] & 0xC0u) == 0x80u; steps++) n--;
+    /* If a lead byte (11xxxxxx) sits right before the cut, its sequence is the
+     * one that got cut: drop it too. */
+    if (n > 0 && (s[n - 1] & 0xC0u) == 0xC0u) n--;
+    return n;
+}
+
 /* Like cur_str, but a field that does not fit is truncated instead of rejected.
  * The contract allows up to 255 bytes per string (PROTOCOL.md 4.11); the fixed
  * C buffers are smaller, and a long name must not fail the whole message. The
- * cursor still advances over all n bytes on the wire. */
+ * kept prefix is cut at a UTF-8 boundary (4.11), so the NUL-terminated result is
+ * always valid UTF-8 when the wire bytes were. The cursor still advances over
+ * all n bytes on the wire. */
 static int cur_str_trunc(struct cur *c, uint32_t n, char *dst, size_t cap) {
     size_t keep;
     if (!cur_need(c, n)) return IUCM_ERR_TRUNCATED;
-    keep = ((size_t)n < cap - 1u) ? (size_t)n : cap - 1u;
+    if ((size_t)n < cap) {
+        keep = (size_t)n;
+    } else {
+        keep = utf8_floor(c->p + c->off, cap - 1u);
+    }
     memcpy(dst, c->p + c->off, keep);
     dst[keep] = '\0';
     c->off += n;
