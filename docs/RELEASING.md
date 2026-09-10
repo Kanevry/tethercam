@@ -338,9 +338,21 @@ Checklist per release:
    The build number is not cosmetic here: `sysextd` only replaces an already installed
    camera extension when its `CFBundleVersion` changed. Ship the same build number
    twice and users keep running the old extension while the host app looks updated.
-2. Run `scripts/mac-app-release.sh --upload vX.Y.Z` **after** `release-plugin.yml`
+   The rule in one line: **every Mac release bumps `CURRENT_PROJECT_VERSION`, no
+   exceptions** — a rebuilt .dmg with an unchanged build number installs the app but
+   keeps the OLD extension running, the nastiest possible silent failure.
+2. The .dmg carries a layout: a 640x400 Finder window, `TetherCam.app` on the left,
+   the `/Applications` alias on the right and a generated background with an arrow
+   (`mac-app/scripts/make-dmg-background.py`, needs Pillow; the image is drawn at
+   build time, nothing binary lives in the repo). The Finder/AppleScript positioning
+   is **best effort**: if Pillow is missing, the volume cannot be mounted read-write
+   or Finder scripting is denied, the script warns and ships the plain volume instead
+   of aborting the release. The app icon comes from
+   `mac-app/App/Assets.xcassets/AppIcon.appiconset`, regenerated from the 1024 px
+   master with `python3 mac-app/scripts/make-appicon.py`.
+3. Run `scripts/mac-app-release.sh --upload vX.Y.Z` **after** `release-plugin.yml`
    has created the draft release, so there is a release to attach to.
-3. Verify the artefact exactly as Gatekeeper would on a machine that has never seen
+4. Verify the artefact exactly as Gatekeeper would on a machine that has never seen
    the certificate:
 
    ```bash
@@ -350,14 +362,14 @@ Checklist per release:
    xcrun stapler validate dist/TetherCam-mac.dmg
    ```
 
-4. Publish the draft release, then verify the stable download URL:
+5. Publish the draft release, then verify the stable download URL:
 
    ```bash
    curl -sI https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-mac.dmg
    #   expected: 302. A 404 means the draft is still unpublished.
    ```
 
-5. **Update the Homebrew cask `tethercam`** in the `kanevry/homebrew-tethercam` tap:
+6. **Update the Homebrew cask `tethercam`** in the `kanevry/homebrew-tethercam` tap:
    new `version`, and the `sha256` taken from the published `TetherCam-mac.dmg.sha256`
    asset. The cask `tethercam-obs` (the OBS plugin) is a separate formula and gets
    its own bump.

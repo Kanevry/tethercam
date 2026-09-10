@@ -43,6 +43,10 @@ public struct ReceiverConfig: Equatable, Sendable {
     public var fatalRetryDelay: TimeInterval = 5
     /// Route decoded frames through FrameScaler to the contract format before onFrame.
     public var scaleToContract: Bool = true
+    /// CLIENT_INFO `name` (PROTOCOL.md 4.11); the phone shows it as the connected receiver.
+    public var clientName: String = "TetherCam for Mac"
+    /// CLIENT_INFO `version`; the host fills this from `Bundle.main`.
+    public var clientVersion: String = "0"
 
     public init(endpoint: Endpoint) {
         self.endpoint = endpoint
@@ -63,4 +67,7 @@ public struct ReceiverStats: Equatable, Sendable {
     public var decodeErrors: Int
     public var lastPingRttMs: Double?
     public var peer: String
+    /// Frames the scaler could not allocate a pool buffer for since the session
+    /// started (the consumer still holds every buffer). Cumulative, not per window.
+    public var scalerDrops: UInt64 = 0
 }

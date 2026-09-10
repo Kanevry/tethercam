@@ -56,6 +56,15 @@ public final class CMIOSink {
     public var pushedFrames: UInt64 { lock.withLock { pushed } }
     /// Frames discarded because the sink queue was full.
     public var droppedFrames: UInt64 { lock.withLock { dropped } }
+    /// Capacity of the sink queue the extension actually handed over, 0 while
+    /// disconnected. `TetherCamContract.sinkQueueDepth` is only what the
+    /// extension REQUESTS through `CMIOExtensionStreamProperties.sinkBufferQueueSize`;
+    /// CoreMediaIO is free to hand the client a larger queue (measured on
+    /// macOS 26.6: requested 4, delivered 10). Anything that reasons about
+    /// back-pressure must use this value, not the contract constant.
+    public var queueCapacity: Int {
+        lock.withLock { queue.map { Int(CMSimpleQueueGetCapacity($0)) } ?? 0 }
+    }
     public var isConnected: Bool { lock.withLock { queue != nil } }
 
     // MARK: - Lifecycle

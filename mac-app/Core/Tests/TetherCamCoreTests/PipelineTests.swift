@@ -1,9 +1,64 @@
 // SPDX-License-Identifier: MIT
+import CoreVideo
 import Foundation
 import XCTest
 @testable import TetherCamCore
 
 final class PipelineTests: XCTestCase {
+
+    /// Bug caught: the portrait path drops frames inside FrameScaler (the pool is
+    /// capped at sinkQueueDepth + 2, `scale` returns nil), the receiver then never
+    /// calls onFrame, and the menu still showed `dropped 0` while every frame was
+    /// lost — `droppedAtAllocationThreshold` had no call site at all. The scaler's
+    /// count must exist AND end up in PipelineStatus.dropped.
+    func testScalerPoolDropsAreCountedAsDropped() throws {
+        let scaler = try FrameScaler()
+        let portrait = makeNV12(width: 1080, height: 1920)
+        var held: [CVPixelBuffer] = []
+        // Exhaust the pool: keep every scaled buffer alive until scale() gives up.
+        for _ in 0..<64 {
+            guard let out = scaler.scale(portrait) else { break }
+            held.append(out)
+        }
+        XCTAssertGreaterThan(scaler.droppedAtAllocationThreshold, 0,
+                             "scaler never hit its allocation threshold (held \(held.count) buffers)")
+
+        let dropped = CameraPipeline.totalDropped(sinkDrops: 3,
+                                                  scalerDrops: scaler.droppedAtAllocationThreshold)
+        XCTAssertEqual(dropped, 3 + scaler.droppedAtAllocationThreshold)
+        held.removeAll()
+    }
+
+    /// Bug caught: `dropped` climbing into the thousands while nothing is wrong —
+    /// with no app reading the camera the sink queue stays full, `pushed` freezes
+    /// and every arriving frame is dropped by design. That idle state must be
+    /// derived (pushed stalled > 1 s while fps > 0) and must clear again the
+    /// moment a consumer drains the queue.
+    func testNoConsumerIsDerivedFromAStalledPushCounter() {
+        var detector = SinkIdleDetector()
+        XCTAssertFalse(detector.update(pushed: 10, fps: 30, now: 100.0), "first tick has no history")
+        XCTAssertFalse(detector.update(pushed: 10, fps: 30, now: 100.5), "half a second is not a stall")
+        XCTAssertTrue(detector.update(pushed: 10, fps: 30, now: 101.6), "pushed frozen for 1.6 s at fps 30")
+
+        // A consumer (Zoom) opens the camera: the queue drains, pushed advances.
+        XCTAssertFalse(detector.update(pushed: 42, fps: 30, now: 102.0))
+        XCTAssertFalse(detector.noConsumer)
+
+        // No frames arriving at all is "no iPhone", not "no consumer".
+        XCTAssertFalse(detector.update(pushed: 42, fps: 0, now: 110.0))
+
+        detector.reset()
+        XCTAssertFalse(detector.noConsumer)
+    }
+
+    private func makeNV12(width: Int, height: Int) -> CVPixelBuffer {
+        var pb: CVPixelBuffer?
+        let attrs: [CFString: Any] = [kCVPixelBufferIOSurfacePropertiesKey: [:] as CFDictionary]
+        XCTAssertEqual(CVPixelBufferCreate(kCFAllocatorDefault, width, height,
+                                           kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange,
+                                           attrs as CFDictionary, &pb), kCVReturnSuccess)
+        return pb!
+    }
 
     /// Bug caught: a pipeline that refuses to receive while the Camera Extension
     /// is absent (connect() throwing deviceNotFound must not stop the receiver),
@@ -63,6 +118,7 @@ final class PipelineTests: XCTestCase {
     /// `key=value` grep that install-local.sh and vcam-test.sh rely on.
     func testStatusLineTokensHaveNoSpaces() {
         let st = PipelineStatus(link: .waiting, camera: .waitingForUser, resolution: "-", fps: 0)
-        XCTAssertEqual(st.line, "link=waiting camera=waiting-for-user res=- fps=0.0 pushed=0 dropped=0")
+        XCTAssertEqual(st.line, "link=waiting camera=waiting-for-user res=- fps=0.0 "
+            + "received=0 pushed=0 dropped=0 no-consumer=false")
     }
 }

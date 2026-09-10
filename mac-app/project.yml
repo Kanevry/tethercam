@@ -20,8 +20,8 @@ settings:
     CODE_SIGN_STYLE: Automatic
     SWIFT_VERSION: "5.0"
     ENABLE_HARDENED_RUNTIME: YES
-    MARKETING_VERSION: "0.2.1"
-    CURRENT_PROJECT_VERSION: "6"
+    MARKETING_VERSION: "0.3.0"
+    CURRENT_PROJECT_VERSION: "8"   # sysextd replaces the extension only on a HIGHER build number
     GENERATE_INFOPLIST_FILE: YES
 
 targets:
@@ -55,6 +55,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: at.gotzendorfer.tethercam.mac
         PRODUCT_NAME: TetherCam
+        # App target only: the system extension carries no icon of its own.
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_CFBundleDisplayName: TetherCam
         INFOPLIST_KEY_LSUIElement: YES
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.video

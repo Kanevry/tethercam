@@ -236,3 +236,43 @@ under `/tmp/vcam-test/`.
   (docs/mac-app-store-feasibility.md, issue #15). One user-facing trap: a quarantined
   copy that was not dragged by Finder is run through App Translocation and the host
   reports "must be in /Applications" although it is; the install guide names the fix.
+
+## Correction 2026-09-10: release status, sandbox verdict, honest counters
+
+- **Status.** The header above says "implemented, not released". As of 2026-09-09 the
+  Mac app **is released**: 0.2.1 (build 6) ships as the Developer-ID signed, notarized
+  and stapled `TetherCam-mac.dmg` on the GitHub release plus the Homebrew cask
+  `kanevry/tethercam`. Header line kept as written, this note supersedes it.
+- **The host-bridged design is not a choice, it is the only option (#18).** The Mac App
+  Store spike measured that the deny of `/var/run/usbmuxd` in Apple's
+  `cmioextension.sb` is **unconditional** — no entitlement, no temporary exception and
+  no distribution channel lifts it. A Camera Extension therefore can never open usbmux
+  itself under ANY channel (Developer ID included), so "host receives + decodes, sink
+  stream carries frames into the extension" is the only design that can work, not
+  merely the one picked for convenience. The Non-goal "Mac App Store" above understates
+  this: MAS is blocked for the same socket reason on the host side, where the App
+  Sandbox denies the usbmuxd socket as well (docs/mac-app-store-feasibility.md, #15/#17).
+- **Sandboxed host, second trap.** A sandboxed process may feed a CMIO sink stream only
+  when it holds `com.apple.security.device.camera`. Without that entitlement the
+  sandboxed app enumerates **no** camera devices at all, so `findDevice()` returns nil
+  and the failure looks like "extension not installed" instead of "missing
+  entitlement". Silent, and worth naming before anyone retries the sandbox route.
+- **Counters are honest now (#16).** The misleading accounting named in the 2026-09-09
+  evening correction is fixed:
+  - `FrameScaler.droppedAtAllocationThreshold` is carried in `ReceiverStats.scalerDrops`
+    and folded into `PipelineStatus.dropped` via `CameraPipeline.totalDropped(...)`, so
+    the portrait path no longer reports `dropped=0` while losing every frame.
+  - `PipelineStatus.noConsumer` derives the idle state with `SinkIdleDetector`: `pushed`
+    unchanged for more than 1 s while `fps > 0`. The menu then reads "Camera ready — no
+    app is reading it yet", and the raw counters move behind `--debug-tcp`/`--headless`.
+  - The contract/observed queue mismatch is documented rather than papered over:
+    `TetherCamContract.sinkQueueDepth = 4` is only what the extension REQUESTS through
+    `CMIOExtensionStreamProperties.sinkBufferQueueSize`; CoreMediaIO handed the client a
+    capacity of 10 on macOS 26.6. `CMIOSink.queueCapacity` reads the real value from
+    `CMSimpleQueueGetCapacity` and it is surfaced as `sinkQueueCapacity`. Anything
+    reasoning about back-pressure must use the measured value.
+  - The status line gained the tokens `received=`, `no-consumer=`; it stays `key=value`,
+    so `tools/vcam-test.sh` (greps `pushed=`) is unaffected.
+- **Extension logging.** State changes in `DeviceSource`/`StreamSink`/`ProviderSource`
+  moved from `Logger.info` (not persisted in the CMIO sandbox) to `.notice`; the
+  `log stream ... --level notice` recipe is in `mac-app/README.md`.

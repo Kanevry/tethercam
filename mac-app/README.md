@@ -9,7 +9,7 @@ iPhone as the camera "TetherCam" (1920x1080, NV12, 30 fps) to every app on the M
 ## Install (users)
 
 Download **[TetherCam-mac.dmg](https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-mac.dmg)**
-(0.2.1, build 6; Developer ID signed, notarized and stapled; macOS 14 or newer,
+(0.3.0, build 7; Developer ID signed, notarized and stapled; macOS 14 or newer,
 Apple silicon and Intel; free, MIT). The checksum sits next to it as
 `TetherCam-mac.dmg.sha256`. Homebrew works too:
 `brew tap kanevry/tethercam && brew install --cask tethercam`.
@@ -25,6 +25,22 @@ Apple silicon and Intel; free, MIT). The checksum sits next to it as
    (New Movie Recording, arrow next to the record button), Photo Booth (Camera
    menu), Safari and Chrome (the site's camera picker), Teams (Settings >
    Devices).
+
+On first launch — and whenever the camera extension is not approved — a **setup
+guide** window opens with those steps and live checkmarks (in /Applications yes/no,
+extension approved yes/no, phone streaming yes/no). Reopen it any time from the menu
+bar: **Setup guide…**. It never opens in `--headless` runs.
+
+The menu bar also carries:
+
+- **Launch at Login** — a toggle backed by `SMAppService.mainApp`. If macOS refuses
+  (the login item was denied under System Settings > General > Login Items), the menu
+  shows a sentence instead of failing silently.
+- **Remove camera extension…** — asks for confirmation, then deactivates the camera
+  extension (macOS asks once more). Afterwards drag `TetherCam.app` to the Trash.
+- **TetherCam 0.3.0 (7)** — the version line, `MARKETING_VERSION (CURRENT_PROJECT_VERSION)`
+  read from the bundle. The same version travels to the phone in CLIENT_INFO
+  (protocol 1.2), so the iPhone can name the connected receiver.
 
 The camera carries **video only** (a macOS camera extension cannot carry audio),
 the output is a fixed 1920x1080 at 30 fps (a portrait phone is pillarboxed), and
@@ -60,7 +76,7 @@ xcodebuild -scheme TetherCam -configuration Release \
   -derivedDataPath build build CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM=G3QZ66475M
 # -> build/Build/Products/Release/TetherCam.app
 #    (contains Contents/Library/SystemExtensions/at.gotzendorfer.tethercam.mac.camera.systemextension)
-cd Core && swift test          # 15 tests incl. the pipeline against usbcam-sim
+cd Core && swift test          # 20 tests incl. the pipeline against usbcam-sim
 ```
 
 ## Install locally (developer Mac)
@@ -100,9 +116,10 @@ that settings pane. The extension runs sandboxed inside Apple's
 ## Headless flags
 
 - `--headless`: every pipeline status change is one stderr line:
-  `tethercam: link=<state> camera=<status> res=<WxH@fps> fps=<n> pushed=<n> dropped=<n>`
+  `tethercam: link=<state> camera=<status> res=<WxH@fps> fps=<n> received=<n> pushed=<n> dropped=<n> no-consumer=<bool>`
   (`link`: no-device|waiting|starting|streaming|incompatible|busy;
-  `camera`: missing|waiting-for-user|ready|error). Runs until SIGTERM.
+  `camera`: missing|waiting-for-user|ready|error). Tokens are `key=value`, parse by
+  key, not by position. Runs until SIGTERM.
 - `--debug-tcp HOST:PORT`: connect to a plain TCP source (`usbcam-sim`) instead of
   usbmuxd.
 - `--no-activate`: skip the system extension activation request.
@@ -113,7 +130,32 @@ tools/.build/release/usbcam-sim --bind 127.0.0.1 --port 7878 --no-audio &
 ```
 
 `pushed` only grows once the extension is enabled; until then the host keeps
-receiving and retries the sink every 2 s. Frame timestamps handed to the extension
+receiving and retries the sink every 2 s. **`dropped` climbing while nothing is
+wrong is the normal idle state:** with no app reading the camera the extension
+never dequeues, the sink queue stays full, `pushed` freezes at the queue capacity
+and every arriving frame is dropped. The host derives that state
+(`no-consumer=true`, `PipelineStatus.noConsumer`: `pushed` unchanged for more than
+1 s while `fps > 0`) and the menu shows it as a sentence; the raw counters appear
+only under `--debug-tcp` / `--headless`. Note that `queue=<n>` is the capacity
+CoreMediaIO actually handed over (measured 10 on macOS 26.6), not the
+`TetherCamContract.sinkQueueDepth` of 4 the extension requests through
+`CMIOExtensionStreamProperties.sinkBufferQueueSize` — the system may grant more.
+
+## Extension logs
+
+The extension runs sandboxed inside `registerassistantservice`, where `Logger.info`
+lines are not persisted (`log show --info` returns nothing for them). State changes
+are logged at `.notice`, failures at `.error`; per-frame chatter stays at `.debug`.
+
+```bash
+log stream --predicate 'subsystem == "at.gotzendorfer.tethercam.mac.camera"' --level notice
+# host side (menu bar app):
+log stream --predicate 'subsystem == "at.gotzendorfer.tethercam.mac"' --level info
+```
+
+`log show --last 10m --predicate '...'` works for the same `.notice` lines after the
+fact. Useful markers: `sink started` / `sink stopped`, `source started, clients=N`,
+`sink stalled for 1 s, placeholder on`, `sink resumed, placeholder off`. Frame timestamps handed to the extension
 are the host clock at push time (`CameraPipeline`), because camera clients expect
 host-clock presentation times and the phone clock is unrelated.
 

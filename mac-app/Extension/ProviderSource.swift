@@ -27,11 +27,11 @@ final class ProviderSource: NSObject, CMIOExtensionProviderSource {
     }
 
     func connect(to client: CMIOExtensionClient) throws {
-        log.info("client connected: \(client.clientID) pid \(client.pid)")
+        log.notice("client connected: \(client.clientID) pid \(client.pid)")
     }
 
     func disconnect(from client: CMIOExtensionClient) {
-        log.info("client disconnected: \(client.clientID) pid \(client.pid)")
+        log.notice("client disconnected: \(client.clientID) pid \(client.pid)")
     }
 
     var availableProperties: Set<CMIOExtensionProperty> {

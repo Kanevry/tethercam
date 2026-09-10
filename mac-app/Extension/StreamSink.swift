@@ -80,7 +80,7 @@ final class StreamSink: NSObject, CMIOExtensionStreamSource {
         // host out: CMIOExtensionClient.signingID is nil for the Apple
         // Development-signed TetherCam.app on macOS 26.6. Revisit with a
         // Developer ID build (spec, open risk "sink authorization").
-        log.info("sink client pid \(client.pid) signingID \(client.signingID ?? "<nil>", privacy: .public)")
+        log.notice("sink client pid \(client.pid) signingID \(client.signingID ?? "<nil>", privacy: .public)")
         self.client = client
         return true
     }

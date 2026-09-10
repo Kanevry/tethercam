@@ -268,7 +268,8 @@ public final class Receiver: @unchecked Sendable {
                                            keyframes: keyframes,
                                            decodeErrors: decoder?.totalErrors ?? 0,
                                            lastPingRttMs: lastRttMs,
-                                           peer: peer))
+                                           peer: peer,
+                                           scalerDrops: scaler?.droppedAtAllocationThreshold ?? 0))
                     winFrames = 0; winBytes = 0
                     lastReportUs = t
                 }
@@ -291,6 +292,16 @@ public final class Receiver: @unchecked Sendable {
                 camId = wanted
             } else {
                 camId = h.cameras.first?.id ?? 0
+            }
+            // CLIENT_INFO (0x04) names this receiver to the phone. It goes out
+            // after HELLO and before START (PROTOCOL.md 4.11). A 1.0/1.1 app skips
+            // the unknown type by `length`, so failing to send it must not end the
+            // session: log and stream on.
+            do {
+                try send(.clientInfo(ClientInfoMessage(kind: .macApp, name: config.clientName,
+                                                       version: config.clientVersion)))
+            } catch {
+                log("sending CLIENT_INFO failed (non-fatal): \(error)")
             }
             let start = StartMessage(cameraId: camId, width: config.width, height: config.height,
                                      fps: config.fps, bitrateKbps: config.bitrateKbps,
@@ -360,7 +371,7 @@ public final class Receiver: @unchecked Sendable {
                 return .fatal(.incompatible)
             }
 
-        case .stats, .audioConfig, .audio, .start, .stop:
+        case .stats, .audioConfig, .audio, .start, .stop, .clientInfo:
             return nil
         }
     }

@@ -132,7 +132,7 @@ final class DeviceSource: NSObject, CMIOExtensionDeviceSource {
     func sourceStreamDidStart() {
         stateQueue.async {
             self.sourceClientCount += 1
-            self.log.info("source started, clients=\(self.sourceClientCount)")
+            self.log.notice("source started, clients=\(self.sourceClientCount)")
             self.refresh()
         }
     }
@@ -140,7 +140,7 @@ final class DeviceSource: NSObject, CMIOExtensionDeviceSource {
     func sourceStreamDidStop() {
         stateQueue.async {
             self.sourceClientCount = max(0, self.sourceClientCount - 1)
-            self.log.info("source stopped, clients=\(self.sourceClientCount)")
+            self.log.notice("source stopped, clients=\(self.sourceClientCount)")
             self.refresh()
         }
     }
@@ -149,7 +149,7 @@ final class DeviceSource: NSObject, CMIOExtensionDeviceSource {
         stateQueue.async {
             self.sinkClient = client
             self.sinkStreaming = client != nil
-            self.log.info("sink started, client pid \(client?.pid ?? 0)")
+            self.log.notice("sink started, client pid \(client?.pid ?? 0)")
             self.refresh()
         }
     }
@@ -159,7 +159,7 @@ final class DeviceSource: NSObject, CMIOExtensionDeviceSource {
             self.sinkStreaming = false
             self.sinkClient = nil
             self.consumeActive = false
-            self.log.info("sink stopped")
+            self.log.notice("sink stopped")
             self.refresh()
         }
     }
@@ -227,7 +227,7 @@ final class DeviceSource: NSObject, CMIOExtensionDeviceSource {
         if sinkStalled {
             sinkStalled = false
             stopPlaceholder()
-            log.info("sink resumed, placeholder off")
+            log.notice("sink resumed, placeholder off")
         }
     }
 
@@ -250,7 +250,7 @@ final class DeviceSource: NSObject, CMIOExtensionDeviceSource {
         guard consumeActive, !sinkStalled,
               DispatchTime.now() > lastSinkBuffer + Self.sinkStallTimeout else { return }
         sinkStalled = true
-        log.info("sink stalled for 1 s, placeholder on until the next buffer")
+        log.notice("sink stalled for 1 s, placeholder on until the next buffer")
         startPlaceholder()
     }
 
@@ -261,14 +261,14 @@ final class DeviceSource: NSObject, CMIOExtensionDeviceSource {
         timer.setEventHandler { [weak self] in self?.emitPlaceholderFrame() }
         timer.resume()
         placeholderTimer = timer
-        log.info("placeholder started")
+        log.notice("placeholder started")
     }
 
     private func stopPlaceholder() {
         guard let timer = placeholderTimer else { return }
         timer.cancel()
         placeholderTimer = nil
-        log.info("placeholder stopped")
+        log.notice("placeholder stopped")
     }
 
     /// Dark grey NV12 frame with a lighter bar sweeping across it, so a client

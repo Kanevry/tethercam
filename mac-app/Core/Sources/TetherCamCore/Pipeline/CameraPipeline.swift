@@ -19,12 +19,24 @@ public struct PipelineStatus: Equatable, @unchecked Sendable {
     public var received: UInt64
     /// Frames handed to the extension's sink queue.
     public var pushed: UInt64
-    /// Frames dropped by the sink (queue full, not connected counts as neither).
+    /// Frames dropped on the way to the camera: sink queue full plus the frames
+    /// the scaler could not allocate a pool buffer for (the portrait path drops
+    /// there, before the sink ever sees them).
     public var dropped: UInt64
+    /// True while frames arrive and the camera is ready but nothing consumes
+    /// them: the sink queue is full and `pushed` has not advanced for over a
+    /// second. This is the NORMAL idle state — no app has opened "TetherCam" yet
+    /// — and the reason `dropped` climbs. Not an error.
+    public var noConsumer: Bool
+    /// Capacity of the sink queue as CoreMediaIO actually handed it over, 0 while
+    /// disconnected (see `CMIOSink.queueCapacity`; it may exceed the contract's
+    /// requested `sinkQueueDepth`).
+    public var sinkQueueCapacity: Int
 
     public init(link: LinkState = .noDevice, camera: CameraStatus = .extensionMissing,
                 resolution: String = "-", fps: Double = 0,
-                received: UInt64 = 0, pushed: UInt64 = 0, dropped: UInt64 = 0) {
+                received: UInt64 = 0, pushed: UInt64 = 0, dropped: UInt64 = 0,
+                noConsumer: Bool = false, sinkQueueCapacity: Int = 0) {
         self.link = link
         self.camera = camera
         self.resolution = resolution
@@ -32,13 +44,18 @@ public struct PipelineStatus: Equatable, @unchecked Sendable {
         self.received = received
         self.pushed = pushed
         self.dropped = dropped
+        self.noConsumer = noConsumer
+        self.sinkQueueCapacity = sinkQueueCapacity
     }
 
     /// One-line form used by `--headless` and the tests:
-    /// `link=streaming camera=ready res=1920x1080@30 fps=30.0 pushed=12 dropped=0`.
+    /// `link=streaming camera=ready res=1920x1080@30 fps=30.0 received=14 pushed=12
+    /// dropped=0 no-consumer=false`. Token-based (`key=value`), so consumers like
+    /// `tools/vcam-test.sh` keep working when a token is added.
     public var line: String {
         "link=\(link.shortName) camera=\(camera.shortName) res=\(resolution) "
-            + "fps=\(String(format: "%.1f", fps)) pushed=\(pushed) dropped=\(dropped)"
+            + "fps=\(String(format: "%.1f", fps)) received=\(received) pushed=\(pushed) "
+            + "dropped=\(dropped) no-consumer=\(noConsumer)"
     }
 }
 
@@ -68,6 +85,52 @@ public extension CameraStatus {
     }
 }
 
+/// Derives the "camera ready, but no app is reading it" state from the numbers
+/// the pipeline already has. Rationale: with no client on the SOURCE stream the
+/// extension never dequeues, the sink queue stays full, `pushed` freezes at the
+/// queue capacity and `dropped` climbs by one per arriving frame. Users read
+/// that as a defect; it is the normal idle state. Frames still arriving
+/// (`fps > 0`) plus a `pushed` that has not moved for longer than
+/// `stallThreshold` is exactly that situation.
+///
+/// Pure value type so it can be driven with synthetic clocks in tests.
+public struct SinkIdleDetector: Equatable, Sendable {
+    /// How long `pushed` may stand still before the state is called idle.
+    public static let stallThreshold: TimeInterval = 1.0
+
+    private var lastPushed: UInt64 = 0
+    private var lastAdvanceAt: TimeInterval?
+    public private(set) var noConsumer = false
+
+    public init() {}
+
+    /// Feeds one stats tick. `now` is any monotonic seconds value.
+    /// Returns the derived idle state.
+    @discardableResult
+    public mutating func update(pushed: UInt64, fps: Double, now: TimeInterval) -> Bool {
+        if pushed != lastPushed || lastAdvanceAt == nil {
+            lastPushed = pushed
+            lastAdvanceAt = now
+            noConsumer = false
+            return noConsumer
+        }
+        guard fps > 0, let since = lastAdvanceAt else {
+            noConsumer = false
+            return noConsumer
+        }
+        noConsumer = (now - since) > Self.stallThreshold
+        return noConsumer
+    }
+
+    /// Link left `.streaming` (or the sink was dropped): forget the history so a
+    /// fresh session does not inherit a stale idle verdict.
+    public mutating func reset() {
+        lastPushed = 0
+        lastAdvanceAt = nil
+        noConsumer = false
+    }
+}
+
 /// Owns the receiver and the sink. Thread model: all bookkeeping runs on a
 /// private serial queue; `onStatus` fires on that queue (hop to main yourself).
 /// `onFrame` from the receiver is handled inline on the decoder thread because
@@ -87,6 +150,14 @@ public final class CameraPipeline: @unchecked Sendable {
         link == .streaming
     }
 
+    /// Every frame that failed to reach the camera. The scaler drops BEFORE the
+    /// sink (`FrameScaler.scale` returns nil at the pool's allocation threshold,
+    /// so `Receiver.deliver` never calls `onFrame`); counting only the sink's
+    /// drops reports 0 while the portrait path silently loses every frame.
+    public static func totalDropped(sinkDrops: UInt64, scalerDrops: UInt64) -> UInt64 {
+        sinkDrops + scalerDrops
+    }
+
     public var onStatus: (@Sendable (PipelineStatus) -> Void)?
     /// Diagnostic lines from the receiver and the pipeline itself.
     public var onLog: (@Sendable (String) -> Void)?
@@ -98,9 +169,14 @@ public final class CameraPipeline: @unchecked Sendable {
     private var status = PipelineStatus()
     private var running = false
     private var retryGeneration = 0
+    private var idleDetector = SinkIdleDetector()
 
-    public init(endpoint: Endpoint) {
-        receiver = Receiver(config: ReceiverConfig(endpoint: endpoint))
+    /// - Parameter clientVersion: goes out in CLIENT_INFO (PROTOCOL.md 4.11) so
+    ///   the phone can name this receiver; the host fills it from `Bundle.main`.
+    public init(endpoint: Endpoint, clientVersion: String = "0") {
+        var config = ReceiverConfig(endpoint: endpoint)
+        config.clientVersion = clientVersion
+        receiver = Receiver(config: config)
         receiver.onLog = { [weak self] line in self?.onLog?("receiver: \(line)") }
         receiver.onState = { [weak self] st in
             guard let self else { return }
@@ -113,7 +189,22 @@ public final class CameraPipeline: @unchecked Sendable {
         receiver.onStats = { [weak self] stats in
             guard let self else { return }
             let (p, d) = (self.sink.pushedFrames, self.sink.droppedFrames)
-            self.update { $0.fps = stats.framesPerSecond; $0.pushed = p; $0.dropped = d }
+            // Scaler drops never reach the sink (the portrait path returns nil
+            // before push()), so they have to be added in here or `dropped`
+            // stays at 0 while frames silently disappear.
+            let total = Self.totalDropped(sinkDrops: d, scalerDrops: stats.scalerDrops)
+            let capacity = self.sink.queueCapacity
+            let idle = self.lock.withLock {
+                self.idleDetector.update(pushed: p, fps: stats.framesPerSecond,
+                                         now: ProcessInfo.processInfo.systemUptime)
+            }
+            self.update {
+                $0.fps = stats.framesPerSecond
+                $0.pushed = p
+                $0.dropped = total
+                $0.sinkQueueCapacity = capacity
+                $0.noConsumer = idle && $0.camera == .ready
+            }
         }
         receiver.onFrame = { [weak self] buffer, _ in
             self?.handle(frame: buffer)
@@ -149,7 +240,8 @@ public final class CameraPipeline: @unchecked Sendable {
         lock.unlock()
         receiver.stop()
         sink.disconnect()
-        update { $0.link = .noDevice; $0.fps = 0 }
+        lock.withLock { idleDetector.reset() }
+        update { $0.link = .noDevice; $0.fps = 0; $0.noConsumer = false; $0.sinkQueueCapacity = 0 }
     }
 
     // MARK: - Sink
@@ -167,6 +259,8 @@ public final class CameraPipeline: @unchecked Sendable {
             queue.async { [weak self] in self?.tryConnectSink(generation: generation) }
         } else if sink.isConnected {
             sink.disconnect()
+            lock.withLock { idleDetector.reset() }
+            update { $0.noConsumer = false; $0.sinkQueueCapacity = 0 }
             onLog?("sink disconnected (link \(link.shortName)); the camera shows its placeholder")
         }
     }

@@ -26,7 +26,7 @@ public enum TetherCamContract {
 
     /// Localized name shown in Zoom, Teams, FaceTime, ffmpeg -list_devices.
     public static let cameraName = "TetherCam"
-    public static let modelName = "TetherCam iPhone Camera"
+    public static let modelName = "TetherCam Virtual Camera"
 
     /// The ONE published stream format (v1): 1920x1080, NV12 video range, 30 fps.
     /// The host scales/letterboxes every decoded geometry into this format.

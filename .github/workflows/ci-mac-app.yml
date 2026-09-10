@@ -1,0 +1,72 @@
+name: ci-mac-app
+
+# CI for the macOS menu-bar app and its CMIO camera extension. No signing, no
+# secrets: the build runs with CODE_SIGNING_ALLOWED=NO so it passes in a fork
+# with zero configuration. Installing or approving the system extension cannot
+# be automated (admin password), so CI stops at "it builds and the Core tests
+# are green".
+
+on:
+  pull_request:
+    paths:
+      - 'mac-app/**'
+      - 'tools/**'
+      - 'shared/**'
+      - '.github/workflows/ci-mac-app.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'mac-app/**'
+      - 'tools/**'
+      - 'shared/**'
+      - '.github/workflows/ci-mac-app.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-mac-app-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # xcodegen emits pbxproj objectVersion 77, which needs Xcode 16+. Newest is
+      # picked at run time rather than pinned, so a runner-image refresh cannot
+      # break the job (same approach as ci-plugin.yml).
+      - name: Select the newest Xcode (16.0 or newer)
+        run: |
+          set -euo pipefail
+          newest="$(find /Applications -maxdepth 1 -name 'Xcode_*.app' | sort -V | tail -1)"
+          if [ -n "$newest" ]; then
+            sudo xcode-select -s "$newest"
+          fi
+          xcodebuild -version
+
+      - name: Install xcodegen
+        run: brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
+
+      - name: swift test (mac-app/Core)
+        run: swift test --package-path mac-app/Core
+
+      - name: Build TetherCam.app (unsigned)
+        working-directory: mac-app
+        run: |
+          set -euo pipefail
+          xcodegen generate
+          xcodebuild -scheme TetherCam -configuration Release \
+            -derivedDataPath build build CODE_SIGNING_ALLOWED=NO
+
+      - name: Check the bundle (icon, version, embedded extension)
+        working-directory: mac-app
+        run: |
+          set -euo pipefail
+          app=build/Build/Products/Release/TetherCam.app
+          test -f "$app/Contents/Resources/AppIcon.icns"
+          test -d "$app/Contents/Library/SystemExtensions/at.gotzendorfer.tethercam.mac.camera.systemextension"
+          plutil -p "$app/Contents/Info.plist" | grep -E 'CFBundleShortVersionString|CFBundleVersion|CFBundleIconName'
