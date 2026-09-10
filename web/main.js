@@ -1,6 +1,5 @@
 /* TetherCam - tethercam.app
-   Jobs: entry-only scroll reveal, the copy button, and an optional release-
-   version check. No dependencies. */
+   Jobs: entry-only scroll reveal and the copy button. No dependencies. */
 (function () {
   "use strict";
 
@@ -51,37 +50,15 @@
       var btn = this;
       var src = doc.getElementById(btn.getAttribute("data-copy"));
       if (!src || !navigator.clipboard) return;
+      var originalLabel = btn.textContent;
       navigator.clipboard.writeText(src.textContent.trim()).then(function () {
-        btn.textContent = "Copied";
-        window.setTimeout(function () { btn.textContent = "Copy"; }, 1600);
+        btn.textContent = doc.documentElement.lang === "de" ? "Kopiert" : "Copied";
+        window.setTimeout(function () { btn.textContent = originalLabel; }, 1600);
+      }).catch(function () {
+        btn.textContent = doc.documentElement.lang === "de" ? "Bitte Text auswählen" : "Select the text to copy";
+        window.setTimeout(function () { btn.textContent = originalLabel; }, 2400);
       });
     });
   }
 
-  // Release check: the download buttons default to the honest "not released
-  // yet" copy. If a real GitHub release with the plugin asset shows up,
-  // swap in the version. Any failure (offline, rate limit, CSP) leaves the
-  // default text in place.
-  if (window.fetch) {
-    fetch("https://api.github.com/repos/Kanevry/tethercam/releases/latest", {
-      headers: { Accept: "application/vnd.github+json" }
-    }).then(function (res) {
-      return res.ok ? res.json() : null;
-    }).then(function (release) {
-      if (!release || release.draft || release.prerelease || !release.tag_name) return;
-      var assets = release.assets || [];
-      var hasPkg = false;
-      for (var i = 0; i < assets.length; i++) {
-        if (assets[i].name === "TetherCam-obs-plugin.pkg") { hasPkg = true; break; }
-      }
-      if (!hasPkg) return;
-
-      var tag = release.tag_name.replace(/^v/i, "");
-      var label = "v" + tag;
-      var pkgSubs = doc.querySelectorAll('[data-release="pkg"]');
-      for (var p = 0; p < pkgSubs.length; p++) pkgSubs[p].textContent = label + ", macOS 12+";
-      var zipSubs = doc.querySelectorAll('[data-release="zip"]');
-      for (var z = 0; z < zipSubs.length; z++) zipSubs[z].textContent = label + ", unsigned bundle";
-    }).catch(function () {});
-  }
 })();
