@@ -276,3 +276,20 @@ under `/tmp/vcam-test/`.
 - **Extension logging.** State changes in `DeviceSource`/`StreamSink`/`ProviderSource`
   moved from `Logger.info` (not persisted in the CMIO sandbox) to `.notice`; the
   `log stream ... --level notice` recipe is in `mac-app/README.md`.
+
+## Decision 2026-09-10: Mac App Store is a No-Go (#15, #17)
+
+- **Rule.** App Sandbox blocks foreign Unix domain sockets such as `/var/run/usbmuxd`
+  (Apple DTS, forum thread 788364: temporary-exception entitlements "don't work for
+  Unix domain sockets"; the non-sandboxed XPC helper is Developer-ID-only). Measured
+  here on 2026-09-10: `CONNECT_FAIL errno=1` in a signed sandboxed app.
+- **Only sandbox-legal wire.** The "iPhone USB" network link that Personal Hotspot
+  creates over the same cable (spike #17: `en8` active, phone at 172.20.10.1, TCP 7878
+  reachable with Wi-Fi off). It costs the user the hotspot switch, depends on the
+  carrier plan and excludes Wi-Fi-only iPads, so it is not a drop-in replacement.
+- **Market.** Camo, Iriun and EpocCam all ship the Mac receiver as a direct download;
+  only their phone apps are in the stores.
+- **Decision (owner, 2026-09-10).** Stay with Developer ID `.dmg` + Homebrew cask for
+  the Mac app and the App Store for the iOS app. The stale macOS review submission in
+  App Store Connect is to be deleted by the owner in the UI (the API reports
+  "not in cancellable state"). Re-open only if Apple changes the sandbox rule.
