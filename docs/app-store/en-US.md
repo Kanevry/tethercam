@@ -1,6 +1,6 @@
 # App Store metadata: English (U.S.), primary localization
 
-**0.3.1 / next submission.** Bundle id `at.gotzendorfer.tethercam`. Free. iPhone only,
+**0.4.0 / next submission.** Bundle id `at.gotzendorfer.tethercam`. Free. iPhone only,
 landscape only, iOS 17+. The blocks in this top section are the ones to paste into App
 Store Connect for the next version; the 0.3.0 wording that is live or in review is kept
 verbatim further down under "Live/in review: 0.3.0" so nothing is lost.
@@ -107,14 +107,22 @@ TetherCam for iPhone is free and open source under the MIT licence at github.com
 
 ## What's New (limit 4000)
 
-Template for 0.3.1. Replace the bullet lines with the actual changes of the build before
-submitting; the first line is the positioning and stays.
+Filled for 0.4.0 on 2026-09-10. The first line is the positioning and stays; the rest is
+the honest state of this build. **0.4.0 is a minor version because of the Mac app**, which
+gains an update check and camera-extension recovery. The iPhone app itself has no
+user-visible change in this build, so the text says so instead of inventing bullets.
+Evidence: `git log v0.3.0..HEAD --oneline` and `git status --short` show no change under
+`ios-app/`; the only protocol-side change of this cycle is the UTF-8-safe truncation of
+long `CLIENT_INFO` receiver names in `shared/frame_parser.c`, which is compiled by the C
+receivers (OBS plugin, Mac app) — the iPhone app parses `CLIENT_INFO` in its own Swift
+code (`ios-app/Sources/Protocol/IucmMessage.swift`) and is not affected. If the build that
+is finally submitted does carry an iOS change, replace the second paragraph before
+submitting.
 
 ```
 Your iPhone, instead of a webcam: install the free TetherCam Mac app from tethercam.app, plug in the cable, and the phone is a camera in Zoom, Teams, Meet, FaceTime and every other Mac app that lists system cameras.
-<change one>
-<change two>
-<change three>
+
+No changes to the iPhone app in this version. The work of this release is on the Mac side: TetherCam for Mac now checks for updates once a day and can restart its camera extension when macOS fails to start the camera after an update. Details: tethercam.app/changelog
 ```
 
 ---

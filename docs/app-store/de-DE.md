@@ -1,6 +1,6 @@
 # App Store metadata: German (de-DE), secondary localization
 
-**0.3.1 / next submission.** Gleiche Felder wie `en-US.md`, uebersetzt. Die Bloecke im
+**0.4.0 / next submission.** Gleiche Felder wie `en-US.md`, uebersetzt. Die Bloecke im
 oberen Abschnitt sind die naechste Einreichung; der Wortlaut von 0.3.0, der live ist oder
 in Pruefung liegt, steht unveraendert weiter unten unter "Live/in review: 0.3.0". Die
 Lokalisierung heisst in App Store Connect **German** (de-DE); Oesterreich wird davon
@@ -111,14 +111,16 @@ TetherCam für iPhone ist kostenlos und quelloffen unter der MIT-Lizenz: github.
 
 ## What's New (limit 4000)
 
-Vorlage fuer 0.3.1. Die Platzhalterzeilen vor der Einreichung durch die tatsaechlichen
-Aenderungen des Builds ersetzen; die erste Zeile ist die Botschaft und bleibt stehen.
+Am 2026-09-10 ausgefuellt. Die erste Zeile ist die Botschaft und bleibt stehen; der Rest
+ist der ehrliche Stand dieses Builds. **0.4.0 ist wegen der Mac-App eine Minor-Version**
+(Update-Pruefung und Wiederherstellung der Kameraerweiterung). Die iPhone-App selbst hat
+in diesem Build keine sichtbare Aenderung, deshalb steht das auch so da. Beleg und
+englische Fassung: `en-US.md`, gleicher Abschnitt.
 
 ```
 iPhone statt Webcam: die kostenlose TetherCam-Mac-App von tethercam.app installieren, Kabel einstecken, und das Telefon ist Kamera in Zoom, Teams, Meet, FaceTime und jeder anderen Mac-App, die Systemkameras auflistet.
-<Änderung eins>
-<Änderung zwei>
-<Änderung drei>
+
+An der iPhone-App aendert sich in dieser Version nichts. Die Arbeit dieser Version steckt auf der Mac-Seite: TetherCam fuer Mac prueft jetzt einmal taeglich auf Updates und kann seine Kameraerweiterung neu starten, wenn macOS die Kamera nach einem Update nicht startet. Details: tethercam.app/changelog
 ```
 
 ---

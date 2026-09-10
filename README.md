@@ -124,7 +124,7 @@ The wire format is documented well enough to write your own receiver: [protocol/
 
 **Your iPhone in every Mac app, no OBS involved.** `TetherCam-mac.dmg` is a free menu bar app that embeds a CoreMediaIO Camera Extension. It receives the same USB stream the OBS plugin does and publishes it as the system camera "TetherCam" (1920x1080, 30 fps), so Zoom, Teams, Google Meet, FaceTime, QuickTime and ffmpeg see the iPhone like any webcam.
 
-**[Download TetherCam-mac.dmg](https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-mac.dmg)** &middot; version 0.3.0, Developer ID signed, notarized and stapled &middot; macOS 14 or newer, Apple silicon and Intel &middot; free, MIT. The checksum is next to it as [`TetherCam-mac.dmg.sha256`](https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-mac.dmg.sha256).
+**[Download TetherCam-mac.dmg](https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-mac.dmg)** &middot; version 0.4.0, Developer ID signed, notarized and stapled &middot; macOS 14 or newer, Apple silicon and Intel &middot; free, MIT. The checksum is next to it as [`TetherCam-mac.dmg.sha256`](https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-mac.dmg.sha256).
 
 ### Five steps
 
@@ -168,7 +168,7 @@ brew install --cask tethercam
 |---|---|
 | The menu says "Error: TetherCam.app must be in /Applications" although it is there | The app was copied by something other than Finder while it still carried the quarantine flag, so macOS App Translocation runs it from a random read-only path. Drag it into `/Applications` with **Finder**, or run `xattr -dr com.apple.quarantine /Applications/TetherCam.app` and open it again |
 | The camera "TetherCam" does not appear in any app | The extension is not enabled yet. System Settings > General > Login Items & Extensions > Camera Extensions > enable TetherCam, then quit (Cmd-Q) and reopen the app that should show the camera |
-| Extension enabled, app reopened, still no "TetherCam" in Zoom or Teams | Restart the Mac. macOS finishes registering a newly installed or updated camera extension only at the next boot; Zoom 7.1 and Teams listed the camera right after the restart |
+| Extension enabled, app reopened, still no "TetherCam" in Zoom or Teams | Open the TetherCam menu first. If it says the extension is activated but macOS started no camera device, choose **Restart camera extension** (two confirmations). Only if the camera still does not appear, restart the Mac: macOS finishes registering a newly installed or updated camera extension only at the next boot; Zoom 7.1 and Teams listed the camera right after the restart |
 | The picture stays black and the menu says BUSY | Another receiver already holds the phone. Close the OBS TetherCam source (or the other app) first |
 | Nothing happens after plugging the phone in | Open TetherCam on the phone and leave it in the foreground; iOS suspends the listener in the background |
 | The camera list in an app is stale | Camera lists are read at app launch. Quit and reopen that app |

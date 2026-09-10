@@ -13,7 +13,7 @@ shipped in commit 581a800 and is mentioned so the reviewer does not have to hunt
 Updated 2026-09-10 for 0.3.0: the purpose paragraph now names both receivers, the Mac app
 first, and the quoted status line is the shipping 0.3.0 wording "Waiting for the Mac".
 
-Updated again 2026-09-10 for the 0.3.1 / next submission (issue #31): the purpose paragraph
+Updated again 2026-09-10 for the 0.4.0 / next submission (issue #31): the purpose paragraph
 leads with the two-apps picture — TetherCam for Mac plus TetherCam for iPhone, one cable —
 states that the camera appears in every Mac app that lists system cameras, names Zoom and
 Microsoft Teams as verified on 2026-09-10, and demotes OBS to one tool among many. The

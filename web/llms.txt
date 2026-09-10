@@ -7,8 +7,8 @@
 
 Verified release facts, 2026-09-10:
 - iPhone App Store app: 0.2.0, free, iOS 17 or later.
-- Mac app: 0.3.0, free, macOS 14 or later, Apple silicon and Intel.
-- OBS plugin: 0.3.0, free, macOS 12 or later and OBS Studio 30 or later.
+- Mac app: 0.4.0, free, macOS 14 or later, Apple silicon and Intel.
+- OBS plugin: 0.4.0, free, macOS 12 or later and OBS Studio 30 or later.
 The three components have separate distribution states. A GitHub release does not
 mean the same iPhone version has passed App Review.
 
@@ -36,6 +36,10 @@ tested here. Restart a call app if its camera list is stale after installation.
 - Setup and troubleshooting: https://tethercam.app/install#mac-app
 
 The Mac download is Developer ID signed and notarized. It is not a Mac App Store app.
+Privacy: from Mac app 0.4.0 the app checks once per day at launch whether a newer
+version exists, by one unauthenticated GET to the GitHub releases API; it sends only
+the app version and is switched off with "Check for updates automatically" in the menu.
+The iPhone app makes no outbound connections at all.
 
 ## Use the iPhone as a camera and microphone in OBS
 

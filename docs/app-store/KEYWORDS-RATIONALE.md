@@ -141,9 +141,9 @@ issue #31: the message is **"Your iPhone, instead of a webcam." / "iPhone statt 
 The product is two apps — TetherCam for Mac (free, tethercam.app) and TetherCam for iPhone
 — and the promise is: download both, plug in the cable, done. It works in every Mac app
 that lists system cameras; OBS is one tool among many. This addendum records the fields for
-the **0.3.1 / next submission**; the addendum above (0.3.0) stands unchanged.
+the **0.4.0 / next submission**; the addendum above (0.3.0) stands unchanged.
 
-| Field | Before (0.3.0) | After (0.3.1) |
+| Field | Before (0.3.0) | After (0.4.0) |
 |---|---|---|
 | Subtitle (en) | `iPhone webcam over USB cable` (28) | `iPhone instead of a webcam` (26) |
 | Subtitle (de) | `iPhone-Webcam per USB-Kabel` (27) | `iPhone statt Webcam` (19) |
@@ -179,7 +179,7 @@ two exceptions; `mac` is still the first term to drop if App Review ever queries
 Apple keeps editable on a version that is already READY_FOR_SALE or WAITING_FOR_REVIEW, so
 the new message reached the live 0.2.0 page and the 0.3.0 version in review on 2026-09-10,
 months before the subtitle and the description can follow with a submission. Subtitle,
-keywords, description and What's New are version-scoped and wait for 0.3.1.
+keywords, description and What's New are version-scoped and wait for 0.4.0.
 
 What to measure next cycle: whether the conversion rate on the product page moves at all,
 because that is the only thing the new subtitle can win. If impressions on `iphone webcam`

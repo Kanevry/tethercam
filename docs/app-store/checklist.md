@@ -110,7 +110,7 @@ the subtitle/keyword move: `KEYWORDS-RATIONALE.md`, addendum 2026-09-10. Positio
 | 43 | Replace screenshot 1 with the new Mac-first hero (`01-hero-wired-into-mac.png`) via `scripts/asc-listing.py --replace-screenshots`; the old `01-hero-wired-into-obs.png` no longer matches the positioning | OWNER (agent may run it) | with 0.3.0 |
 | 44 | Version release for 0.3.0: **Manually release this version**, as for 0.1.0 and 0.2.0 | OWNER | with 0.3.0 |
 
-## 0.3.1 / next submission (metadata prepared 2026-09-10, issue #31)
+## 0.4.0 / next submission (metadata prepared 2026-09-10, issue #31)
 
 Owner message of 2026-09-10: **"Your iPhone, instead of a webcam." / "iPhone statt
 Webcam."** Two apps — TetherCam for Mac (free, tethercam.app) and TetherCam for iPhone —
@@ -125,15 +125,15 @@ and `de-DE.md` under "Live/in review: 0.3.0".
 | Keywords | `usb`, `cable`, `mac`, `obs` (en) and `usb`, `kabel`, `mac`, `obs` (de) return, because the subtitle no longer carries them; `studio` returns (en), `camcorder` and `capture` leave (de/en) |
 | Promotional text | New message in both locales; not version-scoped, pushed on 2026-09-10 to 0.2.0 and 0.3.0 (step 45) |
 | Description | "TWO APPS, ONE CABLE" first, then "WHAT YOU NEED", "THE HONEST LIMITS" (video only, foreground, one receiver), "ON THE PHONE", and OBS last as the streaming path |
-| What's New | Template only. The first line is the positioning; the bullet placeholders are replaced with the actual changes of the build before submitting |
+| What's New | Filled 2026-09-10 (en + de). First line is the positioning; the second paragraph says honestly that the iPhone app has no user-visible change in this build and points at the Mac-side update check and camera-extension recovery plus tethercam.app/changelog. Re-check before submitting: if the submitted build does carry an iOS change, replace that paragraph |
 | Review notes | Purpose paragraph leads with the two apps, names Zoom and Teams as verified 2026-09-10, states the three limits up front |
 
 | # | Step | Who | When |
 |---|---|---|---|
 | 45 | Push the new **promotional text** (en-US and de-DE) to both versions via `scripts/asc-api.sh raw PATCH /v1/appStoreVersionLocalizations/{id}`. It is the only field Apple keeps editable on READY_FOR_SALE and WAITING_FOR_REVIEW versions | DONE 2026-09-10 (0.2.0 and 0.3.0, en-US and de-DE, read back via GET) | now |
-| 46 | Screenshots v2 from `~/Desktop/TetherCam-AppStore/drafts-v2/`: produced by a separate pass, must show the Mac-app-first story (phone on a cable next to a Mac, the camera picker of an ordinary Mac app, no OBS in frame 1). Validate with `bash docs/app-store/validate.sh` before upload | AGENT (screenshots) then OWNER | before 0.3.1 |
-| 47 | Upload the v2 set with `scripts/asc-listing.py --replace-screenshots` once the 0.3.1 version exists. This supersedes step 43, whose single new hero frame is now part of the full v2 set | OWNER (agent may run it) | with 0.3.1 |
-| 48 | Subtitle, keywords, description and What's New from the top section of `en-US.md` / `de-DE.md` go with the **0.3.1** version; they are version-scoped and cannot be pushed earlier | OWNER | with 0.3.1 |
-| 49 | Fill the What's New template before submitting: replace `<change one/two/three>` with the real changes of the 0.3.1 build, keep the first line | OWNER | with 0.3.1 |
-| 50 | Paste the updated `review-notes.md` into App Review Information > Notes | OWNER | with 0.3.1 |
-| 51 | Upload the 0.3.1 build via `scripts/appstore-upload.sh`, attach it, version release **Manually release this version** | OWNER | with 0.3.1 |
+| 46 | Screenshots v2 from `~/Desktop/TetherCam-AppStore/drafts-v2/`: produced by a separate pass, must show the Mac-app-first story (phone on a cable next to a Mac, the camera picker of an ordinary Mac app, no OBS in frame 1). Validate with `bash docs/app-store/validate.sh` before upload | AGENT (screenshots) then OWNER | before 0.4.0 |
+| 47 | Upload the v2 set with `scripts/asc-listing.py --replace-screenshots` once the 0.4.0 version exists. This supersedes step 43, whose single new hero frame is now part of the full v2 set | OWNER (agent may run it) | with 0.4.0 |
+| 48 | Subtitle, keywords, description and What's New from the top section of `en-US.md` / `de-DE.md` go with the **0.4.0** version; they are version-scoped and cannot be pushed earlier | OWNER | with 0.4.0 |
+| 49 | What's New is filled (en + de, 2026-09-10). Before submitting, verify it still matches the actual 0.4.0 build: `git log v0.3.0..HEAD -- ios-app/` must stay empty, otherwise rewrite the second paragraph | AGENT done, OWNER verifies | with 0.4.0 |
+| 50 | Paste the updated `review-notes.md` into App Review Information > Notes | OWNER | with 0.4.0 |
+| 51 | Upload the 0.4.0 build via `scripts/appstore-upload.sh`, attach it, version release **Manually release this version** | OWNER | with 0.4.0 |

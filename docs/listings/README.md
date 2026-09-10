@@ -32,3 +32,31 @@ Die aktuelle Forum-Policy wurde gelesen. Bernhard bestätigte am 2026-09-09, den
 Release-Stand beim Posten: TetherCam iPhone-App 0.1.0 ist im App Store, Mac-Plugin 0.2.0 ist veröffentlicht. Das iPhone-Audio-Update 0.2.0 ist in App Review. Die Beiträge versprechen daher kein bereits verfügbares iPhone-Audio aus der aktuellen Store-App. AgenticCutter ist über https://agentic-cutter.com/en downloadbar (sieben Tage Trial, anschließend kostenpflichtig; Apple Silicon/macOS 26+); Mac-App-Store-Review läuft.
 
 Keine bezahlte Bewerbung oder Crossposts angelegt. Nach wiederholtem Filtern wurden weitere Einreichungen gestoppt; gefilterte Posts wurden nicht als Duplikate neu eingereicht. Die von Bernhard gesendete r/obs-Moderatorenanfrage steht in `reddit-filter-review-2026-09-09.md`; die anschließend mit seiner ausdrücklichen Freigabe in Chrome gesendeten MicroSaaS- und IMadeThis-Anfragen stehen in `reddit-additional-modmail-drafts.md`. Es wurde kein wiederkehrender Monitor eingerichtet.
+
+## Runde 2 (Mac-App-first) — 2026-09-10, Issue #30
+
+Das Produkt ist seit 0.3.0 Mac-App-first: **"Your iPhone, instead of a webcam"**, zwei
+kostenlose Apps (TetherCam für Mac mit CMIO-Kameraerweiterung, TetherCam für iPhone im
+App Store), ein USB-Kabel, funktioniert in Zoom, Teams, Meet, FaceTime, QuickTime, Safari,
+Chrome und jeder Mac-App, die Systemkameras auflistet. OBS Studio ist der optionale
+Profi-Pfad und der einzige mit Telefon-Mikrofon.
+
+Die Texte aus Runde 1 sind damit inhaltlich überholt. Sie werden trotzdem **nicht** neu
+eingereicht oder ersetzt — die Regel aus Runde 1 gilt weiter: gefilterte Beiträge werden
+nicht wiederholt, pro Subreddit höchstens eine Modmail.
+
+- **Neue Entwürfe:** `community-round-2-mac-app.md` — je ein Entwurf für r/macapps
+  (bewusst ein **App-Pile-Kommentar**, kein neuer Post: dort ist ein eigenständiger Post
+  außerhalb des Monats-App-Piles nicht zulässig), r/Zoom, r/WFH und eine kurze Variante
+  für r/MicrosoftTeams. Dazu die ehrlich formulierte Teams-Einschränkung und eine
+  Posting-Checkliste für den Owner.
+- **Status: nichts veröffentlicht.** Alle vier Texte sind Entwürfe; das Posten macht der
+  Owner.
+- **Regelprüfung ausstehend.** `curl .../about/rules.json` lieferte am 2026-09-10 für alle
+  vier Subreddits Reddits Blockseite ("Your request has been blocked due to a network
+  policy") statt der Regeln. Der Owner muss die Regeln vor jedem Post in der Sidebar und
+  im Composer selbst lesen.
+- **Medien:** ausschließlich `web/img/mac-app-zoom.png`, ohne Gesichter.
+- **Verifikationsstand der Texte:** Zoom 7.1.5 und neues Teams-Desktop am 2026-09-10 mit
+  einem echten iPhone 15 Pro Max belegt; Teams im Browser ungetestet und in den Texten
+  ausdrücklich als ungetestet benannt.
