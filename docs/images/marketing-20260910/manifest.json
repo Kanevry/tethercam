@@ -1,0 +1,85 @@
+{
+  "reviewedAt": "2026-09-10",
+  "designSource": {
+    "path": "tethercam.pen",
+    "bytes": 146251,
+    "sha256": "3c455a7da8c7bc69e8c98408edeac43b94aa6f4920c04131fe0cc9211617ea8e"
+  },
+  "imageDependencies": [
+    {
+      "path": "images/generated-1788629447997.png",
+      "bytes": 616973,
+      "sha256": "a2c0e266816e9c1e29a020030d67fc08a4e48aa4a336c9e7411711fab9227281"
+    },
+    {
+      "path": "docs/images/obs-tools-menu.png",
+      "bytes": 254965,
+      "sha256": "814fe770cccc99647f9a79d08d00e99c952f6dd91d884e66fd4a0da8a5e71d6f"
+    },
+    {
+      "path": "web/img/grain.webp",
+      "bytes": 4080,
+      "sha256": "e2e2f7963fdb52eb45bad6f7890743a67e42dd4db6a19f77bf769e561ae50cb7"
+    },
+    {
+      "path": "web/img/mac-app-zoom.webp",
+      "bytes": 44910,
+      "sha256": "daee33cc269cdae60e25cf869da7460b9038ef2b817c9fa9c17f65a1979313de"
+    }
+  ],
+  "exports": [
+    {
+      "path": "docs/images/marketing-20260910/EN8uf.png",
+      "bytes": 237392,
+      "sha256": "6e3aaca1d5f65bbe98c37ba52120d4d4cfbc299a3ea60f0d9f4de507f389eab6"
+    },
+    {
+      "path": "docs/images/marketing-20260910/Ju7aV.png",
+      "bytes": 1315216,
+      "sha256": "bd5b79a9c32541ee38509b1b361405320f39ef0a2965d4fb998676726a40c9e8"
+    },
+    {
+      "path": "docs/images/marketing-20260910/R7CxLp.png",
+      "bytes": 239879,
+      "sha256": "cebf8021c8ff9d604f9cd93eeb42fd8f326fa8545eb68cff4430ddc8caa80cb2"
+    },
+    {
+      "path": "docs/images/marketing-20260910/REGeL.png",
+      "bytes": 255059,
+      "sha256": "54d69454465c9302c8320ef354e7876944ae9181f310376a3d52ea6f79c9aecb"
+    },
+    {
+      "path": "docs/images/marketing-20260910/acceptance-1280.png",
+      "bytes": 100425,
+      "sha256": "3a15d627d0b9888fb437368039c44f8c3352c4e2f80f2d22f556370e05f6d4a5"
+    },
+    {
+      "path": "docs/images/marketing-20260910/acceptance-320.png",
+      "bytes": 60211,
+      "sha256": "434a8458a86aef900ff0bf31d7fa69e942373db9613f7845b37ff3a622e3c809"
+    },
+    {
+      "path": "docs/images/marketing-20260910/acceptance-390.png",
+      "bytes": 66235,
+      "sha256": "2335bec91466d372dc80fa4d78f715310f02e26380edfc7737601b47d7db4527"
+    },
+    {
+      "path": "docs/images/marketing-20260910/b8mBu.png",
+      "bytes": 1668080,
+      "sha256": "2d436231c7bb7bbe253fb0a9e08c133b535fe0cc26bc0b56b805dfa4e3735bb1"
+    },
+    {
+      "path": "docs/images/marketing-20260910/bPZ92.png",
+      "bytes": 1449885,
+      "sha256": "22ccdf46b960e8ae989b6b991049ba0df2c19d634a85b24558ea8b7e5761ada3"
+    },
+    {
+      "path": "docs/images/marketing-20260910/k9SlEc.png",
+      "bytes": 853347,
+      "sha256": "0ce4962fdc8c6b0bba15dbcc6b792af40a31485121d16ac25df9558bd8a26934"
+    }
+  ],
+  "dependencyEvidence": "Image fills inspected through the Pencil API on 2026-09-10. The imported website hero references existing repository images, including web/img/mac-app-zoom.webp. Its grain overlay is disabled in the final reviewed frame. No localhost cache paths remain in the confirmed dependency inventory. The .pen file was copied as an opaque file without parsing.",
+  "fontHandling": "Pencil uses installed fonts and font tokens. No local font-file references or fonts directory were reported for this document.",
+  "storeStatus": "Draft exports for review. No App Store screenshot upload or replacement performed."
+}
