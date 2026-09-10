@@ -37,11 +37,14 @@ enum OnboardingStrings {
 
     static let step4Title = "Pick \"TetherCam\" as the camera"
     static let step4Body = "In Zoom, Teams, Meet, FaceTime or any other app choose the camera named "
-        + "\"TetherCam\". Apps read the camera list at launch: quit and reopen an app that was already "
-        + "running before the extension appeared."
+        + "\"TetherCam\". Apps read the camera list at launch: quit (Cmd-Q) and reopen an app that was "
+        + "already running before the extension appeared."
 
     static let noteAudio = "The virtual camera carries no audio. For sound from the phone use the "
         + "TetherCam OBS plugin."
+    static let noteMissingCamera = "Camera still missing in Zoom or Teams after reopening the app? Restart "
+        + "the Mac: macOS finishes registering a newly installed or updated camera extension only at "
+        + "the next boot."
     static let noteSingleReceiver = "Do not run the OBS plugin at the same time: the phone accepts one "
         + "receiver, the second one gets BUSY."
 
@@ -132,6 +135,7 @@ struct OnboardingWindow: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Label(OnboardingStrings.noteAudio, systemImage: "speaker.slash")
                     Label(OnboardingStrings.noteSingleReceiver, systemImage: "exclamationmark.triangle")
+                    Label(OnboardingStrings.noteMissingCamera, systemImage: "arrow.counterclockwise.circle")
                 }
                 .font(.callout)
                 .foregroundStyle(.secondary)

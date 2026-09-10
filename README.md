@@ -151,7 +151,7 @@ brew install --cask tethercam
 | Safari and Chrome | the site's own camera picker, or the camera icon in the address bar |
 | Microsoft Teams | Settings > Devices |
 
-**Verified on 2026-09-09 with a real iPhone 15 Pro Max** in QuickTime Player, Photo Booth, FaceTime, Google Meet in Chrome, Safari, Chrome and ffmpeg. Zoom and Microsoft Teams were not tested by us, because neither was installed on the test machine; they use the same system camera API, so they should work, but that is not verified by us.
+**Verified with a real iPhone 15 Pro Max** in QuickTime Player, Photo Booth, FaceTime, Google Meet in Chrome, Safari, Chrome and ffmpeg (2026-09-09) and in Zoom 7.1.5 and Microsoft Teams (2026-09-10).
 
 ### Limits
 
@@ -164,7 +164,8 @@ brew install --cask tethercam
 | Symptom | Fix |
 |---|---|
 | The menu says "Error: TetherCam.app must be in /Applications" although it is there | The app was copied by something other than Finder while it still carried the quarantine flag, so macOS App Translocation runs it from a random read-only path. Drag it into `/Applications` with **Finder**, or run `xattr -dr com.apple.quarantine /Applications/TetherCam.app` and open it again |
-| The camera "TetherCam" does not appear in any app | The extension is not enabled yet. System Settings > General > Login Items & Extensions > Camera Extensions > enable TetherCam, then quit and reopen the app that should show the camera |
+| The camera "TetherCam" does not appear in any app | The extension is not enabled yet. System Settings > General > Login Items & Extensions > Camera Extensions > enable TetherCam, then quit (Cmd-Q) and reopen the app that should show the camera |
+| Extension enabled, app reopened, still no "TetherCam" in Zoom or Teams | Restart the Mac. macOS finishes registering a newly installed or updated camera extension only at the next boot; Zoom 7.1 and Teams listed the camera right after the restart |
 | The picture stays black and the menu says BUSY | Another receiver already holds the phone. Close the OBS TetherCam source (or the other app) first |
 | Nothing happens after plugging the phone in | Open TetherCam on the phone and leave it in the foreground; iOS suspends the listener in the background |
 | The camera list in an app is stale | Camera lists are read at app launch. Quit and reopen that app |
@@ -291,7 +292,7 @@ The app's own gear icon has a matching Diagnostics sheet, useful when the phone 
 | Symptom | Likely cause |
 |---|---|
 | Black source, no log lines | TetherCam is not in the foreground on the phone, or the phone is locked |
-| Black source with plugin 0.2.0 and the App Store app 0.1.0 | Fixed in plugin 0.2.1: 0.2.0 asked for audio in a way the 1.0 app dropped silently. Update the plugin (`brew upgrade --cask tethercam-obs`, or the new `.pkg`) and update the phone app once 0.2.0 is out on the store |
+| Black source with plugin 0.2.0 and the App Store app 0.1.0 | Fixed in plugin 0.2.1: 0.2.0 asked for audio in a way the 1.0 app dropped silently. Update the plugin (`brew upgrade --cask tethercam-obs`, or the new `.pkg`) and update the phone app from the App Store (0.2.0 or newer) |
 | Nothing in the device list | Cable is charge only, phone not trusted, or Developer Mode is off |
 | `ERROR 1 BUSY` in the OBS log | Another receiver is already connected. Only one receiver per phone. Close the other OBS source or the CLI receiver |
 | Picture sideways or upside down | The app follows the phone orientation automatically (Auto-Rotation, on by default). Lying flat on a table there is no horizon, so mount the phone first. Override with the manual 0/90/180/270 picker in the app or the Rotation setting in the OBS source |

@@ -69,8 +69,10 @@ when the phone app restarts.
 
 Verified on 2026-09-09 with a real iPhone 15 Pro Max in QuickTime Player, Photo Booth,
 FaceTime, Google Meet in Chrome, Safari, Chrome and ffmpeg, in portrait and in landscape.
-Zoom and Microsoft Teams were not tested by the author because neither was installed; they
-use the same system camera API, so they should work but are not verified.
+Zoom 7.1.5 and Microsoft Teams (new) verified on 2026-09-10 with the same phone. Both apps
+read the camera list at launch: quit (Cmd-Q) and reopen an app that was running before the
+extension appeared. If the camera is still missing after installing or updating TetherCam,
+restart the Mac; macOS completes the registration of a camera extension at the next boot.
 
 Limits: a macOS camera extension carries video only, so audio stays on the OBS plugin path
 (use the phone microphone via Continuity or the Mac microphone for calls). The phone

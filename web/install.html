@@ -126,7 +126,7 @@ brew install --cask tethercam</code></pre>
       <button class="copy-btn" type="button" data-copy="install-guide-brew-mac" aria-live="polite">Copy</button>
     </div>
 
-    <p class="meta" data-reveal>Verified on 2026-09-09 with a real iPhone 15 Pro Max in QuickTime Player, Photo Booth, FaceTime, Google Meet in Chrome, Safari, Chrome and ffmpeg. Zoom and Microsoft Teams were not tested here; they use the same system camera API, so they should work, but we have not verified it.</p>
+    <p class="meta" data-reveal>Verified with a real iPhone 15 Pro Max in QuickTime Player, Photo Booth, FaceTime, Google Meet in Chrome, Safari, Chrome and ffmpeg (2026-09-09) and in Zoom 7.1.5 and Microsoft Teams (2026-09-10).</p>
     <p class="meta" data-reveal><b>Limits:</b> the camera carries video only, because a macOS camera extension cannot carry audio &mdash; for sound in a call use the phone&rsquo;s microphone via Continuity or the Mac microphone, and for audio and video together use the OBS plugin. The phone serves one receiver at a time, so run either the Mac app or the OBS source, not both; the second one says BUSY. The output is a fixed 1920x1080 at 30 fps, and a phone held upright is pillarboxed.</p>
 
     <h3 class="prose" data-reveal>If something is off</h3>
@@ -137,7 +137,7 @@ brew install --cask tethercam</code></pre>
       </details>
       <details class="faq" data-reveal>
         <summary>No camera called &ldquo;TetherCam&rdquo; shows up</summary>
-        <div class="answer"><p>The camera extension is not enabled yet: System Settings, General, Login Items &amp; Extensions, Camera Extensions, switch TetherCam on. Apps read the camera list when they launch, so quit and reopen the app that should show it.</p></div>
+        <div class="answer"><p>The camera extension is not enabled yet: System Settings, General, Login Items &amp; Extensions, Camera Extensions, switch TetherCam on. Apps read the camera list when they launch, so quit the app completely (Cmd-Q) and reopen it. Still missing? Restart the Mac: macOS finishes registering a newly installed or updated camera extension only at the next boot. Zoom and Teams listed TetherCam right after that restart.</p></div>
       </details>
       <details class="faq" data-reveal>
         <summary>The picture stays black, or the menu says BUSY</summary>
@@ -249,7 +249,7 @@ brew install --cask tethercam-obs</code></pre>
       </details>
       <details class="faq" data-reveal>
         <summary>The source is black although the phone says it is streaming</summary>
-        <div class="answer"><p>If the Mac runs plugin 0.2.0 and the phone still runs the 0.1.0 App Store app, the source stays black: 0.2.0 asked for audio in a way the older app dropped silently. Plugin <strong>0.2.1</strong> fixes it. Update with <code>brew upgrade --cask tethercam-obs</code> or the new <code>.pkg</code>, restart OBS, and update the phone app as well once 0.2.0 is on the store.</p></div>
+        <div class="answer"><p>If the Mac runs plugin 0.2.0 and the phone still runs the 0.1.0 App Store app, the source stays black: 0.2.0 asked for audio in a way the older app dropped silently. Plugin <strong>0.2.1</strong> fixes it. Update with <code>brew upgrade --cask tethercam-obs</code> or the new <code>.pkg</code>, restart OBS, and update the phone app from the App Store (0.2.0 or newer).</p></div>
       </details>
       <details class="faq" data-reveal>
         <summary>OBS still shows the old plugin after I installed an update</summary>
@@ -339,7 +339,7 @@ brew install --cask tethercam-obs</code></pre>
     {
       "@type": "Question",
       "name": "The source is black although the phone says it is streaming",
-      "acceptedAnswer": {"@type": "Answer", "text": "If the Mac runs plugin 0.2.0 and the phone still runs the 0.1.0 App Store app, the source stays black: 0.2.0 asked for audio in a way the older app dropped silently. Plugin 0.2.1 fixes it. Update with brew upgrade --cask tethercam-obs or the new .pkg, restart OBS, and update the phone app as well once 0.2.0 is on the store."}
+      "acceptedAnswer": {"@type": "Answer", "text": "If the Mac runs plugin 0.2.0 and the phone still runs the 0.1.0 App Store app, the source stays black: 0.2.0 asked for audio in a way the older app dropped silently. Plugin 0.2.1 fixes it. Update with brew upgrade --cask tethercam-obs or the new .pkg, restart OBS, and update the phone app from the App Store (0.2.0 or newer)."}
     },
     {
       "@type": "Question",
@@ -349,7 +349,7 @@ brew install --cask tethercam-obs</code></pre>
     {
       "@type": "Question",
       "name": "No camera called “TetherCam” shows up",
-      "acceptedAnswer": {"@type": "Answer", "text": "The camera extension is not enabled yet: System Settings, General, Login Items & Extensions, Camera Extensions, switch TetherCam on. Apps read the camera list when they launch, so quit and reopen the app that should show it."}
+      "acceptedAnswer": {"@type": "Answer", "text": "The camera extension is not enabled yet: System Settings, General, Login Items & Extensions, Camera Extensions, switch TetherCam on. Apps read the camera list when they launch, so quit the app completely (Cmd-Q) and reopen it. Still missing? Restart the Mac: macOS finishes registering a newly installed or updated camera extension only at the next boot. Zoom and Teams listed TetherCam right after that restart."}
     },
     {
       "@type": "Question",
