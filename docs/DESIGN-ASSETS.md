@@ -26,6 +26,7 @@ Store screenshots. It is the source; the exported PNGs are derived and not commi
 | 3 | `03 Lenses` | big phone plus the CAMERA card |
 | 4 | `04 Level` | phone rotated 7 degrees plus the ADVANCED card |
 | 5 | `05 Diagnostics` | big phone plus the DIAGNOSTICS card |
+| A0 | `A0 App live` | Full-bleed app screen for the website gallery and the README: scene image, status capsule "Streaming 1080p30", gear icon, no headline. Added 2026-09-10 for #26; exports as `docs/images/app-live.png` (2796x1290) and, scaled, `web/img/app-live.png` / `.webp` (1400x646) |
 
 Reusable components: `Phone` (722x352) and `Phone small` (430x210). Their `Screen` fill is
 the scene image; change it once and every frame follows.
