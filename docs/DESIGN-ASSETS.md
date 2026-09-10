@@ -21,7 +21,7 @@ Store screenshots. It is the source; the exported PNGs are derived and not commi
 
 | # | Node name | Content |
 |---|---|---|
-| 1 | `01 Hero` | OBS window (Scenes, Sources with "TetherCam iPhone", Audio Mixer, Controls) and the small phone with the same picture |
+| 1 | `01 Hero` | Mac camera picker card (FaceTime HD Camera, TetherCam with a checkmark, OBS Virtual Camera) and the small phone with the same picture. Reworked 2026-09-10 for the Mac-first positioning; exports as `01-hero-wired-into-mac.png` |
 | 2 | `02 Connect` | three step cards plus the real Tools-menu screenshot `docs/images/obs-tools-menu.png` |
 | 3 | `03 Lenses` | big phone plus the CAMERA card |
 | 4 | `04 Level` | phone rotated 7 degrees plus the ADVANCED card |

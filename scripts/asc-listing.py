@@ -41,7 +41,7 @@ SECONDARY_CATEGORY = "UTILITIES"
 SCREENSHOT_DISPLAY_TYPE = "APP_IPHONE_67"   # 6.7"/6.9" iPhone set, 2796x1290 landscape
 PREVIEW_TYPE = "IPHONE_67"
 SCREENSHOTS = [
-    "marketing-6.9/01-hero-wired-into-obs.png",
+    "marketing-6.9/01-hero-wired-into-mac.png",
     "marketing-6.9/02-three-steps.png",
     "marketing-6.9/03-lens-picker.png",
     "marketing-6.9/04-horizon-level.png",

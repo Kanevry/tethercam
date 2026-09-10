@@ -85,3 +85,27 @@ Offene Owner-Schritte, gesammelt nach dem Einreichen des iOS-Listings:
 | 36 | GitHub-Secrets `MACOS_CERT_P12`, `MACOS_CERT_PASSWORD`, `MACOS_CODESIGN_IDENT`, `MACOS_INSTALLER_CERT_P12`, `MACOS_INSTALLER_CERT_PASSWORD` setzen, sobald die Dateien aus Schritt 35 vorliegen | AUTOMATED sobald Dateien existieren (Agent setzt sie) | RELEASING.md 1a, 1b |
 | 37 | Der leere macOS-Review-Submission-Entwurf `776750a6-a640-4696-92bf-c53cb4d21a14` (Plattform MAC_OS, Status READY_FOR_REVIEW laut API am 2026-09-05; die iOS-Einreichung ist `0e749dcd-74bb-43c1-a597-2d64408dfc87`, WAITING_FOR_REVIEW am 2026-09-05, APPROVED und veroeffentlicht am 2026-09-09) in App Store Connect verwerfen; per API weder loeschbar noch abbrechbar. Blockiert nichts | OWNER | 3.13 |
 | 38 | GitHub Social Preview hochladen: Settings > General > Social preview, Bilddatei `web/img/og.png` | OWNER | n/a |
+
+## 0.3.0 (metadata prepared 2026-09-10)
+
+What changed in `docs/app-store/en-US.md` and `de-DE.md`, and who does what. Rationale for
+the subtitle/keyword move: `KEYWORDS-RATIONALE.md`, addendum 2026-09-10. Positioning:
+`docs/SEO-GEO.md` § "Positioning, decided 2026-09-10".
+
+| Field | Change |
+|---|---|
+| Subtitle | `iPhone webcam over USB cable` / `iPhone-Webcam per USB-Kabel`. "OBS" and "Mac" leave the subtitle |
+| Keywords | `obs` and `mac` move back in; `cable` (en) and `kabel` plus `kabelgebunden` (de) leave, `mikrofon` added (de) |
+| Promotional text | Mac-app-first in both locales, no version needed |
+| Description | "ON THE MAC" / "AM MAC" now describes both receivers, Mac app first, with the honest limits: no audio over the virtual camera, iPhone app stays in the foreground, one receiver at a time |
+| What's New | 0.3.0 text, headlined by the Mac app (shipped in 0.2.1, never announced in the store), plus receiver-aware status, both download links, BUSY hint, remembered rotation settings, German microphone prompt |
+| Review notes | Purpose paragraph names both receivers; the quoted status line is now "Waiting for the Mac" |
+
+| # | Step | Who | When |
+|---|---|---|---|
+| 39 | Push the new **promotional text** (en-US and de-DE). It is not version-gated in Apple's model and takes effect on the live page immediately, but `scripts/asc-listing.py` cannot deliver it on its own right now: with 0.2.0 in READY_FOR_SALE and no editable version on the record, `ensure_version` finds nothing to edit and `--dry-run` stops with `appStoreVersions with id 'dry-run'` 404 (verified 2026-09-10; a script limitation, not a regression). Either paste the two blocks into App Store Connect > 0.2.0 > Promotional Text by hand, or wait until the 0.3.0 version exists and let step 40 carry it | OWNER | now |
+| 40 | Subtitle, keywords, description and What's New go with the **0.3.0** submission, not before: they are version-scoped fields on the new App Store version | OWNER | with 0.3.0 |
+| 41 | Upload iOS build 0.3.0 (6) via `scripts/appstore-upload.sh`, then attach it to the 0.3.0 version | OWNER | with 0.3.0 |
+| 42 | Paste the updated `review-notes.md` into App Review Information > Notes before submitting 0.3.0 | OWNER | with 0.3.0 |
+| 43 | Replace screenshot 1 with the new Mac-first hero (`01-hero-wired-into-mac.png`) via `scripts/asc-listing.py --replace-screenshots`; the old `01-hero-wired-into-obs.png` no longer matches the positioning | OWNER (agent may run it) | with 0.3.0 |
+| 44 | Version release for 0.3.0: **Manually release this version**, as for 0.1.0 and 0.2.0 | OWNER | with 0.3.0 |
