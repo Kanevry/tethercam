@@ -1,6 +1,6 @@
-# IUCM: iPhone USB Camera Message Protocol, Version 1.1
+# IUCM: iPhone USB Camera Message Protocol, Version 1.2
 
-Stand: 2026-09-06 (1.1: Audio, siehe 4.2, 4.9 und 4.10). Normativ fuer `shared/frame_parser.c`, die iOS-App und jeden weiteren
+Stand: 2026-09-10 (1.2: CLIENT_INFO, siehe 4.11; 1.1: Audio, siehe 4.2, 4.9 und 4.10). Normativ fuer `shared/frame_parser.c`, die iOS-App und jeden weiteren
 Empfaenger. Wer sich an dieses Dokument haelt, kann eine Swift- und eine C-Implementierung
 unabhaengig voneinander schreiben und sie sprechen miteinander.
 
@@ -56,6 +56,7 @@ Jede Nachricht besteht aus einem 12-Byte-Kopf und einer Nutzlast variabler Laeng
 | `0x01` | HELLO   | App → Mac | §4.1, sofort nach Verbindungsaufbau |
 | `0x02` | START   | Mac → App | §4.2                                |
 | `0x03` | STOP    | Mac → App | leer (length = 0)                   |
+| `0x04` | CLIENT_INFO | Mac → App | §4.11, optional, nach HELLO und vor START |
 | `0x12` | STATS   | App → Mac | §4.8, 1x pro Sekunde solange verbunden |
 | `0x10` | CONFIG  | App → Mac | §4.5                                |
 | `0x11` | VIDEO   | App → Mac | §4.6                                |
@@ -92,6 +93,20 @@ Andere `position`-Werte sind reserviert und werden wie `0` behandelt.
 **Versionsregel:** Der Mac vergleicht nur das High-Byte (Major). Ist es ungleich 1, sendet
 er `ERROR` Code 5 (VERSION_UNSUPPORTED) und schliesst. Ein hoeheres Minor-Byte ist kein
 Fehler; unbekannte Zusatzfelder am Ende der Nutzlast werden ignoriert.
+
+**Minor-Semantik von `version`:**
+
+| Wert     | Bedeutung                                                              |
+|----------|------------------------------------------------------------------------|
+| `0x0100` | 1.0: Grundprotokoll. Kein Audio, kein CLIENT_INFO.                     |
+| `0x0101` | 1.1: Audio (§4.2 Bit 0, §4.9, §4.10).                                  |
+| `0x0102` | 1.2: zusaetzlich CLIENT_INFO (§4.11). Die App wertet `0x04` aus.       |
+
+Eine App der Version 1.2 meldet `0x0102` in HELLO und akzeptiert weiterhin jeden Empfaenger
+der Versionen 1.0 und 1.1: CLIENT_INFO ist optional, sein Ausbleiben ist kein Fehler.
+Umgekehrt gilt fuer den Empfaenger: Merkmale werden **ab** einem Minor freigeschaltet, nie
+**genau bei** einem. Wer Audio an 1.1 knuepft, prueft `minor >= 1`, damit ein 1.2-HELLO den
+Audiowunsch nicht verliert.
 
 ### 4.2 START (`0x02`), Mac → App
 
@@ -316,12 +331,53 @@ Ein Empfaenger, der `0x13` nicht kennt, ueberspringt den Rahmen nach §2.
 Ein Empfaenger, der `0x14` nicht kennt, ueberspringt den Rahmen nach §2. AUDIO_CONFIG und
 AUDIO sind damit ohne Aushandlung ueberspringbar, genau wie STATS.
 
+### 4.11 CLIENT_INFO (`0x04`), Mac → App
+
+Ergaenzt in 1.2. Sagt der App, **wer** sich verbunden hat: das OBS-Plugin, die Mac-App
+(virtuelle Kamera) oder ein Werkzeug. Ohne diese Nachricht kann die App nur "verbunden"
+anzeigen, nicht "verbunden mit ...".
+
+| Offset          | Groesse     | Feld        | Inhalt                                        |
+|-----------------|-------------|-------------|-----------------------------------------------|
+| 0               | 1           | kind        | u8, siehe Tabelle                             |
+| 1               | 1           | name_len    | u8, Laenge des Namens in Byte                 |
+| 2               | name_len    | name        | UTF-8, englisch, z. B. `TetherCam for Mac`    |
+| 2+name_len      | 1           | version_len | u8                                            |
+| 3+name_len      | version_len | version     | UTF-8, z. B. `0.3.0`                          |
+
+Gesamtlaenge `3 + name_len + version_len`. Die Zeichenkettenkodierung ist dieselbe wie in
+HELLO (§4.1): u8-Laengenpraefix, UTF-8, **ohne** abschliessendes NUL.
+
+| kind | Empfaenger                                        |
+|------|---------------------------------------------------|
+| 0    | unbekannt / anderes                               |
+| 1    | OBS-Plugin (`TetherCam OBS plugin`)               |
+| 2    | Mac-App / virtuelle Kamera (`TetherCam for Mac`)  |
+| 3    | Werkzeug (`usbcam-recv`, `usbcam-sim`)            |
+
+**Regeln:**
+
+- `name` und `version` sind **englisch**. Uebersetzt wird ausschliesslich in der anzeigenden
+  UI, nie auf der Leitung.
+- Unbekannte `kind`-Werte behandelt die App wie `0`; `name` und `version` bleiben erhalten
+  und werden angezeigt.
+- **Zusatzbytes am Ende der Nutzlast werden ignoriert** (§4.1, Versionsregel). Spaetere
+  Minor-Versionen duerfen hier Felder anhaengen.
+- Der Empfaenger sendet CLIENT_INFO **einmal**, unmittelbar nachdem er HELLO gelesen hat und
+  **vor** START. Ein spaeter eintreffendes CLIENT_INFO ist kein Fehler: die App latcht den
+  neuen Inhalt einfach nach.
+- Die Nachricht ist **optional**. Ein Empfaenger der Version 1.0/1.1 sendet sie nie, und die
+  App verhaelt sich dann exakt wie zuvor (kein Empfaengername).
+- Eine App, die `0x04` nicht kennt, ueberspringt den Rahmen nach §2. CLIENT_INFO ist damit
+  ohne Aushandlung sendbar, genau wie STATS.
+
 ## 5. Ablauf
 
 ```
 App                                  Mac
  |<------------------ TCP/usbmux connect ----|
  |--- HELLO (version, name, cameras) ------->|
+ |<-- CLIENT_INFO (kind, name, version) -----|   optional, ab 1.2
  |<-- START (camera_id, w, h, fps, bitrate,  |
  |          flags: Bit 0 = Audio) -----------|
  |--- CONFIG (aktives Format, hvcC) -------->|
@@ -336,6 +392,7 @@ App                                  Mac
 ```
 
 Regeln: HELLO ist immer die erste Nachricht der App. START vor HELLO ist ein Protokollfehler.
+CLIENT_INFO (§4.11) steht, wenn es ueberhaupt kommt, zwischen HELLO und dem ersten START.
 CONFIG kommt immer vor dem ersten VIDEO nach einem START. Nach einem STOP darf ein neues
 START folgen; darauf antwortet die App wieder mit CONFIG.
 
@@ -448,6 +505,13 @@ Geraet eine Tunnel-Verbindung.
 | `connect-62078-req` / `-resp`    | Connect auf lockdown 62078 (PortNumber 32498) → **Number 0**              |
 | `connect-62078-hostorder-req`/`-resp` | derselbe Port in Host-Order (62078) → **Number 3**, der Beleg fuer §6.3 |
 | `badversion-0-resp`, `badversion-2-resp` | Antwort auf Kopf-`version` 0 bzw. 2 → **Number 6**, tag 9         |
+
+Daneben liegt ein handgeschriebener Goldwert der IUCM-Rahmung selbst — kein Mitschnitt,
+sondern der normative Bytevergleich fuer §4.11:
+
+| Datei                  | Inhalt                                                                     |
+|------------------------|----------------------------------------------------------------------------|
+| `clientinfo-macapp.bin` | Ein vollstaendiger CLIENT_INFO-Rahmen: kind 2, name `TetherCam for Mac`, version `0.3.0` |
 
 `connect-62078` ist der positive Beleg: der lockdown-Port ist immer offen, also trennt er
 "Byte-Order richtig" von "App laeuft nicht". Ein Verbindungsproblem debuggt man mit 62078,

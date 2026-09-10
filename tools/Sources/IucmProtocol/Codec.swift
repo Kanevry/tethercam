@@ -33,6 +33,10 @@ public enum IucmCodec {
             if m.flags != 0 { w.u8(m.flags) }
         case .stop:
             break
+        case .clientInfo(let m):
+            w.u8(m.kind)
+            try w.string8(m.name)
+            try w.string8(m.version)
         case .stats(let m):
             w.i16(m.continuousAngleX10)
             w.u16(m.sector)
@@ -134,6 +138,14 @@ public enum IucmCodec {
         case .stop:
             try r.expectEnd()
             return .stop
+
+        case .clientInfo:
+            let kind = try r.u8()
+            let name = try r.string8()
+            let version = try r.string8()
+            // Trailing bytes belong to a later minor version: ignore them (4.11).
+            _ = r.rest()
+            return .clientInfo(ClientInfoMessage(kind: kind, name: name, version: version))
 
         case .stats:
             let m = StatsMessage(continuousAngleX10: try r.i16(), sector: try r.u16(),

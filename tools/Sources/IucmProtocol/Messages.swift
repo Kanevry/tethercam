@@ -6,9 +6,14 @@ public enum Iucm {
     public static let magic: [UInt8] = [0x49, 0x55, 0x43, 0x4D]
     /// Fixed header size in bytes.
     public static let headerSize = 12
-    /// Protocol version 1.1 — high byte major, low byte minor.
-    /// 1.1 added AUDIO_CONFIG/AUDIO (PROTOCOL.md 4.9/4.10).
-    public static let version: UInt16 = 0x0101
+    /// Protocol version 1.2 — high byte major, low byte minor.
+    /// 1.1 added AUDIO_CONFIG/AUDIO (PROTOCOL.md 4.9/4.10),
+    /// 1.2 added CLIENT_INFO (PROTOCOL.md 4.11).
+    public static let version: UInt16 = 0x0102
+    /// The minor from which a receiver may append the START audio flag (4.2).
+    public static let versionAudio: UInt16 = 0x0101
+    /// The minor from which an app understands CLIENT_INFO (4.11).
+    public static let versionClientInfo: UInt16 = 0x0102
     /// Payloads larger than this are rejected as corrupt rather than buffered.
     /// 8 MiB, PROTOCOL.md 2; mirrors `IUCM_MAX_PAYLOAD` in shared/frame_parser.h.
     public static let maxPayloadSize = 8 * 1024 * 1024
@@ -20,6 +25,7 @@ public enum IucmMessageType: UInt8, Sendable {
     case hello = 0x01
     case start = 0x02
     case stop = 0x03
+    case clientInfo = 0x04
     case stats = 0x12
     case config = 0x10
     case video = 0x11
@@ -94,6 +100,41 @@ public struct StartMessage: Equatable, Sendable {
             else { flags &= ~StartMessage.flagAudio }
         }
     }
+}
+
+/// CLIENT_INFO (`0x04`) `kind` field. See `protocol/PROTOCOL.md` section 4.11.
+///
+/// Unknown values on the wire decode to `.unknown`; `name` and `version` survive
+/// regardless, so a future receiver still shows up by name.
+public enum IucmClientKind: UInt8, Sendable {
+    case unknown = 0
+    case obsPlugin = 1
+    case macApp = 2
+    case tool = 3
+}
+
+/// CLIENT_INFO (`0x04`), Mac to app. See `protocol/PROTOCOL.md` section 4.11.
+///
+/// Optional and one-way: a 1.0/1.1 receiver never sends it and the app behaves
+/// exactly as before. Strings are English — translation happens in the app's UI.
+public struct ClientInfoMessage: Equatable, Sendable {
+    /// Raw wire value; use `clientKind` for the mapped enum.
+    public var kind: UInt8
+    public var name: String
+    public var version: String
+
+    public init(kind: UInt8, name: String, version: String) {
+        self.kind = kind
+        self.name = name
+        self.version = version
+    }
+
+    public init(kind: IucmClientKind, name: String, version: String) {
+        self.init(kind: kind.rawValue, name: name, version: version)
+    }
+
+    /// Unknown wire kinds map to `.unknown` (4.11).
+    public var clientKind: IucmClientKind { IucmClientKind(rawValue: kind) ?? .unknown }
 }
 
 public struct ConfigMessage: Equatable, Sendable {
@@ -242,6 +283,7 @@ public enum IucmMessage: Equatable, Sendable {
     case hello(HelloMessage)
     case start(StartMessage)
     case stop
+    case clientInfo(ClientInfoMessage)
     case stats(StatsMessage)
     case config(ConfigMessage)
     case video(VideoMessage)
@@ -256,6 +298,7 @@ public enum IucmMessage: Equatable, Sendable {
         case .hello: return .hello
         case .start: return .start
         case .stop: return .stop
+        case .clientInfo: return .clientInfo
         case .stats: return .stats
         case .config: return .config
         case .video: return .video

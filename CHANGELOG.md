@@ -5,17 +5,47 @@ All notable changes to TetherCam are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-The repository ships two artefacts with one shared version number: the macOS OBS
-plugin (`obs-plugin/`, GPL-2.0-or-later) and the iOS app (`ios-app/`, MIT). A tag
-`vX.Y.Z` releases both.
+The repository ships three artefacts with one shared version number: the macOS app
+with the virtual camera (`mac-app/`, MIT), the iOS app (`ios-app/`, MIT) and the macOS
+OBS plugin (`obs-plugin/`, GPL-2.0-or-later). A tag `vX.Y.Z` releases them together.
 
 ## [Unreleased]
+
+### Added
+
+- **iOS 0.3.0: the app knows who is receiving.** Protocol 1.2 adds `CLIENT_INFO`
+  (0x04, Mac -> App): the receiver names itself, and the phone's status line says
+  "Connected to TetherCam for Mac", "Connected to OBS" or the receiver's own name
+  instead of always claiming OBS. The waiting line is now "Waiting for the Mac",
+  the first-run hint names both paths (the TetherCam Mac app, which shows up as
+  the camera "TetherCam" in Zoom, Teams, Meet and FaceTime, and OBS with the
+  TetherCam plugin), and the settings footer links to both downloads. (#19)
+- iOS: a second receiver that is turned away with `ERROR 1 BUSY` now says so on
+  the phone for five seconds ("Another receiver is already connected"), instead of
+  leaving the second Mac black with no explanation. (#19)
+- iOS: a "Receiver" row in the diagnostics section with the receiver's name and
+  version, or an em dash for a 1.0/1.1 receiver that never identified itself. (#19)
+
+### Changed
+
+- iOS: the microphone footnote follows the receiver. The Mac app carries no audio
+  (a CoreMediaIO camera extension has no audio stream), so it now points at the
+  Mac's own microphone or the OBS plugin instead of promising sound that cannot
+  arrive. (#19)
+
+### Fixed
+
+- iOS: "Auto rotation" and the manual angle survive a relaunch. Both were
+  in-memory only, so a mount that needed a fixed angle had to be set up again on
+  every start; they now persist like "Level the horizon". (#19)
+- iOS: the German microphone purpose string was missing, so the German system
+  prompt asked for the microphone in English. (#19)
 
 ## [0.2.1] - 2026-09-09
 
 ### Added
 
-- **macOS virtual camera (preview, `mac-app/`, MIT).** A menu bar host app embeds a
+- **macOS virtual camera (`mac-app/`, MIT).** A menu bar host app embeds a
   CoreMediaIO Camera Extension that publishes the iPhone as the system camera "TetherCam"
   (1920x1080 NV12 30 fps) for Zoom, Teams, FaceTime, browsers and ffmpeg; the host receives
   over usbmux like the plugin, decodes with VideoToolbox, letterboxes every geometry into
@@ -225,7 +255,8 @@ plugin (`obs-plugin/`, GPL-2.0-or-later) and the iOS app (`ios-app/`, MIT). A ta
   distribution channel outside the App Store and TestFlight.
 
 
-[Unreleased]: https://github.com/Kanevry/tethercam/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/Kanevry/tethercam/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/Kanevry/tethercam/releases/tag/v0.2.1
 [0.2.0]: https://github.com/Kanevry/tethercam/releases/tag/v0.2.0
 [0.1.0]: https://github.com/Kanevry/tethercam/releases/tag/v0.1.0
 

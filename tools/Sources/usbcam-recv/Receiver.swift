@@ -156,6 +156,13 @@ final class Receiver {
         logLine("HELLO   version=0x\(String(format: "%04x", hello.version)) device=\"\(hello.deviceName)\" "
                 + "app=\(hello.appVersion) cameras=[\(cams)]")
 
+        // CLIENT_INFO identifies this receiver to the phone. It goes out after HELLO
+        // and before START (PROTOCOL.md 4.11); an app that does not know 0x04 skips
+        // the frame, so it is safe to send unconditionally.
+        try send(.clientInfo(ClientInfoMessage(kind: .tool, name: Receiver.clientName,
+                                               version: Receiver.clientVersion)))
+        logLine("CLIENT_INFO kind=tool name=\"\(Receiver.clientName)\" version=\(Receiver.clientVersion)")
+
         let flags = Receiver.startFlags(audio: opts.audio, helloVersion: hello.version)
         if opts.audio && flags == 0 {
             logLine("NOTE    app speaks protocol 1.\(hello.version & 0xff), audio needs 1.1: video only")
@@ -229,7 +236,7 @@ final class Receiver {
                     try handleAudioConfig(a)
                 case .audio(let a):
                     try handleAudio(a)
-                case .start, .stop, .ping:
+                case .start, .stop, .ping, .clientInfo:
                     throw RecvError.protocolViolation("unexpected \(msg.type) from sender")
                 }
             }
@@ -283,6 +290,10 @@ final class Receiver {
     /// goes out to apps that announce protocol 1.1 or later. A 1.0 app (App Store
     /// 0.1.0) treats the 12-byte START as a decode error, drops it silently and never
     /// starts the camera (observed 2026-09-09). Pure so it is testable.
+    /// Identity announced in CLIENT_INFO (PROTOCOL.md 4.11). English, on the wire.
+    static let clientName = "usbcam-recv"
+    static let clientVersion = "dev"
+
     static func startFlags(audio: Bool, helloVersion: UInt16) -> UInt8 {
         guard audio, helloVersion >= 0x0101 else { return 0 }
         return StartMessage.flagAudio

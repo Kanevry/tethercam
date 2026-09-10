@@ -2,11 +2,17 @@
 
 "app.name" = "TetherCam";
 
-"status.waiting" = "Warte auf OBS am Mac";
-"status.connected" = "Verbunden mit OBS";
+"status.waiting" = "Warte auf den Mac";
+"status.connected" = "Verbunden mit dem Mac";
+"status.connected.macApp" = "Verbunden mit TetherCam für Mac";
+"status.connected.obs" = "Verbunden mit OBS";
+"status.connected.generic" = "Verbunden mit dem Mac";
+/* %@ ist der Name des Empfängers vom Draht und wird nie übersetzt. */
+"status.connected.named" = "Verbunden mit %@";
 "status.streaming" = "Streamt %@";
+"status.busy" = "Ein anderer Empfänger ist bereits verbunden. Beende den anderen TetherCam-Empfänger am Mac.";
 
-"hint.firstRun" = "Öffne OBS am Mac, die Kamera erscheint als TetherCam.";
+"hint.firstRun" = "Öffne am Mac die TetherCam-App (die Kamera erscheint als TetherCam in Zoom, Teams, Meet, FaceTime) oder OBS mit dem TetherCam-Plugin.";
 "banner.foreground" = "Die App muss im Vordergrund bleiben.";
 "preview.doubleTapHint" = "Doppeltippen wechselt die Kamera";
 
@@ -24,14 +30,17 @@
 "settings.diagnostics" = "Diagnose";
 "settings.audio" = "Mikrofon";
 "settings.audioMuted" = "Mikrofon stummschalten";
-"settings.audioFootnote" = "Der Ton geht über das Kabel zusammen mit dem Bild an OBS. OBS mischt ihn wie jede andere Quelle.";
+"settings.audioFootnote.obs" = "Der Ton geht über das Kabel zusammen mit dem Bild an OBS. OBS mischt ihn wie jede andere Quelle.";
+"settings.audioFootnote.macApp" = "Die Mac-App überträgt nur das Bild. Für Ton nutze das iPhone als Mikrofon in der App am Mac, oder OBS mit dem TetherCam-Plugin.";
 "settings.audioDenied" = "Mikrofonzugriff verweigert";
 "link.privacy" = "Datenschutz";
-"link.installPlugin" = "Mac-Plugin installieren";
+"link.getMacApp" = "Mac-App laden";
+"link.getPlugin" = "OBS-Plugin laden";
 
 "diag.listener" = "Listener";
 "diag.connected" = "Verbunden";
 "diag.streaming" = "Streamt";
+"diag.receiver" = "Empfänger";
 "diag.fps" = "fps";
 "diag.kbps" = "kbit/s";
 "diag.port" = "Port";

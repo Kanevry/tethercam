@@ -303,6 +303,27 @@ int iucm_encode_stop(uint8_t *out, size_t cap, size_t *written) {
     return frame_begin(out, cap, 0, IUCM_MSG_STOP, 0, written);
 }
 
+int iucm_encode_client_info(uint8_t *out, size_t cap, const struct iucm_client_info *ci,
+                            size_t *written) {
+    size_t name_len, ver_len, off;
+    int    rc;
+
+    if (!ci) return IUCM_ERR_BADARG;
+    name_len = strlen(ci->name);
+    ver_len  = strlen(ci->version);
+    if (name_len > 255 || ver_len > 255) return IUCM_ERR_RANGE;
+    rc = frame_begin(out, cap, 3 + name_len + ver_len, IUCM_MSG_CLIENT_INFO, 0, written);
+    if (rc != IUCM_OK) return rc;
+    off        = IUCM_HEADER_SIZE;
+    out[off++] = ci->kind;
+    out[off++] = (uint8_t)name_len;
+    memcpy(out + off, ci->name, name_len);
+    off += name_len;
+    out[off++] = (uint8_t)ver_len;
+    memcpy(out + off, ci->version, ver_len);
+    return IUCM_OK;
+}
+
 int iucm_encode_config(uint8_t *out, size_t cap, uint16_t width, uint16_t height,
                        uint16_t fps, const uint8_t *hvcc, uint32_t hvcc_len,
                        size_t *written) {
@@ -427,6 +448,25 @@ int iucm_parse_start(const uint8_t *payload, uint32_t len, struct iucm_start *ou
     /* The flags byte is optional (PROTOCOL.md 4.2): 11 bytes mean flags == 0,
      * and bytes past the twelfth belong to a later minor version. */
     if (cur_need(&c, 1)) out->flags = c.p[c.off];
+    return IUCM_OK;
+}
+
+int iucm_parse_client_info(const uint8_t *payload, uint32_t len,
+                           struct iucm_client_info *out) {
+    struct cur c;
+    uint8_t    n8;
+    int        rc;
+
+    if (!payload || !out) return IUCM_ERR_BADARG;
+    memset(out, 0, sizeof(*out));
+    c.p = payload; c.len = len; c.off = 0;
+
+    if ((rc = cur_u8(&c, &out->kind)) != IUCM_OK) return rc;
+    if ((rc = cur_u8(&c, &n8)) != IUCM_OK) return rc;
+    if ((rc = cur_str(&c, n8, out->name, sizeof(out->name))) != IUCM_OK) return rc;
+    if ((rc = cur_u8(&c, &n8)) != IUCM_OK) return rc;
+    if ((rc = cur_str(&c, n8, out->version, sizeof(out->version))) != IUCM_OK) return rc;
+    /* Trailing bytes are tolerated: minor versions may append fields (4.11). */
     return IUCM_OK;
 }
 
@@ -567,6 +607,7 @@ const char *iucm_type_name(uint8_t type) {
     case IUCM_MSG_HELLO:  return "HELLO";
     case IUCM_MSG_START:  return "START";
     case IUCM_MSG_STOP:   return "STOP";
+    case IUCM_MSG_CLIENT_INFO: return "CLIENT_INFO";
     case IUCM_MSG_CONFIG: return "CONFIG";
     case IUCM_MSG_VIDEO:  return "VIDEO";
     case IUCM_MSG_AUDIO_CONFIG: return "AUDIO_CONFIG";

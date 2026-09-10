@@ -114,6 +114,9 @@ final class SimServer {
         receive(on: conn)
     }
 
+    /// Latest CLIENT_INFO from the connected receiver, nil until one arrives (4.11).
+    private(set) var receiverInfo: ClientInfoMessage?
+
     private func receive(on conn: NWConnection) {
         conn.receive(minimumIncompleteLength: 1, maximumLength: 64 * 1024) { [weak self] data, _, isComplete, error in
             guard let self else { return }
@@ -175,6 +178,11 @@ final class SimServer {
             pingArmed = true
             lastPingAt = .now()
             send(.pong(ts))
+        case .clientInfo(let c):
+            // The simulator plays the phone: it only records who is on the other end
+            // (PROTOCOL.md 4.11). Unknown kinds decode to .unknown, never an error.
+            receiverInfo = c
+            log("CLIENT_INFO kind=\(c.clientKind) name=\"\(c.name)\" version=\(c.version)")
         case .error(let e):
             log("receiver reported ERROR \(e.code): \(e.text)")
         default:

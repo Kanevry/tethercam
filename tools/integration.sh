@@ -63,6 +63,13 @@ RC=$?
 SUMMARY="$(cat "$JSONF")"
 echo "   $SUMMARY"
 
+# CLIENT_INFO (PROTOCOL.md 4.11) reist auf demselben Draht: der Empfaenger schickt
+# es nach HELLO und vor START, der Simulator (Telefonrolle) latcht es und loggt es.
+echo "== client_info"
+grep -q 'CLIENT_INFO kind=tool name="usbcam-recv"' "$SIMLOG" \
+    || die "kein CLIENT_INFO im Simulatorlog ($SIMLOG)"
+echo "   ok"
+
 field() { python3 -c "import json,sys;print(json.load(open('$JSONF'))['$1'])"; }
 
 FPS=$(field fps_avg); KEY=$(field keyframes); FFMS=$(field first_frame_ms)

@@ -431,6 +431,24 @@ int on_message(void *ctx, const struct iucm_msg *msg)
 			hello.app_version, (unsigned) IUCM_VERSION_MAJOR(hello.version),
 			(unsigned) IUCM_VERSION_MINOR(hello.version), (unsigned) hello.camera_count);
 
+		/* Tell the phone who is on the other end so its UI can name us
+		 * (PROTOCOL.md 4.11). Optional and one-way: an app that predates 1.2
+		 * skips the unknown type, so this is sent unconditionally, after HELLO
+		 * and before START. */
+		{
+			struct iucm_client_info ci = {};
+			uint8_t ci_buf[128];
+			size_t ci_written = 0;
+			ci.kind = IUCM_CLIENT_OBS_PLUGIN;
+			snprintf(ci.name, sizeof(ci.name), "%s", "TetherCam OBS plugin");
+			snprintf(ci.version, sizeof(ci.version), "%s", PLUGIN_VERSION);
+			if (iucm_encode_client_info(ci_buf, sizeof(ci_buf), &ci, &ci_written) != IUCM_OK ||
+			    !send_all(s, ci_buf, ci_written)) {
+				/* Not fatal: the stream works without an identity. */
+				obs_log(LOG_INFO, "[iphone-cam] sending CLIENT_INFO failed, continuing");
+			}
+		}
+
 		struct iucm_start start = {};
 		bool want_audio = false;
 		{

@@ -45,6 +45,14 @@ public struct ServerStateMachine: Equatable {
     /// of truth and START's camera id is ignored: the person holding the device
     /// can see which lens is pointing at the subject, the Mac cannot.
     public private(set) var preferredCameraId: UInt8?
+    /// Who is connected, from CLIENT_INFO (PROTOCOL.md 4.11). `nil` while nobody
+    /// is connected and for 1.0/1.1 receivers, which never send it — the UI then
+    /// says "connected" without a name, exactly as before 1.2.
+    public private(set) var receiverInfo: ReceiverInfo?
+    /// Counts connection attempts refused with ERROR 1 BUSY. Monotonic for the
+    /// lifetime of the app: the UI shows a hint when the number goes up, so a
+    /// second rejection five minutes later is a second hint, not a silent one.
+    public private(set) var busyRejections: UInt32 = 0
 
     private let deviceName: String
     private let appVersion: String
@@ -67,6 +75,7 @@ public struct ServerStateMachine: Equatable {
         case let .connectionAccepted(id, nowUs):
             guard activeConnection == nil else {
                 // Exactly one receiver per device: refuse and close (spec section 3).
+                busyRejections &+= 1
                 return [.send(.error(code: IucmErrorCode.busy.rawValue,
                                      text: "another receiver is connected"), to: id),
                         .close(id: id)]
@@ -74,6 +83,7 @@ public struct ServerStateMachine: Equatable {
             activeConnection = id
             lastPingUs = nowUs
             phase = .greeted
+            receiverInfo = nil
             // HELLO is sent immediately on accept, before any START can arrive.
             return [.send(.hello(version: Iucm.version, deviceName: deviceName,
                                  appVersion: appVersion, cameras: cameras), to: id)]
@@ -97,6 +107,11 @@ public struct ServerStateMachine: Equatable {
                 phase = .streaming(effective)
                 actions.append(.startCapture(effective))
                 return actions
+            case let .clientInfo(info):
+                // Expected between HELLO and START, but a later one is not an error:
+                // it simply re-latches (4.11).
+                receiverInfo = info
+                return []
             case .stop:
                 guard isStreaming else { return [] }
                 phase = .greeted
@@ -117,6 +132,7 @@ public struct ServerStateMachine: Equatable {
             let wasStreaming = isStreaming
             activeConnection = nil
             phase = .idle
+            receiverInfo = nil
             return wasStreaming ? [.stopCapture] : []
 
         case let .tick(nowUs):
@@ -154,6 +170,7 @@ public struct ServerStateMachine: Equatable {
         let wasStreaming = isStreaming
         activeConnection = nil
         phase = .idle
+        receiverInfo = nil
         var actions: [Action] = wasStreaming ? [.stopCapture] : []
         actions.append(.close(id: conn))
         return actions

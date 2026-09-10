@@ -31,11 +31,60 @@ final class CodecRoundTripTests: XCTestCase {
                       CameraInfo(id: 1, position: .front, name: "Frontkamera")])))
     }
 
-    func testHelloVersionIsOneDotOne() throws {
+    func testHelloVersionIsOneDotTwo() throws {
         let data = try IucmCodec.encode(.hello(HelloMessage(deviceName: "x", appVersion: "y", cameras: [])))
-        XCTAssertEqual(Iucm.version, 0x0101)
-        XCTAssertEqual([UInt8](data)[12], 0x01)   // LE low byte = minor
+        XCTAssertEqual(Iucm.version, 0x0102)
+        XCTAssertEqual([UInt8](data)[12], 0x02)   // LE low byte = minor
         XCTAssertEqual([UInt8](data)[13], 0x01)   // high byte = major
+    }
+
+    /// Golden bytes shared with `shared/tests/fixtures/clientinfo-macapp.bin`. A field
+    /// order or prefix-width change here would still round-trip in Swift but stop the
+    /// C and ObjC++ sides from reading the same frame.
+    func testClientInfoGoldenBytesMatchTheSharedFixture() throws {
+        let data = try IucmCodec.encode(.clientInfo(
+            ClientInfoMessage(kind: .macApp, name: "TetherCam for Mac", version: "0.3.0")))
+        var expected = Data(Iucm.magic)
+        expected.append(contentsOf: [0x04, 0x00, 0x00, 0x00, 0x19, 0x00, 0x00, 0x00])
+        expected.append(contentsOf: [0x02, 17])
+        expected.append(contentsOf: Array("TetherCam for Mac".utf8))
+        expected.append(contentsOf: [5])
+        expected.append(contentsOf: Array("0.3.0".utf8))
+        XCTAssertEqual(data, expected)
+        try roundTrip(.clientInfo(ClientInfoMessage(kind: .tool, name: "usbcam-recv", version: "dev")))
+    }
+
+    func testClientInfoUnknownKindMapsToUnknownAndIgnoresTrailingBytes() throws {
+        let m = try IucmCodec.decodePayload(type: 0x04, flags: 0,
+                                            payload: [9, 1, 0x78, 1, 0x79, 0xAA])
+        guard case .clientInfo(let c) = m else { return XCTFail("expected clientInfo, got \(m)") }
+        XCTAssertEqual(c.kind, 9)
+        XCTAssertEqual(c.clientKind, .unknown)
+        XCTAssertEqual(c.name, "x")
+        XCTAssertEqual(c.version, "y")
+    }
+
+    /// Bug caught: a CLIENT_INFO whose length byte outruns the payload must fail
+    /// as truncated instead of reading past the buffer or handing the simulator a
+    /// half-decoded identity. The C parser covers this (`test_frame_parser.c`,
+    /// IUCM_ERR_TRUNCATED); the Swift decoder's trailing `rest()` forgives only
+    /// SURPLUS bytes, so missing ones needed their own guard.
+    func testClientInfoWithLengthByteBeyondThePayloadIsTruncated() {
+        // kind 2, name "x", then version_len 5 with nothing behind it.
+        XCTAssertThrowsError(try IucmCodec.decodePayload(type: 0x04, flags: 0,
+                                                         payload: [2, 1, 0x78, 5])) { err in
+            XCTAssertEqual(err as? IucmProtocolError, .truncatedPayload(type: 0x04))
+        }
+        // name_len 255, two bytes of payload behind it.
+        XCTAssertThrowsError(try IucmCodec.decodePayload(type: 0x04, flags: 0,
+                                                         payload: [2, 255, 0x61, 0x62])) { err in
+            XCTAssertEqual(err as? IucmProtocolError, .truncatedPayload(type: 0x04))
+        }
+        // An empty payload does not even carry the kind byte.
+        XCTAssertThrowsError(try IucmCodec.decodePayload(type: 0x04, flags: 0,
+                                                         payload: [])) { err in
+            XCTAssertEqual(err as? IucmProtocolError, .truncatedPayload(type: 0x04))
+        }
     }
 
     func testStartRoundTrip() throws {

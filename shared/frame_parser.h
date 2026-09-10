@@ -20,6 +20,7 @@ extern "C" {
 
 #define IUCM_VERSION_1_0 0x0100u
 #define IUCM_VERSION_1_1 0x0101u
+#define IUCM_VERSION_1_2 0x0102u
 #define IUCM_VERSION_MAJOR(v) ((uint8_t)((v) >> 8))
 #define IUCM_VERSION_MINOR(v) ((uint8_t)((v) & 0xFFu))
 
@@ -28,6 +29,8 @@ enum {
     IUCM_MSG_HELLO  = 0x01,
     IUCM_MSG_START  = 0x02,
     IUCM_MSG_STOP   = 0x03,
+    /* 1.2 */
+    IUCM_MSG_CLIENT_INFO = 0x04,
     IUCM_MSG_STATS  = 0x12,
     IUCM_MSG_CONFIG = 0x10,
     IUCM_MSG_VIDEO  = 0x11,
@@ -58,6 +61,15 @@ enum {
 /* AUDIO_CONFIG codec ids, PROTOCOL.md 4.9. Unknown values are passed through,
  * never rejected: the receiver logs them and leaves audio off. */
 enum { IUCM_AUDIO_CODEC_AAC_LC = 1 };
+
+/* CLIENT_INFO kinds, PROTOCOL.md 4.11. Unknown values are mapped to
+ * IUCM_CLIENT_UNKNOWN by the consumer; name and version survive. */
+enum {
+    IUCM_CLIENT_UNKNOWN    = 0,
+    IUCM_CLIENT_OBS_PLUGIN = 1,
+    IUCM_CLIENT_MAC_APP    = 2,
+    IUCM_CLIENT_TOOL       = 3
+};
 
 /* camera positions */
 enum { IUCM_CAMERA_BACK = 0, IUCM_CAMERA_FRONT = 1 };
@@ -129,6 +141,14 @@ struct iucm_hello {
 
 /* flags is the optional 12th byte; an 11-byte START parses as flags == 0. It sits
  * last so the existing positional initialisers keep their meaning. */
+/* CLIENT_INFO payload, PROTOCOL.md 4.11 (since 1.2). Optional on the wire: a
+ * 1.0/1.1 receiver never sends it. */
+struct iucm_client_info {
+    uint8_t kind;
+    char    name[IUCM_NAME_MAX];
+    char    version[IUCM_APP_VERSION_MAX];
+};
+
 struct iucm_start {
     uint8_t  camera_id;
     uint16_t width, height, fps;
@@ -197,6 +217,10 @@ int iucm_encode_hello(uint8_t *out, size_t cap, const struct iucm_hello *h, size
  * form (PROTOCOL.md 4.2). */
 int iucm_encode_start(uint8_t *out, size_t cap, const struct iucm_start *s, size_t *written);
 int iucm_encode_stop(uint8_t *out, size_t cap, size_t *written);
+/* CLIENT_INFO, PROTOCOL.md 4.11. name and version are NUL-terminated C strings
+ * of at most 255 bytes each; they travel u8-length-prefixed like HELLO's. */
+int iucm_encode_client_info(uint8_t *out, size_t cap, const struct iucm_client_info *ci,
+                            size_t *written);
 int iucm_encode_config(uint8_t *out, size_t cap, uint16_t width, uint16_t height,
                        uint16_t fps, const uint8_t *hvcc, uint32_t hvcc_len,
                        size_t *written);
@@ -213,6 +237,9 @@ int iucm_encode_error(uint8_t *out, size_t cap, uint16_t code, const char *text,
 int iucm_parse_hello(const uint8_t *payload, uint32_t len, struct iucm_hello *out);
 /* Accepts 11 and 12 bytes; 11 yields flags == 0, anything beyond 12 is ignored. */
 int iucm_parse_start(const uint8_t *payload, uint32_t len, struct iucm_start *out);
+/* Trailing bytes are ignored: later minor versions may append fields (4.11). */
+int iucm_parse_client_info(const uint8_t *payload, uint32_t len,
+                           struct iucm_client_info *out);
 int iucm_parse_config(const uint8_t *payload, uint32_t len, struct iucm_config *out);
 int iucm_parse_error(const uint8_t *payload, uint32_t len, struct iucm_error *out);
 int iucm_parse_stats(const uint8_t *payload, uint32_t len, struct iucm_stats *out);

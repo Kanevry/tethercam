@@ -33,6 +33,15 @@ final class AppModel: ObservableObject {
     /// Mirrored from the audio capture on the one-second stats tick, so the
     /// settings sheet can explain a mute switch that has nothing to mute.
     @Published var audioDenied = false
+    /// True for five seconds after the phone turned a second receiver away with
+    /// ERROR 1 BUSY. Informational, not a fault: the take that is already running
+    /// keeps running, the other Mac receiver is the one that has to quit.
+    @Published var showBusyHint = false
+
+    /// Last seen rejection count, so a *new* rejection re-arms the hint instead of
+    /// the flag latching on the first one.
+    private var lastBusyRejections: UInt32 = 0
+    private var busyHintHide: Task<Void, Never>?
 
     let capture = CaptureEngine()
     private lazy var server = UsbServer(capture: capture)
@@ -61,6 +70,7 @@ final class AppModel: ObservableObject {
         }
         server.onStats = { [weak self] s in
             Task { @MainActor in
+                self?.noteBusy(s.busyRejections)
                 self?.stats = s
                 if let c = self?.capture {
                     self?.leveler = c.levelerTelemetry
@@ -99,6 +109,21 @@ final class AppModel: ObservableObject {
         capture.startPreview(cameraId: id)
     }
 
+    /// Shows the BUSY card when the rejection counter moved. Restarting the
+    /// five-second window on every new rejection is deliberate: someone who tries
+    /// the second receiver twice should get the answer twice.
+    private func noteBusy(_ count: UInt32) {
+        guard count != lastBusyRejections else { return }
+        lastBusyRejections = count
+        busyHintHide?.cancel()
+        withAnimation { showBusyHint = true }
+        busyHintHide = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation { self?.showBusyHint = false }
+        }
+    }
+
     func refreshPermission() {
         cameraDenied = AVCaptureDevice.authorizationStatus(for: .video) == .denied
     }
@@ -119,6 +144,10 @@ final class AppModel: ObservableObject {
 struct ContentView: View {
     @StateObject private var model = AppModel()
     @AppStorage("horizonLeveling") private var horizonLeveling = true
+    /// Persisted like the leveller: a mount does not change between launches, so
+    /// neither should the answer to how the picture is turned.
+    @AppStorage("autoRotation") private var autoRotation = true
+    @AppStorage("manualRotation") private var manualRotation = 0
     /// Off by default: a camera that silently sends no sound is the worse
     /// surprise of the two.
     @AppStorage("audioMuted") private var audioMuted = false
@@ -169,6 +198,7 @@ struct ContentView: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .top) {
                     StatusPill(link: model.link, format: model.formatLabel,
+                               receiver: model.stats.receiver,
                                muted: model.audioMuted)
                     Spacer()
                     Button {
@@ -190,6 +220,10 @@ struct ContentView: View {
                 if model.cameraDenied {
                     PermissionDeniedCard(onOpenSettings: { model.openSystemSettings() })
                 }
+                if model.showBusyHint {
+                    OverlayText(key: "status.busy", tint: .orange)
+                        .transition(.opacity)
+                }
                 if showForegroundBanner {
                     OverlayText(key: "banner.foreground", tint: .orange)
                         .transition(.opacity)
@@ -201,16 +235,22 @@ struct ContentView: View {
         .statusBarHidden(true)
         .onAppear {
             model.horizonLeveling = horizonLeveling
+            model.autoRotation = autoRotation
+            model.manualRotation = manualRotation
             model.audioMuted = audioMuted
             model.boot()
             model.selectCamera(UInt8(clamping: preferredCameraId))
         }
         .onChange(of: horizonLeveling) { _, on in model.horizonLeveling = on }
+        .onChange(of: autoRotation) { _, on in model.autoRotation = on }
+        .onChange(of: manualRotation) { _, a in model.manualRotation = a }
         .onChange(of: audioMuted) { _, on in model.audioMuted = on }
         .onChange(of: preferredCameraId) { _, id in model.selectCamera(UInt8(clamping: id)) }
         .onChange(of: scenePhase) { _, phase in handleScenePhase(phase) }
         .sheet(isPresented: $showSettings) {
             SettingsSheet(model: model, horizonLeveling: $horizonLeveling,
+                          autoRotation: $autoRotation,
+                          manualRotation: $manualRotation,
                           audioMuted: $audioMuted,
                           preferredCameraId: $preferredCameraId)
         }
@@ -260,6 +300,9 @@ struct ContentView: View {
 struct StatusPill: View {
     let link: AppModel.Link
     let format: String
+    /// Who is on the other end, so "connected" can name the Mac app, OBS or the
+    /// receiver's own name instead of always claiming OBS.
+    var receiver: ReceiverInfo?
     var muted: Bool = false
 
     var body: some View {
@@ -284,7 +327,10 @@ struct StatusPill: View {
     private var text: Text {
         switch link {
         case .waiting: return Text("status.waiting")
-        case .connected: return Text("status.connected")
+        case .connected:
+            let (key, name) = ReceiverStatus.connected(for: receiver)
+            guard let name else { return Text(LocalizedStringKey(key)) }
+            return Text(String(format: String(localized: String.LocalizationValue(key)), name))
         case .streaming:
             return Text(String(format: String(localized: "status.streaming"), format))
         }
@@ -339,6 +385,8 @@ struct PermissionDeniedCard: View {
 struct SettingsSheet: View {
     @ObservedObject var model: AppModel
     @Binding var horizonLeveling: Bool
+    @Binding var autoRotation: Bool
+    @Binding var manualRotation: Int
     @Binding var audioMuted: Bool
     @Binding var preferredCameraId: Int
     @Environment(\.dismiss) private var dismiss
@@ -378,16 +426,17 @@ struct SettingsSheet: View {
                 } header: {
                     Text("settings.audio")
                 } footer: {
-                    Text("settings.audioFootnote")
+                    Text(LocalizedStringKey(
+                        ReceiverStatus.audioFootnoteKey(for: model.stats.receiver)))
                 }
 
                 Section {
                     DisclosureGroup("settings.advanced", isExpanded: $showAdvanced) {
-                        Toggle("settings.autoRotation", isOn: $model.autoRotation)
+                        Toggle("settings.autoRotation", isOn: $autoRotation)
                         Toggle("settings.horizonLeveling", isOn: $horizonLeveling)
-                            .disabled(!model.autoRotation)
-                        if !model.autoRotation {
-                            Picker("settings.manualAngle", selection: $model.manualRotation) {
+                            .disabled(!autoRotation)
+                        if !autoRotation {
+                            Picker("settings.manualAngle", selection: $manualRotation) {
                                 ForEach([0, 90, 180, 270], id: \.self) { a in
                                     Text("\(a)\u{00B0}").tag(a)
                                 }
@@ -402,6 +451,8 @@ struct SettingsSheet: View {
                         diagRow("diag.listener", model.listenerState)
                         diagRow("diag.connected", yesNo(model.stats.connected))
                         diagRow("diag.streaming", yesNo(model.stats.streaming))
+                        diagRow("diag.receiver",
+                                ReceiverStatus.diagnosticsValue(for: model.stats.receiver))
                         diagRow("diag.fps", String(format: "%.1f", model.stats.fps))
                         diagRow("diag.kbps", String(format: "%.0f", model.stats.kbps))
                         diagRow("diag.port", "\(Int(Iucm.defaultPort))")
@@ -417,8 +468,11 @@ struct SettingsSheet: View {
                 }
 
                 Section {
-                    Link(destination: URL(string: "https://tethercam.app")!) {
-                        Label("link.installPlugin", systemImage: "arrow.down.circle")
+                    Link(destination: URL(string: "https://tethercam.app/#mac-app")!) {
+                        Label("link.getMacApp", systemImage: "desktopcomputer")
+                    }
+                    Link(destination: URL(string: "https://tethercam.app/#download")!) {
+                        Label("link.getPlugin", systemImage: "arrow.down.circle")
                     }
                     Link(destination: URL(string: "https://tethercam.app/privacy")!) {
                         Label("link.privacy", systemImage: "hand.raised")

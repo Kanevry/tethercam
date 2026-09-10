@@ -30,6 +30,45 @@ final class ServerStateMachineTests: XCTestCase {
         XCTAssertEqual(m.phase, .greeted)
     }
 
+    // MARK: - CLIENT_INFO, PROTOCOL.md 4.11
+
+    func testClientInfoBeforeStartLatchesReceiverInfo() {
+        var m = makeMachine()
+        _ = m.handle(.connectionAccepted(id: 1, nowUs: 0))
+        XCTAssertNil(m.receiverInfo)
+        let info = ReceiverInfo(kind: .obsPlugin, name: "TetherCam OBS plugin", version: "0.2.1")
+        // CLIENT_INFO produces no action of its own — it only identifies the peer.
+        XCTAssertTrue(m.handle(.message(.clientInfo(info), nowUs: 1)).isEmpty)
+        XCTAssertEqual(m.receiverInfo, info)
+        XCTAssertEqual(m.phase, .greeted)
+
+        // START still behaves exactly as before.
+        let a = m.handle(.message(.start(start), nowUs: 2))
+        XCTAssertEqual(a, [.startCapture(start)])
+        XCTAssertEqual(m.receiverInfo, info)
+
+        // A later CLIENT_INFO simply re-latches (4.11).
+        let second = ReceiverInfo(kind: .macApp, name: "TetherCam for Mac", version: "0.3.0")
+        XCTAssertTrue(m.handle(.message(.clientInfo(second), nowUs: 3)).isEmpty)
+        XCTAssertEqual(m.receiverInfo, second)
+
+        // The identity belongs to the connection, not to the app.
+        _ = m.handle(.connectionClosed(id: 1))
+        XCTAssertNil(m.receiverInfo)
+    }
+
+    /// A 1.1 receiver never sends CLIENT_INFO: the flow is unchanged and the app
+    /// simply has no name to show.
+    func testReceiverWithoutClientInfoLeavesInfoNil() {
+        var m = makeMachine()
+        _ = m.handle(.connectionAccepted(id: 1, nowUs: 0))
+        var withAudio = start
+        withAudio.wantsAudio = true
+        XCTAssertEqual(m.handle(.message(.start(withAudio), nowUs: 1)), [.startCapture(withAudio)])
+        XCTAssertNil(m.receiverInfo)
+        XCTAssertTrue(m.isStreaming)
+    }
+
     func testStartOnlyAfterHelloPhase() {
         var m = makeMachine()
         // No connection yet: START is ignored, no capture is started.

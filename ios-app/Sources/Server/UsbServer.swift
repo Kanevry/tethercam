@@ -20,6 +20,13 @@ public final class UsbServer {
         public var width: Int = 0
         public var height: Int = 0
         public var targetFps: Int = 0
+        /// Who is connected, from CLIENT_INFO (PROTOCOL.md 4.11). `nil` for a
+        /// receiver older than 1.2, which never identifies itself.
+        public var receiver: ReceiverInfo?
+        /// How often a second receiver was turned away with ERROR 1 BUSY since
+        /// launch. The UI watches for the number going up, not for a flag, so a
+        /// hint that was already dismissed comes back on the next attempt.
+        public var busyRejections: UInt32 = 0
     }
 
     private let queue = DispatchQueue(label: "at.gotzendorfer.usbcam.server")
@@ -52,7 +59,7 @@ public final class UsbServer {
     public init(capture: CaptureEngine) {
         self.capture = capture
         let name = UIDevice.current.name
-        let version = (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "0.1.0"
+        let version = (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "0.0.0"
         machine = ServerStateMachine(deviceName: name, appVersion: version,
                                      cameras: capture.descriptors)
         encoder.onMessage = { [weak self] msg in self?.queue.async { self?.emit(msg) } }
@@ -155,6 +162,9 @@ public final class UsbServer {
         conn.start(queue: queue)
         receive(id)
         apply(machine.handle(.connectionAccepted(id: id, nowUs: Self.nowUs())))
+        // A refused second receiver has no other trigger: the once-per-second
+        // stats tick would show the hint up to a second late.
+        refreshStats()
     }
 
     private func receive(_ id: UInt64) {
@@ -391,6 +401,8 @@ public final class UsbServer {
         }
         stats.connected = machine.activeConnection != nil
         stats.streaming = machine.isStreaming
+        stats.receiver = machine.receiverInfo
+        stats.busyRejections = machine.busyRejections
         if let f = capture.activeFormat {
             stats.width = Int(f.width); stats.height = Int(f.height); stats.targetFps = Int(f.fps)
         } else {

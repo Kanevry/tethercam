@@ -608,11 +608,75 @@ static void test_bad_arguments(void) {
     CHECK(strlen(iucm_strerror(IUCM_ERR_OVERSIZE)) > 0);
 }
 
+/* ---- CLIENT_INFO (1.2, PROTOCOL.md 4.11) ------------------------------- */
+
+static void test_client_info_roundtrip_and_fixture(void) {
+    struct iucm_client_info ci = {IUCM_CLIENT_TOOL, "usbcam-recv", "dev"};
+    struct iucm_client_info back;
+    uint8_t                 buf[128];
+    size_t                  written = 0;
+    struct sink             s;
+    struct iucm_parser      p;
+    uint8_t                 pbuf[256];
+    unsigned char          *fx;
+    size_t                  fx_len = 0;
+
+    CHECK_EQ_INT(iucm_encode_client_info(buf, sizeof(buf), &ci, &written), IUCM_OK);
+    /* 12 header + 1 kind + 1 + 11 name + 1 + 3 version */
+    CHECK_EQ_INT((int)written, 29);
+    CHECK_EQ_INT(buf[4], IUCM_MSG_CLIENT_INFO);
+
+    sink_init(&s);
+    iucm_parser_init(&p, pbuf, sizeof(pbuf));
+    CHECK_EQ_INT(iucm_parser_feed(&p, buf, written, sink_cb, &s), IUCM_OK);
+    CHECK_EQ_INT((int)s.count, 1);
+    CHECK_EQ_INT(s.msgs[0].type, IUCM_MSG_CLIENT_INFO);
+    CHECK_EQ_INT(iucm_parse_client_info(s.msgs[0].payload, s.msgs[0].length, &back), IUCM_OK);
+    CHECK_EQ_INT(back.kind, IUCM_CLIENT_TOOL);
+    CHECK_EQ_STR(back.name, "usbcam-recv");
+    CHECK_EQ_STR(back.version, "dev");
+
+    /* A later minor version may append fields: the surplus byte is ignored. */
+    {
+        uint8_t payload[8] = {9, 1, 'x', 1, 'y', 0xAA, 0xBB, 0xCC};
+        CHECK_EQ_INT(iucm_parse_client_info(payload, sizeof(payload), &back), IUCM_OK);
+        CHECK_EQ_INT(back.kind, 9); /* unknown kind survives; the consumer maps it to 0 */
+        CHECK_EQ_STR(back.name, "x");
+        CHECK_EQ_STR(back.version, "y");
+    }
+    /* A payload that ends inside version_len is truncated, not silently empty. */
+    {
+        uint8_t payload[4] = {2, 1, 'x', 5};
+        CHECK_EQ_INT(iucm_parse_client_info(payload, sizeof(payload), &back),
+                     IUCM_ERR_TRUNCATED);
+    }
+
+    /* Golden bytes: the fixture is the cross-implementation contract, so a field
+     * order or prefix-width change here breaks the Swift and ObjC++ sides too. */
+    fx = t_read_file("clientinfo-macapp.bin", &fx_len);
+    sink_init(&s);
+    iucm_parser_reset(&p);
+    CHECK_EQ_INT(iucm_parser_feed(&p, fx, fx_len, sink_cb, &s), IUCM_OK);
+    CHECK_EQ_INT((int)s.count, 1);
+    CHECK_EQ_INT(s.msgs[0].type, IUCM_MSG_CLIENT_INFO);
+    CHECK_EQ_INT(iucm_parse_client_info(s.msgs[0].payload, s.msgs[0].length, &back), IUCM_OK);
+    CHECK_EQ_INT(back.kind, IUCM_CLIENT_MAC_APP);
+    CHECK_EQ_STR(back.name, "TetherCam for Mac");
+    CHECK_EQ_STR(back.version, "0.3.0");
+    free(fx);
+
+    CHECK_EQ_STR(iucm_type_name(IUCM_MSG_CLIENT_INFO), "CLIENT_INFO");
+    CHECK_EQ_INT(IUCM_VERSION_1_2, 0x0102);
+    CHECK_EQ_INT(iucm_encode_client_info(buf, 12, &ci, &written), IUCM_ERR_CAPACITY);
+    CHECK_EQ_INT(iucm_encode_client_info(buf, sizeof(buf), NULL, &written), IUCM_ERR_BADARG);
+}
+
 int main(void) {
     RUN(test_header_roundtrip);
     RUN(test_version_constant);
     RUN(test_roundtrip_hello);
     RUN(test_roundtrip_start_stop);
+    RUN(test_client_info_roundtrip_and_fixture);
     RUN(test_start_flags_lengths);
     RUN(test_parse_audio_config_and_audio);
     RUN(test_roundtrip_config);

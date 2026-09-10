@@ -1,2 +1,3 @@
 "NSCameraUsageDescription" = "Das Kamerabild wird per USB-Kabel an den Mac übertragen.";
+"NSMicrophoneUsageDescription" = "Der Ton des Mikrofons wird zusammen mit dem Bild per USB-Kabel an den Mac übertragen.";
 "NSLocalNetworkUsageDescription" = "Lokaler Listener auf TCP 7878 für die USB-Verbindung zum Mac.";

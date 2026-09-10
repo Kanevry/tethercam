@@ -1,6 +1,6 @@
 import Foundation
 
-/// Wire protocol "IUCM" (iPhone USB Cam Message), version 1.1.
+/// Wire protocol "IUCM" (iPhone USB Cam Message), version 1.2.
 ///
 /// Framing: 12-byte header, little-endian:
 ///   magic  4  ASCII "IUCM"
@@ -17,8 +17,10 @@ public enum Iucm {
     public static let headerSize = 12
     /// Guard against absurd allocations from a corrupt stream (spec section 8).
     public static let maxPayload = 8 * 1024 * 1024
-    /// High byte major, low byte minor. 1.1 added AUDIO_CONFIG/AUDIO (PROTOCOL.md 4.9/4.10).
-    public static let version: UInt16 = 0x0101
+    /// High byte major, low byte minor. 1.1 added AUDIO_CONFIG/AUDIO (PROTOCOL.md 4.9/4.10),
+    /// 1.2 added CLIENT_INFO (PROTOCOL.md 4.11). A 1.2 app still speaks to 1.0 and 1.1
+    /// receivers: CLIENT_INFO is optional and its absence is not an error.
+    public static let version: UInt16 = 0x0102
     public static let defaultPort: UInt16 = 7878
 }
 
@@ -26,6 +28,8 @@ public enum IucmType: UInt8, Sendable, CaseIterable {
     case hello = 0x01
     case start = 0x02
     case stop = 0x03
+    /// CLIENT_INFO, Mac to app, optional (PROTOCOL.md 4.11, since 1.2).
+    case clientInfo = 0x04
     case stats = 0x12
     case config = 0x10
     case video = 0x11
@@ -49,6 +53,38 @@ public enum IucmErrorCode: UInt16, Sendable, CaseIterable {
 /// AUDIO_CONFIG `codec` field. See `protocol/PROTOCOL.md` section 4.9.
 public enum IucmAudioCodec: UInt8, Sendable, CaseIterable {
     case aacLC = 1
+}
+
+/// CLIENT_INFO `kind` field. See `protocol/PROTOCOL.md` section 4.11.
+public enum IucmClientKind: UInt8, Sendable, CaseIterable {
+    case unknown = 0
+    case obsPlugin = 1
+    case macApp = 2
+    case tool = 3
+}
+
+/// Who is connected, as announced in CLIENT_INFO (PROTOCOL.md 4.11).
+///
+/// `name` and `version` arrive in English and are shown verbatim; only the
+/// surrounding sentence is localised, never the wire string. `nil` receiver info
+/// means a 1.0/1.1 receiver that never identified itself.
+public struct ReceiverInfo: Equatable, Sendable {
+    /// Raw wire value. Unknown values map to `.unknown` in `clientKind` (4.11).
+    public var kind: UInt8
+    public var name: String
+    public var version: String
+
+    public init(kind: UInt8, name: String, version: String) {
+        self.kind = kind
+        self.name = name
+        self.version = version
+    }
+
+    public init(kind: IucmClientKind, name: String, version: String) {
+        self.init(kind: kind.rawValue, name: name, version: version)
+    }
+
+    public var clientKind: IucmClientKind { IucmClientKind(rawValue: kind) ?? .unknown }
 }
 
 public enum CameraPosition: UInt8, Sendable {
@@ -187,6 +223,8 @@ public enum IucmMessage: Equatable, Sendable {
     case hello(version: UInt16, deviceName: String, appVersion: String, cameras: [CameraDescriptor])
     case start(StartParams)
     case stop
+    /// CLIENT_INFO (`0x04`): who the receiver is (PROTOCOL.md 4.11).
+    case clientInfo(ReceiverInfo)
     case stats(DeviceStats)
     case config(width: UInt16, height: UInt16, fps: UInt16, hvcC: Data)
     /// `nalUnits` is the raw remainder after the pts field: a concatenation of
@@ -206,6 +244,7 @@ public enum IucmMessage: Equatable, Sendable {
         case .hello: return .hello
         case .start: return .start
         case .stop: return .stop
+        case .clientInfo: return .clientInfo
         case .stats: return .stats
         case .config: return .config
         case .video: return .video
@@ -348,6 +387,10 @@ public enum IucmCodec {
             if s.flags != 0 { p.u8(s.flags) }
         case .stop:
             break
+        case let .clientInfo(info):
+            p.u8(info.kind)
+            p.shortString(info.name)
+            p.shortString(info.version)
         case let .stats(st):
             p.i16(st.continuousAngleX10)
             p.u16(st.sector)
@@ -430,6 +473,13 @@ public enum IucmCodec {
             msg = .start(s)
         case .stop:
             msg = .stop
+        case .clientInfo:
+            let kind = try r.u8()
+            let name = try r.shortString()
+            let version = try r.shortString()
+            // Trailing bytes belong to a later minor version: ignore them (4.11).
+            _ = r.rest()
+            msg = .clientInfo(ReceiverInfo(kind: kind, name: name, version: version))
         case .stats:
             msg = .stats(DeviceStats(continuousAngleX10: try r.i16(), sector: try r.u16(),
                                      residualX10: try r.i16(), gravityMX1000: try r.u16(),
@@ -459,9 +509,12 @@ public enum IucmCodec {
         case .error:
             msg = .error(code: try r.u16(), text: try r.longString())
         }
-        // VIDEO and AUDIO consume the remainder by design; every other type is
-        // fixed-shape. START is length-tolerant and already consumed its optional byte.
-        if t != .video && t != .audio && !r.isAtEnd { throw IucmDecodeError.trailingBytes }
+        // VIDEO, AUDIO and CLIENT_INFO consume the remainder by design; every other
+        // type is fixed-shape. START is length-tolerant and already consumed its
+        // optional byte.
+        if t != .video && t != .audio && t != .clientInfo && !r.isAtEnd {
+            throw IucmDecodeError.trailingBytes
+        }
         return msg
     }
 

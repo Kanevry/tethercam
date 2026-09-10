@@ -36,8 +36,63 @@ final class IucmCodecTests: XCTestCase {
 
     // MARK: - Audio, PROTOCOL.md 4.2/4.9/4.10
 
-    func testVersionIsOneDotOne() {
-        XCTAssertEqual(Iucm.version, 0x0101)
+    func testVersionIsOneDotTwo() {
+        XCTAssertEqual(Iucm.version, 0x0102)
+    }
+
+    // MARK: - CLIENT_INFO, PROTOCOL.md 4.11
+
+    /// Golden bytes shared with `shared/tests/fixtures/clientinfo-macapp.bin`. A field
+    /// order or prefix-width change would still round-trip in Swift but stop the C and
+    /// ObjC++ receivers from producing a frame this app can read.
+    func testClientInfoGoldenBytesMatchTheSharedFixture() throws {
+        let f = IucmCodec.encode(.clientInfo(ReceiverInfo(kind: .macApp,
+                                                          name: "TetherCam for Mac",
+                                                          version: "0.3.0")))
+        var expected = Data(Iucm.magic)
+        expected.append(contentsOf: [0x04, 0x00, 0x00, 0x00, 0x19, 0x00, 0x00, 0x00])
+        expected.append(contentsOf: [0x02, 17])
+        expected.append(contentsOf: Array("TetherCam for Mac".utf8))
+        expected.append(contentsOf: [5])
+        expected.append(contentsOf: Array("0.3.0".utf8))
+        XCTAssertEqual(f, expected)
+        XCTAssertEqual(try IucmCodec.decodeFrame(f),
+                       .clientInfo(ReceiverInfo(kind: .macApp, name: "TetherCam for Mac",
+                                                version: "0.3.0")))
+    }
+
+    func testClientInfoUnknownKindMapsToUnknownAndIgnoresTrailingBytes() throws {
+        let m = try IucmCodec.decodePayload(type: 0x04, flags: 0,
+                                            payload: Data([9, 1, 0x78, 1, 0x79, 0xAA]))
+        guard case let .clientInfo(info) = m else { return XCTFail("expected clientInfo, got \(m)") }
+        XCTAssertEqual(info.kind, 9)
+        XCTAssertEqual(info.clientKind, .unknown)
+        XCTAssertEqual(info.name, "x")
+        XCTAssertEqual(info.version, "y")
+    }
+
+    /// Bug caught: a CLIENT_INFO whose length byte outruns the payload (corrupt
+    /// stream, or a receiver that miscounts UTF-8) must be rejected as truncated
+    /// instead of reading past the buffer or latching a half-decoded identity in
+    /// `ServerStateMachine.receiverInfo`. The C parser has this test
+    /// (`test_frame_parser.c`, IUCM_ERR_TRUNCATED); the Swift decoder had none —
+    /// its trailing `rest()` only forgives SURPLUS bytes, never missing ones.
+    func testClientInfoWithLengthByteBeyondThePayloadIsTruncated() {
+        // kind 2, name "x", then version_len 5 with nothing behind it.
+        XCTAssertThrowsError(try IucmCodec.decodePayload(type: 0x04, flags: 0,
+                                                         payload: Data([2, 1, 0x78, 5]))) { e in
+            XCTAssertEqual(e as? IucmDecodeError, .truncatedPayload)
+        }
+        // name_len 255, two bytes of payload behind it.
+        XCTAssertThrowsError(try IucmCodec.decodePayload(type: 0x04, flags: 0,
+                                                         payload: Data([2, 255, 0x61, 0x62]))) { e in
+            XCTAssertEqual(e as? IucmDecodeError, .truncatedPayload)
+        }
+        // An empty payload does not even carry the kind byte.
+        XCTAssertThrowsError(try IucmCodec.decodePayload(type: 0x04, flags: 0,
+                                                         payload: Data())) { e in
+            XCTAssertEqual(e as? IucmDecodeError, .truncatedPayload)
+        }
     }
 
     func testStartShortFormIsElevenBytesAndDecodesAsNoAudio() throws {
