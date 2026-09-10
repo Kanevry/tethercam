@@ -52,7 +52,7 @@ fi
 say "xcodegen"
 (cd "$APP_DIR" && xcodegen generate >>"$LOG" 2>&1) || die "xcodegen (see log)"
 VERSION="$(sed -n 's/^ *MARKETING_VERSION: *"\(.*\)"/\1/p' "$APP_DIR/project.yml")"
-BUILDNO="$(sed -n 's/^ *CURRENT_PROJECT_VERSION: *"\(.*\)"/\1/p' "$APP_DIR/project.yml")"
+BUILDNO="$(sed -n 's/^ *CURRENT_PROJECT_VERSION: *"\([^"]*\)"/\1/p' "$APP_DIR/project.yml")"
 say "archive TetherCam $VERSION ($BUILDNO)"
 rm -rf "$BUILD"
 xcodebuild -project "$APP_DIR/TetherCam.xcodeproj" -scheme TetherCam -configuration Release \

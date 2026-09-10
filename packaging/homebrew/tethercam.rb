@@ -5,7 +5,7 @@
 # published next to the .dmg asset as TetherCam-mac.dmg.sha256.
 cask "tethercam" do
   version "0.4.0"
-  sha256 "REPLACE_AFTER_RELEASE"
+  sha256 "06f0ed0c1158cc24a2e328d97d1bd4d54936d82e402a6f435ef9915bb9ac16ee"
 
   url "https://github.com/Kanevry/tethercam/releases/download/v#{version}/TetherCam-mac.dmg"
   name "TetherCam"

@@ -73,11 +73,13 @@ im Repo; `.p8`-Inhalte und JWTs werden nie ausgegeben. Logs landen in
 `build/appstore-*.log` (gitignored). Das `.pkg` des OBS-Plugins baut ausschliesslich
 `release-plugin.yml` auf dem `v*`-Tag; danach muss der Draft-Release **veroeffentlicht**
 werden, sonst liefert `releases/latest/download/...` 404 (docs/RELEASING.md, Teil 3).
-Stand 2026-09-10: iOS 0.2.0 (Audio + Doppeltipp) ist im App Store
-(https://apps.apple.com/us/app/tethercam/id6808997521); 0.3.0 (Protokoll 1.2, Build 6) ist
-als Dev-Build am Geraet, TestFlight/Store steht aus (#24). Drei Artefakte: iOS-App, Mac-App
-(.dmg, Mac-App-first) und OBS-Plugin (.pkg, signiert + notarisiert); Zoom und Teams am
-2026-09-10 mit der virtuellen Kamera verifiziert (#13). Spendenlink ist
+Stand 2026-09-10 abends: v0.4.0 getaggt (Mac-App 0.4.0/10 mit Extension-Wiederbelebung,
+Update-Check und strukturiertem Menü; Plugin 0.4.0; iOS 0.4.0 Build 8 ohne iOS-Codeänderung).
+App Store: 0.2.0 live, 0.3.0/0.4.0 siehe docs/app-store/checklist.md und STATE.md-Handover.
+Drei Artefakte: iOS-App, Mac-App (.dmg, Mac-App-first) und OBS-Plugin (.pkg, signiert +
+notarisiert); Zoom und Teams am 2026-09-10 mit der virtuellen Kamera verifiziert (#13).
+`mac-app/project.yml` bumpt `scripts/release.sh` nicht: Version und Build-Nummer von Hand,
+Build muss steigen. Spendenlink ist
 PayPal (paypal.me/Kanevry), nur Website/README/FUNDING.yml, nie in der App (3.1.1).
 
 
