@@ -51,7 +51,7 @@ camera extension publishes the iPhone as a plain system camera called "TetherCam
 (1920x1080 at 30 fps). Released since 0.2.1 (2026-09-09) and downloadable as a Developer ID
 signed, notarized and stapled disk image at
 https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-mac.dmg
-(version 0.2.1 build 6, macOS 14 or newer, Apple silicon and Intel, free, MIT; checksum
+(version 0.3.0 build 9, macOS 14 or newer, Apple silicon and Intel, free, MIT; checksum
 at the same URL with .sha256 appended). Homebrew alternative:
 `brew tap kanevry/tethercam && brew install --cask tethercam`. It is NOT on the Mac App
 Store.
@@ -153,7 +153,7 @@ https://tethercam.app/demo.mp4 (MP4, H.264, 1920x1080, about 31 MB).
    open and in the foreground while streaming.
 2. Mac app, the default path: download
    https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-mac.dmg
-   (v0.2.1, Developer ID signed, notarized and stapled; macOS 14 or newer), drag TetherCam
+   (v0.3.0, Developer ID signed, notarized and stapled; macOS 14 or newer), drag TetherCam
    into /Applications with Finder and open it, then allow its camera extension once under
    System Settings > General > Login Items & Extensions > Camera Extensions. Homebrew:
    `brew tap kanevry/tethercam && brew install --cask tethercam`. Then pick the camera

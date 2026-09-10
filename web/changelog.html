@@ -57,6 +57,31 @@
     <p class="meta">Full history, diffs and release assets: <a href="https://github.com/Kanevry/tethercam/releases">GitHub Releases</a>. This page mirrors <a href="https://github.com/Kanevry/tethercam/blob/main/CHANGELOG.md">CHANGELOG.md</a> in the repository.</p>
 
     <div class="legal">
+      <h2 id="v0-3-0">0.3.0 &mdash; 2026-09-10</h2>
+      <p class="meta"><a href="https://github.com/Kanevry/tethercam/releases/tag/v0.3.0">v0.3.0 on GitHub</a></p>
+
+      <h3>Added</h3>
+      <ul class="prose">
+        <li><b>Mac app: setup guide, app icon, DMG, login item.</b> First launch (and any launch while the camera extension is not approved) opens a setup guide with four steps and live checkmarks: app in /Applications, extension approved (a button opens the System Settings pane), iPhone connected, camera picked. Its notes name the two limits (video only, one receiver at a time) and the fix for a camera missing in Zoom or Teams: quit the app with Cmd-Q and reopen it, and after an extension install or update restart the Mac. The app has an icon, the <code>.dmg</code> opens with a drag-to-Applications layout, and the menu gains About with the version, Launch at Login and Remove camera extension. (<a href="https://github.com/Kanevry/tethercam/issues/20">#20</a>)</li>
+        <li><b>Mac app: honest counters.</b> The menu says &ldquo;Camera ready, no app is reading it yet&rdquo; instead of a rising drop count while nothing consumes the camera; scaler pool drops are counted; the extension logs state changes at notice level. (<a href="https://github.com/Kanevry/tethercam/issues/16">#16</a>)</li>
+        <li><b>Zoom and Microsoft Teams verified</b> with a real iPhone 15 Pro Max on 2026-09-10: both list the camera &ldquo;TetherCam&rdquo; after a fresh start of the app. (<a href="https://github.com/Kanevry/tethercam/issues/13">#13</a>)</li>
+        <li><b>iOS: the app knows who is receiving.</b> Protocol 1.2 adds <code>CLIENT_INFO</code> (Mac &rarr; App): the Mac app and the OBS plugin name themselves, and the phone&rsquo;s status line says &ldquo;Connected to TetherCam for Mac&rdquo; or &ldquo;Connected to OBS&rdquo; instead of always claiming OBS. The waiting line is now &ldquo;Waiting for the Mac&rdquo;, the first-run hint names both paths, and the settings footer links to both downloads. A second receiver turned away with BUSY now says so on the phone for five seconds, and a &ldquo;Receiver&rdquo; row in the diagnostics shows the receiver&rsquo;s name and version. (<a href="https://github.com/Kanevry/tethercam/issues/19">#19</a>)</li>
+        <li>CI for the Mac app: <code>swift test</code> for the Core package plus an unsigned Release build on every push. (<a href="https://github.com/Kanevry/tethercam/issues/21">#21</a>)</li>
+      </ul>
+
+      <h3>Changed</h3>
+      <ul class="prose">
+        <li><b>Positioning: the Mac app is the default path, OBS the pro path.</b> Website, README, install guide, <code>llms.txt</code> and the App Store listing present TetherCam as a wired Mac webcam for Zoom, Teams, Meet and FaceTime, with the OBS plugin for streaming, recording and audio. (<a href="https://github.com/Kanevry/tethercam/issues/22">#22</a>, #23)</li>
+        <li>iOS: the microphone footnote follows the receiver. The Mac app carries no audio, so it points at the Mac&rsquo;s own microphone or the OBS plugin instead of promising sound that cannot arrive.</li>
+      </ul>
+
+      <h3>Fixed</h3>
+      <ul class="prose">
+        <li>iOS: &ldquo;Auto rotation&rdquo; and the manual angle survive a relaunch; both were in-memory only.</li>
+        <li>iOS: the German microphone purpose string was missing, so the German system prompt asked in English.</li>
+        <li>Mac app: the setup guide no longer jumps to the front on every extension state poll, and &ldquo;Done&rdquo; keeps it away until the next launch. (<a href="https://github.com/Kanevry/tethercam/issues/25">#25</a>)</li>
+      </ul>
+
       <h2 id="v0-2-1">0.2.1 &mdash; 2026-09-09</h2>
       <p class="meta"><a href="https://github.com/Kanevry/tethercam/releases/tag/v0.2.1">v0.2.1 on GitHub</a></p>
 
@@ -161,7 +186,7 @@
         <li><a href="https://github.com/Kanevry/tethercam">GitHub</a></li>
       </ul>
     </div>
-    <p class="foot-mark">&mdash; TetherCam 0.2.1</p>
+    <p class="foot-mark">&mdash; TetherCam 0.3.0</p>
   </div>
 </footer>
 

@@ -4,8 +4,8 @@
 # `version` and `sha256` are bumped by hand per release; the checksum is the one
 # published next to the .dmg asset as TetherCam-mac.dmg.sha256.
 cask "tethercam" do
-  version "0.2.1"
-  sha256 "0c681c73d929ae42c2880a0935752dc6e560770d26953ada87ecc6319db9bdd8"
+  version "0.3.0"
+  sha256 "dd094724c856ba6974a0fb5352d8e56612a8155645c4800eb00fed7825203ced"
 
   url "https://github.com/Kanevry/tethercam/releases/download/v#{version}/TetherCam-mac.dmg"
   name "TetherCam"
