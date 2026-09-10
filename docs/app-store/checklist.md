@@ -105,7 +105,7 @@ the subtitle/keyword move: `KEYWORDS-RATIONALE.md`, addendum 2026-09-10. Positio
 |---|---|---|---|
 | 39 | Push the new **promotional text** (en-US and de-DE). It is not version-gated in Apple's model and takes effect on the live page immediately, but `scripts/asc-listing.py` cannot deliver it on its own right now: with 0.2.0 in READY_FOR_SALE and no editable version on the record, `ensure_version` finds nothing to edit and `--dry-run` stops with `appStoreVersions with id 'dry-run'` 404 (verified 2026-09-10; a script limitation, not a regression). Either paste the two blocks into App Store Connect > 0.2.0 > Promotional Text by hand, or wait until the 0.3.0 version exists and let step 40 carry it | OWNER | now |
 | 40 | Subtitle, keywords, description and What's New go with the **0.3.0** submission, not before: they are version-scoped fields on the new App Store version | OWNER | with 0.3.0 |
-| 41 | Upload iOS build 0.3.0 (6) via `scripts/appstore-upload.sh`, then attach it to the 0.3.0 version | OWNER | with 0.3.0 |
+| 41 | Upload iOS build 0.3.0 (7) via `scripts/appstore-upload.sh`, then attach it to the 0.3.0 version | OWNER | with 0.3.0 |
 | 42 | Paste the updated `review-notes.md` into App Review Information > Notes before submitting 0.3.0 | OWNER | with 0.3.0 |
 | 43 | Replace screenshot 1 with the new Mac-first hero (`01-hero-wired-into-mac.png`) via `scripts/asc-listing.py --replace-screenshots`; the old `01-hero-wired-into-obs.png` no longer matches the positioning | OWNER (agent may run it) | with 0.3.0 |
 | 44 | Version release for 0.3.0: **Manually release this version**, as for 0.1.0 and 0.2.0 | OWNER | with 0.3.0 |

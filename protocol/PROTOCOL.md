@@ -370,6 +370,11 @@ HELLO (§4.1): u8-Laengenpraefix, UTF-8, **ohne** abschliessendes NUL.
   App verhaelt sich dann exakt wie zuvor (kein Empfaengername).
 - Eine App, die `0x04` nicht kennt, ueberspringt den Rahmen nach §2. CLIENT_INFO ist damit
   ohne Aushandlung sendbar, genau wie STATS.
+- *(Ergaenzt 2026-09-10, klarstellend, keine Semantikaenderung.)* `name_len` und
+  `version_len` sind u8, also bis 255 Byte. Ein Empfaenger mit kuerzeren Puffern
+  **kuerzt beim Lesen** und darf die Nachricht deswegen nicht verwerfen; `shared/frame_parser.c`
+  behaelt hoechstens 63 Namens- und 31 Versionsbyte. Gekuerzt wird nur auf der Empfangsseite,
+  auf der Leitung stehen immer alle Bytes.
 
 ## 5. Ablauf
 

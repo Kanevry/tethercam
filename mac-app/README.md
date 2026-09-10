@@ -9,7 +9,7 @@ iPhone as the camera "TetherCam" (1920x1080, NV12, 30 fps) to every app on the M
 ## Install (users)
 
 Download **[TetherCam-mac.dmg](https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-mac.dmg)**
-(0.3.0, build 8; Developer ID signed, notarized and stapled; macOS 14 or newer,
+(0.3.0, build 9; Developer ID signed, notarized and stapled; macOS 14 or newer,
 Apple silicon and Intel; free, MIT). The checksum sits next to it as
 `TetherCam-mac.dmg.sha256`. Homebrew works too:
 `brew tap kanevry/tethercam && brew install --cask tethercam`.

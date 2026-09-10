@@ -21,7 +21,7 @@ settings:
     SWIFT_VERSION: "5.0"
     ENABLE_HARDENED_RUNTIME: YES
     MARKETING_VERSION: "0.3.0"
-    CURRENT_PROJECT_VERSION: "8"   # sysextd replaces the extension only on a HIGHER build number
+    CURRENT_PROJECT_VERSION: "9"   # sysextd replaces the extension only on a HIGHER build number
     GENERATE_INFOPLIST_FILE: YES
 
 targets:

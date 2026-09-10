@@ -121,4 +121,38 @@ final class OnboardingPolicyTests: XCTestCase {
             }
         }
     }
+
+    /// Bug (#25.1): while the extension was unapproved, `shouldShow` stayed true,
+    /// so every extensionState report re-presented the window and "Done" could
+    /// not suppress it. Automatic presentation now needs a real transition and
+    /// yields to the in-launch suppress flag.
+    func testAutomaticPresentationNeedsTransitionAndYieldsToDone() {
+        func present(stateChanged: Bool, suppressed: Bool) -> Bool {
+            OnboardingPolicy.shouldPresentAutomatically(extensionEnabled: false,
+                                                        hasCompletedSetup: false,
+                                                        headless: false,
+                                                        stateChanged: stateChanged,
+                                                        suppressedThisLaunch: suppressed)
+        }
+        // Unapproved extension, real transition: present.
+        XCTAssertTrue(present(stateChanged: true, suppressed: false))
+        // Same state re-reported by the installer poll: stay put.
+        XCTAssertFalse(present(stateChanged: false, suppressed: false))
+        // "Done" was pressed in this launch: no automatic presentation at all,
+        // not even on a further transition.
+        XCTAssertFalse(present(stateChanged: true, suppressed: true))
+        XCTAssertFalse(present(stateChanged: false, suppressed: true))
+        // Headless still never opens a window, transition or not.
+        XCTAssertFalse(OnboardingPolicy.shouldPresentAutomatically(extensionEnabled: false,
+                                                                   hasCompletedSetup: false,
+                                                                   headless: true,
+                                                                   stateChanged: true,
+                                                                   suppressedThisLaunch: false))
+        // Healthy install that has been confirmed: nothing to show on a change.
+        XCTAssertFalse(OnboardingPolicy.shouldPresentAutomatically(extensionEnabled: true,
+                                                                   hasCompletedSetup: true,
+                                                                   headless: false,
+                                                                   stateChanged: true,
+                                                                   suppressedThisLaunch: false))
+    }
 }

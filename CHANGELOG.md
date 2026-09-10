@@ -11,8 +11,30 @@ OBS plugin (`obs-plugin/`, GPL-2.0-or-later). A tag `vX.Y.Z` releases them toget
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-10
+
 ### Added
 
+- **Mac app 0.3.0: setup guide, app icon, DMG, login item.** First launch (and any
+  launch while the camera extension is not approved) opens a setup guide with four
+  steps and live checkmarks: app in /Applications, extension approved (button opens the
+  System Settings pane), iPhone connected, camera picked. Notes name the two limits
+  (video only, one receiver at a time) and the fix for a camera missing in Zoom or
+  Teams: quit the app with Cmd-Q and reopen it, and after an extension install or
+  update restart the Mac. The app has an icon, the `.dmg` opens with a drag-to-
+  Applications layout, the menu gains About with the version, Launch at Login and
+  Remove camera extension. (#20, #13)
+- **Mac app: honest counters.** The menu says "Camera ready, no app is reading it yet"
+  instead of a rising drop count while nothing consumes the camera; scaler pool drops
+  are counted; the extension logs state changes at notice level, and the README has
+  the `log stream` recipe. (#16)
+- **Zoom and Microsoft Teams verified** with a real iPhone 15 Pro Max on 2026-09-10:
+  both list the camera "TetherCam" after a fresh start of the app. The model name of
+  the virtual camera is now "TetherCam Virtual Camera". (#13)
+- **Plugin and Mac app identify themselves** to the phone with the new `CLIENT_INFO`
+  message (protocol 1.2), so the phone's status line names the receiver. (#19)
+- CI for the Mac app: `swift test` for the Core package plus an unsigned Release
+  build on every push. (#21)
 - **iOS 0.3.0: the app knows who is receiving.** Protocol 1.2 adds `CLIENT_INFO`
   (0x04, Mac -> App): the receiver names itself, and the phone's status line says
   "Connected to TetherCam for Mac", "Connected to OBS" or the receiver's own name
@@ -28,6 +50,10 @@ OBS plugin (`obs-plugin/`, GPL-2.0-or-later). A tag `vX.Y.Z` releases them toget
 
 ### Changed
 
+- **Positioning: the Mac app is the default path, OBS the pro path.** Website (EN/DE),
+  README, install guide, `llms.txt`, App Store metadata 0.3.0 and the store's first
+  frame present TetherCam as a wired Mac webcam for Zoom, Teams, Meet and FaceTime,
+  with the OBS plugin for streaming, recording and audio. (#22, #23)
 - iOS: the microphone footnote follows the receiver. The Mac app carries no audio
   (a CoreMediaIO camera extension has no audio stream), so it now points at the
   Mac's own microphone or the OBS plugin instead of promising sound that cannot

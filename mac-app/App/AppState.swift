@@ -43,7 +43,9 @@ final class AppState: ObservableObject {
     @Published var extensionState: ExtensionState = .notInstalled {
         didSet {
             report("extension: \(extensionState.label)")
-            refreshOnboarding()
+            // Only a real transition may pull the setup window forward; the
+            // installer re-reports the same state while approval is pending.
+            refreshOnboarding(stateChanged: oldValue != extensionState)
         }
     }
     /// Live pipeline snapshot; every change is one stderr line in headless mode.
@@ -96,7 +98,8 @@ final class AppState: ObservableObject {
         guard !started else { return }
         started = true
         refreshLaunchAtLogin()
-        refreshOnboarding()
+        // First evaluation of the launch counts as a transition.
+        refreshOnboarding(stateChanged: true)
         if activateOnStart { installExtension() }
         startPipeline()
     }
@@ -109,12 +112,23 @@ final class AppState: ObservableObject {
         set { UserDefaults.standard.set(newValue, forKey: Self.didCompleteSetupKey) }
     }
 
+    /// Set by "Done" for the rest of this launch, so an unapproved extension
+    /// cannot keep re-presenting the guide. Deliberately not persisted: the next
+    /// launch re-evaluates `hasCompletedSetup` from UserDefaults.
+    private var onboardingSuppressedThisLaunch = false
+
     /// Applies `OnboardingPolicy` to the current state. Never opens the window
     /// in --headless mode; the policy is the single place that rule lives.
-    func refreshOnboarding() {
-        guard OnboardingPolicy.shouldShow(extensionEnabled: extensionState == .enabled,
-                                          hasCompletedSetup: hasCompletedSetup,
-                                          headless: headless) else { return }
+    ///
+    /// - Parameter stateChanged: false when the extension state was re-reported
+    ///   unchanged, in which case nothing is presented.
+    func refreshOnboarding(stateChanged: Bool) {
+        guard OnboardingPolicy.shouldPresentAutomatically(
+            extensionEnabled: extensionState == .enabled,
+            hasCompletedSetup: hasCompletedSetup,
+            headless: headless,
+            stateChanged: stateChanged,
+            suppressedThisLaunch: onboardingSuppressedThisLaunch) else { return }
         showOnboarding()
     }
 
@@ -125,9 +139,12 @@ final class AppState: ObservableObject {
         OnboardingWindowController.shared.present(state: self)
     }
 
-    /// "Done" in the guide: remember it and close.
+    /// "Done" in the guide: remember it and close. The guide stays closed for
+    /// the rest of this launch even while the extension is unapproved; the menu
+    /// item "Setup guide…" still opens it on demand.
     func completeOnboarding() {
         hasCompletedSetup = true
+        onboardingSuppressedThisLaunch = true
         isShowingOnboarding = false
         OnboardingWindowController.shared.close()
     }

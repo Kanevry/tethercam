@@ -671,12 +671,41 @@ static void test_client_info_roundtrip_and_fixture(void) {
     CHECK_EQ_INT(iucm_encode_client_info(buf, sizeof(buf), NULL, &written), IUCM_ERR_BADARG);
 }
 
+/* Bug: iucm_parse_client_info rejected a contract-conforming name longer than
+ * IUCM_NAME_MAX with IUCM_ERR_RANGE. PROTOCOL.md 4.11 allows 255 bytes, so the
+ * C side truncates instead. */
+static void test_client_info_long_name_is_truncated(void) {
+    struct iucm_client_info back;
+    uint8_t                 payload[3 + 100 + 40];
+    size_t                  i, off = 0;
+
+    payload[off++] = IUCM_CLIENT_OBS_PLUGIN;
+    payload[off++] = 100;
+    for (i = 0; i < 100; i++) payload[off++] = (uint8_t)('a' + (i % 26));
+    payload[off++] = 40;
+    for (i = 0; i < 40; i++) payload[off++] = (uint8_t)('0' + (i % 10));
+    CHECK_EQ_INT((int)off, (int)sizeof(payload));
+
+    CHECK_EQ_INT(iucm_parse_client_info(payload, (uint32_t)sizeof(payload), &back), IUCM_OK);
+    CHECK_EQ_INT(back.kind, IUCM_CLIENT_OBS_PLUGIN);
+    /* Kept: IUCM_NAME_MAX - 1 bytes plus NUL, and the same for version. */
+    CHECK_EQ_INT((int)strlen(back.name), IUCM_NAME_MAX - 1);
+    CHECK_EQ_INT((int)strlen(back.version), IUCM_APP_VERSION_MAX - 1);
+    CHECK_EQ_INT(back.name[0], 'a');
+    CHECK_EQ_INT(back.name[IUCM_NAME_MAX - 2], (int)('a' + ((IUCM_NAME_MAX - 2) % 26)));
+    CHECK_EQ_INT(back.version[0], '0');
+    /* The cursor still advanced over all 100 name bytes: version parsed at all. */
+    CHECK_EQ_INT(back.version[IUCM_APP_VERSION_MAX - 2],
+                 (int)('0' + ((IUCM_APP_VERSION_MAX - 2) % 10)));
+}
+
 int main(void) {
     RUN(test_header_roundtrip);
     RUN(test_version_constant);
     RUN(test_roundtrip_hello);
     RUN(test_roundtrip_start_stop);
     RUN(test_client_info_roundtrip_and_fixture);
+    RUN(test_client_info_long_name_is_truncated);
     RUN(test_start_flags_lengths);
     RUN(test_parse_audio_config_and_audio);
     RUN(test_roundtrip_config);

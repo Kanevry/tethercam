@@ -142,7 +142,11 @@ struct iucm_hello {
 /* flags is the optional 12th byte; an 11-byte START parses as flags == 0. It sits
  * last so the existing positional initialisers keep their meaning. */
 /* CLIENT_INFO payload, PROTOCOL.md 4.11 (since 1.2). Optional on the wire: a
- * 1.0/1.1 receiver never sends it. */
+ * 1.0/1.1 receiver never sends it.
+ * The wire allows up to 255 bytes for name and for version. These fixed buffers
+ * are smaller, so this C side keeps at most IUCM_NAME_MAX-1 (63) name bytes and
+ * IUCM_APP_VERSION_MAX-1 (31) version bytes plus the terminating NUL; longer
+ * fields are truncated by iucm_parse_client_info, never rejected. */
 struct iucm_client_info {
     uint8_t kind;
     char    name[IUCM_NAME_MAX];
@@ -237,7 +241,9 @@ int iucm_encode_error(uint8_t *out, size_t cap, uint16_t code, const char *text,
 int iucm_parse_hello(const uint8_t *payload, uint32_t len, struct iucm_hello *out);
 /* Accepts 11 and 12 bytes; 11 yields flags == 0, anything beyond 12 is ignored. */
 int iucm_parse_start(const uint8_t *payload, uint32_t len, struct iucm_start *out);
-/* Trailing bytes are ignored: later minor versions may append fields (4.11). */
+/* Trailing bytes are ignored: later minor versions may append fields (4.11).
+ * name and version longer than the struct's buffers are truncated (see
+ * struct iucm_client_info), not rejected. */
 int iucm_parse_client_info(const uint8_t *payload, uint32_t len,
                            struct iucm_client_info *out);
 int iucm_parse_config(const uint8_t *payload, uint32_t len, struct iucm_config *out);

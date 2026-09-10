@@ -286,14 +286,14 @@ final class Receiver {
     /// dead (the sim answers within milliseconds, a real iPhone within ~2 s).
     static let configTimeoutUs: UInt64 = 8_000_000
 
-    /// The START flags to send for a wish and the HELLO version: the audio bit only
-    /// goes out to apps that announce protocol 1.1 or later. A 1.0 app (App Store
-    /// 0.1.0) treats the 12-byte START as a decode error, drops it silently and never
-    /// starts the camera (observed 2026-09-09). Pure so it is testable.
     /// Identity announced in CLIENT_INFO (PROTOCOL.md 4.11). English, on the wire.
     static let clientName = "usbcam-recv"
     static let clientVersion = "dev"
 
+    /// The START flags to send for a wish and the HELLO version: the audio bit only
+    /// goes out to apps that announce protocol 1.1 or later. A 1.0 app (App Store
+    /// 0.1.0) treats the 12-byte START as a decode error, drops it silently and never
+    /// starts the camera (observed 2026-09-09). Pure so it is testable.
     static func startFlags(audio: Bool, helloVersion: UInt16) -> UInt8 {
         guard audio, helloVersion >= 0x0101 else { return 0 }
         return StartMessage.flagAudio

@@ -1,9 +1,6 @@
 /* TetherCam — Deutsch */
 
-"app.name" = "TetherCam";
-
 "status.waiting" = "Warte auf den Mac";
-"status.connected" = "Verbunden mit dem Mac";
 "status.connected.macApp" = "Verbunden mit TetherCam für Mac";
 "status.connected.obs" = "Verbunden mit OBS";
 "status.connected.generic" = "Verbunden mit dem Mac";

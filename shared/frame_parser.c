@@ -84,6 +84,20 @@ static int cur_str(struct cur *c, uint32_t n, char *dst, size_t cap) {
     return IUCM_OK;
 }
 
+/* Like cur_str, but a field that does not fit is truncated instead of rejected.
+ * The contract allows up to 255 bytes per string (PROTOCOL.md 4.11); the fixed
+ * C buffers are smaller, and a long name must not fail the whole message. The
+ * cursor still advances over all n bytes on the wire. */
+static int cur_str_trunc(struct cur *c, uint32_t n, char *dst, size_t cap) {
+    size_t keep;
+    if (!cur_need(c, n)) return IUCM_ERR_TRUNCATED;
+    keep = ((size_t)n < cap - 1u) ? (size_t)n : cap - 1u;
+    memcpy(dst, c->p + c->off, keep);
+    dst[keep] = '\0';
+    c->off += n;
+    return IUCM_OK;
+}
+
 /* ------------------------------------------------------------------ framing */
 
 void iucm_write_header(uint8_t out[IUCM_HEADER_SIZE], uint8_t type, uint8_t flags,
@@ -311,6 +325,9 @@ int iucm_encode_client_info(uint8_t *out, size_t cap, const struct iucm_client_i
     if (!ci) return IUCM_ERR_BADARG;
     name_len = strlen(ci->name);
     ver_len  = strlen(ci->version);
+    /* The u8 length prefixes cap both strings at 255 bytes (4.11). Today's
+     * struct buffers are far smaller, so this cannot fire — it stays as the one
+     * place the wire limit is enforced if those buffers ever grow. */
     if (name_len > 255 || ver_len > 255) return IUCM_ERR_RANGE;
     rc = frame_begin(out, cap, 3 + name_len + ver_len, IUCM_MSG_CLIENT_INFO, 0, written);
     if (rc != IUCM_OK) return rc;
@@ -463,9 +480,11 @@ int iucm_parse_client_info(const uint8_t *payload, uint32_t len,
 
     if ((rc = cur_u8(&c, &out->kind)) != IUCM_OK) return rc;
     if ((rc = cur_u8(&c, &n8)) != IUCM_OK) return rc;
-    if ((rc = cur_str(&c, n8, out->name, sizeof(out->name))) != IUCM_OK) return rc;
+    /* Truncating, not rejecting: the wire allows 255 bytes, the struct holds
+     * less (see iucm_client_info). A conforming 100-byte name must parse. */
+    if ((rc = cur_str_trunc(&c, n8, out->name, sizeof(out->name))) != IUCM_OK) return rc;
     if ((rc = cur_u8(&c, &n8)) != IUCM_OK) return rc;
-    if ((rc = cur_str(&c, n8, out->version, sizeof(out->version))) != IUCM_OK) return rc;
+    if ((rc = cur_str_trunc(&c, n8, out->version, sizeof(out->version))) != IUCM_OK) return rc;
     /* Trailing bytes are tolerated: minor versions may append fields (4.11). */
     return IUCM_OK;
 }
