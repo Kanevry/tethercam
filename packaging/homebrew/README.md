@@ -1,13 +1,28 @@
-# Homebrew cask (live)
+# Homebrew casks (live)
 
-`tethercam-obs.rb` installs the released `TetherCam-obs-plugin.zip` from GitHub
-Releases. It is published to the personal tap `Kanevry/homebrew-tethercam`
-(https://github.com/Kanevry/homebrew-tethercam):
+Two casks, both published to the personal tap `Kanevry/homebrew-tethercam`
+(https://github.com/Kanevry/homebrew-tethercam). The files here are the repo's copy of
+what is in the tap; the tap is the thing Homebrew reads.
+
+| File | Cask | Installs | Asset |
+|---|---|---|---|
+| `tethercam.rb` | `tethercam` | The Mac app: menu bar host plus camera extension, so the iPhone shows up as the system camera "TetherCam" in Zoom, Teams, Meet, FaceTime, QuickTime and every other Mac app. Default path. | `TetherCam-mac.dmg` |
+| `tethercam-obs.rb` | `tethercam-obs` | The OBS Studio source plugin, with audio from the phone. Pro path. | `TetherCam-obs-plugin.zip` |
 
 ```sh
 brew tap kanevry/tethercam
-brew install --cask tethercam-obs
+brew install --cask tethercam        # Mac app, any Mac app sees the camera
+brew install --cask tethercam-obs    # OBS plugin
 ```
+
+Both are at 0.2.1 (checksums verified 2026-09-10 against the release assets). The Mac app
+cask puts `TetherCam.app` into `/Applications` (it has to live there: the camera extension
+can only be activated from `/Applications`), needs macOS 14 or newer, and its caveat points
+at the one-time approval under System Settings > General > Login Items & Extensions >
+Camera Extensions. It carries video only, and the phone serves a single receiver, so the
+Mac app and the OBS plugin are not used at the same time.
+
+The sections below are about the OBS plugin cask's shape only.
 
 Decision record for the shape below: `docs/listings/homebrew-decision.md` (see the
 "2026-09-06: personal tap live" entry for the audit and install-test results).
@@ -61,23 +76,28 @@ A tap is a plain Git repo named `homebrew-<tap>`. `Kanevry/homebrew-tethercam` h
 the cask at `Casks/tethercam-obs.rb` (no letter-sharding: that shard-by-first-letter
 layout is a `homebrew/cask` core-tap convention, not required for a personal tap).
 
-Bumping the cask on a new plugin release, from the **zip** asset (not the pkg):
+`Kanevry/homebrew-tethercam` holds the Mac app cask at `Casks/tethercam.rb` next to it.
+
+Bumping both casks on a new release, the OBS one from the **zip** asset (not the pkg):
 
 ```sh
 VERSION=X.Y.Z
-curl -sL https://github.com/Kanevry/tethercam/releases/download/v$VERSION/TetherCam-obs-plugin.zip -o /tmp/tc.zip
-shasum -a 256 /tmp/tc.zip   # paste into sha256, bump version, commit + push in the tap repo
+curl -sL https://github.com/Kanevry/tethercam/releases/download/v$VERSION/TetherCam-obs-plugin.zip | shasum -a 256
+curl -sL https://github.com/Kanevry/tethercam/releases/download/v$VERSION/TetherCam-mac.dmg | shasum -a 256
+# paste into sha256, bump version in both files, commit + push in the tap repo,
+# and mirror the same change back into packaging/homebrew/ here
 ```
 
 Verify locally before pushing:
 
 ```sh
 brew tap kanevry/tethercam
-brew audit --cask --online kanevry/tethercam/tethercam-obs
-brew style --cask kanevry/tethercam/tethercam-obs
+brew audit --cask --online kanevry/tethercam/tethercam-obs kanevry/tethercam/tethercam
+brew style --cask kanevry/tethercam/tethercam-obs kanevry/tethercam/tethercam
 brew install --cask kanevry/tethercam/tethercam-obs
 brew uninstall --cask tethercam-obs
 ```
 
 The release job does not currently bump `version`/`sha256` automatically; each release
-needs a manual tap update, otherwise the cask silently rots one release behind.
+needs a manual tap update for **both** casks, otherwise they silently rot one release
+behind.

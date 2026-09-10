@@ -10,11 +10,11 @@
 # scripts/install.sh does by hand.
 #
 # `version` and `sha256` are bumped by hand on each release (see the tap README);
-# the checksum below is the one published next to the v0.1.0 zip asset as
-# TetherCam-obs-plugin.zip.sha256, verified 2026-09-06 against a fresh download.
+# the checksum below is the one of the v0.2.1 zip asset TetherCam-obs-plugin.zip,
+# verified 2026-09-10 by piping a fresh download through `shasum -a 256`.
 cask "tethercam-obs" do
-  version "0.1.0"
-  sha256 "ff7106f81a8ae85f86df2c56621ecaf43507b9c71582a62f868418fcd287679d"
+  version "0.2.1"
+  sha256 "f8819d44d47756db5aa64a7e7958e81a3d33214800c2697e96d4279ef55677cc"
 
   url "https://github.com/Kanevry/tethercam/releases/download/v#{version}/TetherCam-obs-plugin.zip"
   name "TetherCam for OBS"

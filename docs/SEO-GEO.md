@@ -9,7 +9,7 @@ GEO and SEO want the same thing here: short, factual, self-contained answers und
 question-shaped heading, with numbers and dates, on a fast static page a crawler can read
 without JavaScript. Everything below follows from that.
 
-Last full pass: 2026-09-09.
+Last full pass: 2026-09-10.
 
 ---
 
@@ -48,15 +48,41 @@ with the same intents. Rationale and the A/B backlog: `docs/app-store/KEYWORDS-R
 Every claim on the site must survive a reader with an iPhone and a Mac. GEO amplifies
 mistakes: once a model has been trained or grounded on a wrong claim, it repeats it.
 
-- The **macOS virtual camera** (`mac-app/`) is **verified, not released**. Verified
+### Positioning, decided 2026-09-10
+
+TetherCam turns the iPhone into a **wired webcam for the Mac**, over the USB cable.
+
+- **The Mac app is the default path** and comes first everywhere: titles, meta
+  descriptions, the hero, the quick start, the FAQ order, `llms.txt`. The menu bar app
+  plus its camera extension makes the phone show up as the camera "TetherCam" in Zoom,
+  Teams, Google Meet, FaceTime, QuickTime Player, Safari, Chrome and every other Mac app.
+- **The OBS plugin is the pro path**: its own source in OBS Studio, with the phone's audio,
+  no detour through a virtual camera. It stays first class and equally visible, but it is
+  no longer the headline and no longer step 1. Keep "OBS" in the title, last.
+- Sanity check after any edit to `web/index.html`: `grep -oi 'obs' web/index.html | wc -l`
+  should stay at or below `grep -oiE 'zoom|meet|teams|facetime' web/index.html | wc -l`.
+- Facts that bound every sentence: the Mac app carries **no audio**; the iPhone app must
+  stay in the **foreground**; the Mac app and the OBS plugin **cannot run at the same
+  time** (the phone accepts one receiver, the second gets BUSY); the Mac app needs
+  **macOS 14+** and a manual approval in System Settings.
+
+### Release facts
+
+- The **macOS virtual camera** (`mac-app/`) is **released since 0.2.1 (2026-09-09)**:
+  Developer ID signed, notarized and stapled, downloadable as
+  `TetherCam-mac.dmg` from the GitHub release
+  (https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-mac.dmg) and via
+  `brew tap kanevry/tethercam && brew install --cask tethercam`. It is not on the Mac App
+  Store. Requires macOS 14 or newer plus a one-time approval in System Settings > General >
+  Login Items & Extensions > Camera Extensions (administrator password). Verified
   2026-09-09 with a real iPhone 15 Pro Max in QuickTime Player, Photo Booth, FaceTime,
   Google Meet in Chrome, Safari, Chrome and ffmpeg, portrait and landscape, with reconnect.
-  Zoom and Teams were **not** tested. There is no signed `.dmg` (issue #14). Never write
-  anything that implies it can be downloaded.
+  Zoom and Teams were **not** tested; say "should work, not verified" for those two and
+  never claim more.
 - **Audio** travels only on the OBS plugin path. A CoreMediaIO camera extension carries
   video only; that is a platform limit, not a to-do.
-- **iOS app:** 0.1.0 is live on the App Store; 0.2.0 is submitted and not released. Update
-  the site the day 0.2.0 goes live.
+- **iOS app:** 0.1.0 is live on the App Store; 0.2.0 is submitted and still awaiting App
+  Review, so it is not on the store yet. Update the site the day 0.2.0 goes live.
 - **Measured numbers** (1 ms round trip, ~90 ms to first frame, ~1.3 s reconnect, 13 Mbit/s)
   are one setup, and the pages say so. Keep that qualifier.
 - **Competitor rows** in the comparison table are hedged ("free tier plus a paid version")
@@ -154,7 +180,8 @@ anything. Details: `docs/app-store/KEYWORDS-RATIONALE.md`.
    the row and the "checked" date, or delete the row. A stale table is worse than none.
 4. Update `sitemap.xml` `lastmod` for pages that actually changed, and `llms.txt` if a fact
    moved (release state above all).
-5. Check the release facts: is 0.2.0 live on the App Store yet, is the `.dmg` out, does the
+5. Check the release facts: is 0.2.0 live on the App Store yet, does the `.dmg` version on
+   the site match the latest GitHub release, does the
    plugin version on the site match the latest GitHub release.
 
 ---
@@ -164,11 +191,11 @@ anything. Details: `docs/app-store/KEYWORDS-RATIONALE.md`.
 1. **One how-to page per app** — `/obs`, `/zoom`, `/google-meet`, `/facetime`,
    `/continuity-camera-alternative`. Highest expected return of anything on this list: each
    page can win its own long tail and be cited on its own, which a single FAQ entry cannot.
-   Blocked in part on the virtual camera shipping, since half the answer is "install the
-   Mac app".
-2. **Ship the signed `.dmg` for the virtual camera (issue #14).** This is a marketing item
-   as much as an engineering one: "works in Zoom without OBS" is the sentence that converts,
-   and today it cannot be written.
+   No longer blocked: the virtual camera shipped in 0.2.1, so half of each answer is
+   simply "install the Mac app".
+2. **Done 2026-09-09 (0.2.1): the signed `.dmg` for the virtual camera shipped (#14).**
+   "Works in Zoom without OBS" is now a sentence the site is allowed to write, and it is
+   the headline. What remains here is spending the reach on it: see items 4 and 5.
 3. **A short YouTube video, 60 to 90 seconds, "iPhone as a webcam on Mac over USB".** Video
    results own this query on Google, and the existing `demo.mp4` is already cut for it. The
    `VideoObject` markup on the page would then point at a hosted video with a real

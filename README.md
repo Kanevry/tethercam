@@ -2,13 +2,13 @@
 
 # TetherCam
 
-**Use your iPhone as a webcam on your Mac over a plain USB cable.** The picture goes into OBS Studio directly, and from OBS into video calls as a virtual camera. It is a Continuity Camera alternative with no Wi-Fi, no cloud, no pairing code and no shared Apple Account: hardware HEVC encoding on the phone, VideoToolbox decoding on the Mac. Free and open source.
+**Use your iPhone as a wired webcam on your Mac over a plain USB cable.** The iPhone shows up as the camera "TetherCam" in Zoom, Teams, Google Meet, FaceTime and every other Mac app through the free TetherCam Mac app, and as its own source in OBS Studio through the TetherCam plugin. It is a Continuity Camera alternative with no Wi-Fi, no cloud, no pairing code and no shared Apple Account: hardware HEVC encoding on the phone, VideoToolbox decoding on the Mac. Free and open source.
 
-**Works with:** OBS Studio &middot; Zoom\* &middot; Google Meet\* &middot; Microsoft Teams\* &middot; FaceTime\* &middot; QuickTime Player\* &middot; Photo Booth\* &middot; Safari\* &middot; Chrome\* &nbsp;(\* either through OBS &rarr; **Start Virtual Camera**, or with no OBS at all through the [TetherCam Mac app](#zoom-meet-facetime-and-every-other-mac-app-the-tethercam-virtual-camera), a free menu bar app with its own macOS camera extension, released since 0.2.1)
+**Works with:** Zoom &middot; Microsoft Teams &middot; Google Meet &middot; FaceTime &middot; QuickTime Player &middot; Photo Booth &middot; Safari &middot; Chrome through the [TetherCam Mac app](#zoom-meet-facetime-and-every-other-mac-app-the-tethercam-virtual-camera), a free menu bar app with its own macOS camera extension (released with 0.2.1) &mdash; and OBS Studio as its own source, with audio from the phone, through the plugin.
 
 **For:** streamers, remote workers and anyone whose Continuity Camera or webcam gives up, on macOS 12+ with an iPhone on iOS 17+.
 
-**Install, two steps:** run `curl -fsSL https://raw.githubusercontent.com/Kanevry/tethercam/main/scripts/install.sh | bash` and restart OBS, then get the free [TetherCam app on the App Store](https://apps.apple.com/us/app/tethercam/id6808997521). In OBS: *Tools &rarr; TetherCam: Add iPhone camera to current scene*. Full guide: https://tethercam.app/install.
+**Install, two paths:** *A, any Mac app:* `brew install --cask tethercam` (after `brew tap kanevry/tethercam`) or the [`TetherCam-mac.dmg`](https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-mac.dmg), then the free [TetherCam app on the App Store](https://apps.apple.com/us/app/tethercam/id6808997521), then pick the camera **TetherCam** in your call app. *B, OBS Studio:* run `curl -fsSL https://raw.githubusercontent.com/Kanevry/tethercam/main/scripts/install.sh | bash`, restart OBS, install the iPhone app, then *Tools &rarr; TetherCam: Add iPhone camera to current scene*. Full guide: https://tethercam.app/install.
 
 Website and downloads: https://tethercam.app. Prebuilt `.pkg` and `.zip` bundles are also on the latest GitHub release: https://github.com/Kanevry/tethercam/releases/latest.
 
@@ -22,13 +22,37 @@ Website and downloads: https://tethercam.app. Prebuilt `.pkg` and `.zip` bundles
 
 <br clear="left">
 
+![The camera picker of a Mac video-call app such as Zoom or Google Meet: next to "FaceTime HD Camera" and "OBS Virtual Camera" the camera "TetherCam" is selected, with the iPhone preview beside it showing the status capsule "Streaming 1080p30"](docs/images/mac-app-zoom.png)
+
+*The default path: the iPhone is just another camera called "TetherCam" in Zoom, Teams, Google Meet or FaceTime. Schematic of the picker; the preview is a generated studio scene.*
+
 ![The OBS source "TetherCam (iPhone via USB)" showing a live 1080p picture from an iPhone 15 Pro Max over the USB cable](docs/images/obs-iphone-live.png)
 
 *Live 1080p from an iPhone 15 Pro Max, decoded in OBS. The stream never leaves the cable.*
 
 ## Quick start
 
-Three steps, about five minutes. The long version of each is further down.
+Two paths, about five minutes each. One app on the phone, then one receiver on the Mac. Run
+one at a time: the phone serves a single receiver, and the second one gets `BUSY`.
+
+### A. Any Mac app: Zoom, Teams, Meet, FaceTime (the Mac app)
+
+**1. Get the iPhone app.** Free on the App Store: **[https://apps.apple.com/us/app/tethercam/id6808997521](https://apps.apple.com/us/app/tethercam/id6808997521)** (iOS 17+). Open it and plug the phone into the Mac with a data cable; the first time, tap **Trust**.
+
+**2. Install the Mac app.**
+
+```sh
+brew tap kanevry/tethercam
+brew install --cask tethercam
+```
+
+Prefer a click? Download [`TetherCam-mac.dmg`](https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-mac.dmg) and **drag TetherCam into Applications with Finder**, then open it. It lives in the menu bar and has no window. macOS asks once to allow the camera extension: **System Settings > General > Login Items & Extensions > Camera Extensions > enable TetherCam** (admin password once).
+
+**3. Pick the camera `TetherCam`** in Zoom, Microsoft Teams, Google Meet, FaceTime, QuickTime Player, Photo Booth, Safari or Chrome. Keep the phone app in the foreground. Details: [Zoom, Meet, FaceTime and every other Mac app](#zoom-meet-facetime-and-every-other-mac-app-the-tethercam-virtual-camera).
+
+Video only on this path: a macOS camera extension carries no audio. For audio take path B.
+
+### B. OBS Studio (the plugin)
 
 **1. Install the OBS plugin, then restart OBS.**
 
@@ -38,9 +62,7 @@ From v0.1.0 on:
 curl -fsSL https://raw.githubusercontent.com/Kanevry/tethercam/main/scripts/install.sh | bash
 ```
 
-Prefer a click? Download `TetherCam-obs-plugin.pkg` from [Releases](https://github.com/Kanevry/tethercam/releases/latest) and open it. It installs into your own home, nothing system wide.
-
-v0.1.0 is published, signed and notarized. Prefer to build from source? See [Install the Mac plugin](#install-the-mac-plugin).
+Prefer a click? Download `TetherCam-obs-plugin.pkg` from [Releases](https://github.com/Kanevry/tethercam/releases/latest) and open it. It installs into your own home, nothing system wide. Prefer to build from source? See [Install the Mac plugin](#install-the-mac-plugin).
 
 **2. Get the iPhone app.**
 
@@ -55,7 +77,7 @@ The menu entry creates the source, names it `TetherCam iPhone` and fits it to yo
 
 ![The OBS Tools menu with the entry "TetherCam: Add iPhone camera to current scene"](docs/images/obs-tools-menu.png)
 
-There is no pairing, no code to type and no network setup. If the picture stays black, the source properties carry a status line at the top that says which of the three steps is missing.
+There is no pairing, no code to type and no network setup. If the picture stays black, the source properties carry a status line at the top that says which of the three steps is missing. Since 0.2.0 the phone's microphone travels on the same cable and lands in the OBS audio mixer.
 
 ## Why
 
@@ -91,49 +113,10 @@ The wire format is documented well enough to write your own receiver: [protocol/
 ## Requirements
 
 - iPhone XR or newer with iOS 17 or later. Tested on iPhone 15 Pro Max, iOS 26.6.1.
-- Mac with macOS 12 or later. Tested on macOS 26.5.2, Apple Silicon.
-- OBS Studio 30 or later. Tested with 32.2.2.
+- Mac with macOS 12 or later (macOS 14 or later for the Mac app with the camera extension). Tested on macOS 26.5.2, Apple Silicon.
+- OBS Studio 30 or later &mdash; **only for path B**, the plugin. Tested with 32.2.2.
 - To build the iOS app yourself: Xcode 16 or later (tested with 26.0.1) and a free Apple ID, plus `xcodegen`.
 - To build the plugin: CMake 3.28 or later and the Xcode command line tools.
-
-## Install the Mac plugin
-
-### Option A: release bundle
-
-From v0.1.0 on, `TetherCam-obs-plugin.pkg` is on [Releases](https://github.com/Kanevry/tethercam/releases/latest). It is signed with a Developer ID Installer certificate and notarized by Apple, so macOS opens it without a warning. It installs into your own home, no admin rights needed.
-
-### Option B: build from source
-
-```sh
-git clone https://github.com/Kanevry/tethercam.git
-cd tethercam/obs-plugin
-CI=1 cmake --preset macos
-cmake --build --preset macos
-```
-
-`CI=1` is required. Without it the first configure step aborts in `cmake/common/buildnumber.cmake`. That is a quirk of the upstream obs-plugintemplate, not of this repo. Alternatively pass `-DPLUGIN_BUILD_NUMBER=1`.
-
-The first configure downloads libobs sources and the OBS dependency bundle into `.deps/`, about 1 GB. That happens once.
-
-Install the result and restart OBS:
-
-```sh
-cp -R build_macos/RelWithDebInfo/obs-iphone-usb-cam.plugin \
-      ~/Library/Application\ Support/obs-studio/plugins/
-```
-
-To confirm it loaded, open the newest log under `~/Library/Application Support/obs-studio/logs/` and look for `obs-iphone-usb-cam` under `Loaded Modules:`.
-
-### Option C: Homebrew
-
-```sh
-brew tap kanevry/tethercam
-brew install --cask tethercam-obs
-```
-
-The cask copies the signed bundle straight into your own
-`~/Library/Application Support/obs-studio/plugins/` folder, the same place Option A
-and the one-line installer put it. No admin rights needed.
 
 ## Zoom, Meet, FaceTime and every other Mac app: the TetherCam virtual camera
 
@@ -196,6 +179,45 @@ bash scripts/install-local.sh    # builds Release, copies to /Applications, laun
 ```
 
 Details, headless flags and the end to end check without a phone (`bash tools/vcam-test.sh`) are in [mac-app/README.md](mac-app/README.md). Design, status and open risks: [docs/superpowers/specs/2026-09-09-virtual-camera-cmio.md](docs/superpowers/specs/2026-09-09-virtual-camera-cmio.md).
+
+## Install the Mac plugin
+
+### Option A: release bundle
+
+From v0.1.0 on, `TetherCam-obs-plugin.pkg` is on [Releases](https://github.com/Kanevry/tethercam/releases/latest). It is signed with a Developer ID Installer certificate and notarized by Apple, so macOS opens it without a warning. It installs into your own home, no admin rights needed.
+
+### Option B: build from source
+
+```sh
+git clone https://github.com/Kanevry/tethercam.git
+cd tethercam/obs-plugin
+CI=1 cmake --preset macos
+cmake --build --preset macos
+```
+
+`CI=1` is required. Without it the first configure step aborts in `cmake/common/buildnumber.cmake`. That is a quirk of the upstream obs-plugintemplate, not of this repo. Alternatively pass `-DPLUGIN_BUILD_NUMBER=1`.
+
+The first configure downloads libobs sources and the OBS dependency bundle into `.deps/`, about 1 GB. That happens once.
+
+Install the result and restart OBS:
+
+```sh
+cp -R build_macos/RelWithDebInfo/obs-iphone-usb-cam.plugin \
+      ~/Library/Application\ Support/obs-studio/plugins/
+```
+
+To confirm it loaded, open the newest log under `~/Library/Application Support/obs-studio/logs/` and look for `obs-iphone-usb-cam` under `Loaded Modules:`.
+
+### Option C: Homebrew
+
+```sh
+brew tap kanevry/tethercam
+brew install --cask tethercam-obs
+```
+
+The cask copies the signed bundle straight into your own
+`~/Library/Application Support/obs-studio/plugins/` folder, the same place Option A
+and the one-line installer put it. No admin rights needed.
 
 ## Install the iPhone app
 

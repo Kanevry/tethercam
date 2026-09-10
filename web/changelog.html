@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Changelog, TetherCam</title>
-<meta name="description" content="What changed in TetherCam, release by release: the OBS plugin and the iPhone app, one shared version number. Full history and release assets on GitHub.">
+<meta name="description" content="What changed in TetherCam, release by release: the Mac app, the iPhone app and the OBS plugin, one shared version number. Full history and release assets on GitHub.">
 <link rel="canonical" href="https://tethercam.app/changelog">
 <link rel="alternate" hreflang="en" href="https://tethercam.app/changelog">
 <meta name="author" content="Bernhard Goetzendorfer">
@@ -15,12 +15,12 @@
 <meta property="og:site_name" content="TetherCam">
 <meta property="og:url" content="https://tethercam.app/changelog">
 <meta property="og:title" content="Changelog, TetherCam">
-<meta property="og:description" content="What changed in TetherCam, release by release: the OBS plugin and the iPhone app, one shared version number.">
+<meta property="og:description" content="What changed in TetherCam, release by release: the Mac app, the iPhone app and the OBS plugin, one shared version number.">
 <meta property="og:image" content="https://tethercam.app/img/og.png">
 <meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Changelog, TetherCam">
-<meta name="twitter:description" content="What changed in TetherCam, release by release: the OBS plugin and the iPhone app, one shared version number.">
+<meta name="twitter:description" content="What changed in TetherCam, release by release: the Mac app, the iPhone app and the OBS plugin, one shared version number.">
 <meta name="twitter:image" content="https://tethercam.app/img/og.png">
 
 <link rel="icon" href="/favicon.ico" sizes="32x32">
@@ -53,10 +53,26 @@
   <div class="wrap">
     <p class="eyebrow">Changelog</p>
     <h1>What changed</h1>
-    <p class="lede">The repository ships two artefacts with one shared version number: the macOS OBS plugin (<code>obs-plugin/</code>, GPL-2.0-or-later) and the iOS app (<code>ios-app/</code>, MIT). A tag <code>vX.Y.Z</code> releases both.</p>
+    <p class="lede">The repository ships three artefacts with one shared version number: the macOS app with the virtual camera (<code>mac-app/</code>, MIT), the iOS app (<code>ios-app/</code>, MIT) and the macOS OBS plugin (<code>obs-plugin/</code>, GPL-2.0-or-later). A tag <code>vX.Y.Z</code> releases them together.</p>
     <p class="meta">Full history, diffs and release assets: <a href="https://github.com/Kanevry/tethercam/releases">GitHub Releases</a>. This page mirrors <a href="https://github.com/Kanevry/tethercam/blob/main/CHANGELOG.md">CHANGELOG.md</a> in the repository.</p>
 
     <div class="legal">
+      <h2 id="v0-2-1">0.2.1 &mdash; 2026-09-09</h2>
+      <p class="meta"><a href="https://github.com/Kanevry/tethercam/releases/tag/v0.2.1">v0.2.1 on GitHub</a></p>
+
+      <h3>Added</h3>
+      <ul class="prose">
+        <li><b>macOS virtual camera</b> (<code>mac-app/</code>, MIT). A menu bar app embeds a CoreMediaIO camera extension and publishes the iPhone as the system camera &ldquo;TetherCam&rdquo; (1920x1080 NV12, 30 fps), so Zoom, Microsoft Teams, Google Meet, FaceTime, QuickTime Player, Photo Booth, Safari, Chrome and ffmpeg see it like any webcam, with no OBS running. The host receives over usbmux like the plugin, decodes with VideoToolbox and letterboxes every geometry into the one format. Ships as the Developer ID signed and notarized <a href="https://github.com/Kanevry/tethercam/releases/latest/download/TetherCam-mac.dmg"><code>TetherCam-mac.dmg</code></a>, or <code>brew tap kanevry/tethercam &amp;&amp; brew install --cask tethercam</code>. Video only (a camera extension carries no audio), macOS 14 or newer, and the phone serves one receiver at a time, so the Mac app and the OBS plugin do not run together. Verified on 2026-09-09 with a real iPhone 15 Pro Max in QuickTime Player, Photo Booth, FaceTime, Google Meet in Chrome, Safari, Chrome and ffmpeg, portrait and landscape, including reconnect. (<a href="https://github.com/Kanevry/tethercam/issues/12">#12</a>, #13, #14)</li>
+        <li><code>tools/vcam-test.sh</code>: an end-to-end check of the virtual camera without a phone (simulator, headless host app, ffmpeg capture, assertions on resolution, frame rate and motion; optional browser <code>getUserMedia</code>). Green on 2026-09-09: 1920x1080, 30.3 fps, Chrome lists the camera.</li>
+      </ul>
+
+      <h3>Fixed</h3>
+      <ul class="prose">
+        <li><b>Plugin: black source with the App Store app 0.1.0.</b> Plugin 0.2.0 sent the audio wish in START to every phone; the shipped 1.0 app drops it as a decode error and never starts the camera, so OBS showed a black source with no error. The audio flag is now only sent when HELLO announces protocol 1.1 or later; against a 1.0 app the plugin logs &ldquo;audio needs 1.1, starting video only&rdquo; and streams video. <code>usbcam-recv</code> gates the same way.</li>
+        <li>iOS: a message the parser frames but cannot decode is now logged (<code>[usbcam] dropped undecodable message</code>) instead of vanishing silently.</li>
+        <li>iOS: switching the camera decides on the session queue, so a lens change during a take no longer races the capture session&rsquo;s format selection. (<a href="https://github.com/Kanevry/tethercam/issues/11">#11</a>)</li>
+      </ul>
+
       <h2 id="v0-2-0">0.2.0 &mdash; 2026-09-09</h2>
       <p class="meta"><a href="https://github.com/Kanevry/tethercam/releases/tag/v0.2.0">v0.2.0 on GitHub</a></p>
 
@@ -145,7 +161,7 @@
         <li><a href="https://github.com/Kanevry/tethercam">GitHub</a></li>
       </ul>
     </div>
-    <p class="foot-mark">&mdash; TetherCam 0.2.0</p>
+    <p class="foot-mark">&mdash; TetherCam 0.2.1</p>
   </div>
 </footer>
 
@@ -168,8 +184,8 @@
   "url": "https://tethercam.app/changelog",
   "name": "Changelog, TetherCam",
   "inLanguage": "en",
-  "description": "What changed in TetherCam, release by release: the OBS plugin and the iPhone app, one shared version number.",
-  "dateModified": "2026-09-09",
+  "description": "What changed in TetherCam, release by release: the Mac app, the iPhone app and the OBS plugin, one shared version number.",
+  "dateModified": "2026-09-10",
   "isPartOf": {"@id": "https://tethercam.app/#website"},
   "publisher": {"@id": "https://tethercam.app/#organization"}
 }

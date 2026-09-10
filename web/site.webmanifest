@@ -1,7 +1,7 @@
 {
   "name": "TetherCam",
   "short_name": "TetherCam",
-  "description": "Use an iPhone as an OBS camera on macOS over the USB cable.",
+  "description": "Use an iPhone as a wired webcam on the Mac over the USB cable: the camera “TetherCam” in Zoom, Teams, Meet, FaceTime and every other Mac app, and its own source in OBS Studio.",
   "start_url": "/",
   "scope": "/",
   "display": "browser",
