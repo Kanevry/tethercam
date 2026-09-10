@@ -1,21 +1,45 @@
 # OBS Resources draft: TetherCam
 
-Venue: https://obsproject.com/forum/resources/. Fields and account requirement verified
-against live listings and the "Forum Resource and IP Policy" thread on 2026-09-05. The
-category name was re-checked live on 2026-09-06 (`curl -sL
-https://obsproject.com/forum/resources/`, HTTP 200): the sidebar "Categories" block
-lists `OBS Studio Plugins` linking to `/forum/plugins/` with 323 resources filed under
-it, confirming the exact name below. No separate "guidelines" or "rules" page is linked
-from that listing page itself (only the site-wide `Terms and rules` in the footer); the
-account and moderation notes below still rest on the 2026-09-05 thread reading, which
-could not be re-opened this session (forum search needs a logged-in session).
+Venue: https://obsproject.com/forum/resources/. Release information and the
+[Forum Resource and IP Policy](https://obsproject.com/forum/threads/forum-resource-and-ip-policy.178569/)
+were checked on 2026-09-09. The field layout and exact category name below were last
+checked against live listings on 2026-09-06.
+
+**Status: draft ready for submission, pending forum two-step verification.**
+The current policy says: "Resources created or written entirely, or in large part,
+with AI coding tools are not permitted." It also requires disclosure of what AI tools
+did for code, art and other content; disclosure alone does not establish eligibility.
+
+**Developer attestation, 2026-09-09:** Bernhard states that he wrote the code
+predominantly himself and used AI selectively: he made TetherCam with AI assistance;
+AI did not make it on its own. This resolves the previously unanswered question about
+predominant authorship. The draft follows that attestation and discloses the assistance.
+The forum moderation team still makes the final submission decision.
+
+Supporting provenance notes:
+
+- 22 of the 57 commits through `v0.2.0` have a Claude co-author trailer. These include
+  iOS/plugin audio implementation (`c02b761`, `58cd69a`, `836cc55`) and camera-switching
+  code (`9132136`).
+- The foundational shared/iOS/simulator code entered in `b19624e` (6,568 insertions)
+  and the OBS plugin in `0430dfe` (4,931 insertions), described as development waves.
+  Neither commit has an AI trailer. The history does not establish what fraction of
+  that code was AI-written; commit counts are not a measure of code authorship.
+- `4b1c135` records an icon generated with `gpt-image-2`; `6d0848f` records the
+  AI-generated studio scene used in the Pen marketing frames.
+- This description is AI-assisted. The earlier claim that it was written entirely
+  by hand was false and has been removed. The co-author trailers document assistance;
+  they do not contradict the developer's statement about predominant authorship.
 
 **Before you start:** the forum account needs two-step verification enabled, or "Add
 Resource" is not offered. The button sits top right of the resources page once logged
 in and verified.
 
 Category: **OBS Studio Plugins** (exact name, confirmed live 2026-09-06; not "Plugins").
-The v0.1.0 GitHub release is published (below), so this draft is ready to submit as is.
+Release facts below were checked on 2026-09-09: the Mac plugin is at v0.2.0 and the
+public App Store app is at 0.1.0. The iOS 0.2.0 audio update is under review. Re-check
+the current forum rules and the submission fields before publishing; the venue notes
+above record earlier checks, not a fresh moderation clearance.
 
 **After submitting:** the resource shows status "DELETED" until a moderator approves
 it. That is normal moderation queue behaviour, not an error and not an actual deletion.
@@ -28,14 +52,14 @@ Do not resubmit or panic if it says that for a day or two.
 | Field | Value |
 |---|---|
 | Title | `TetherCam` (no "OBS" in the name; see policy note below) |
-| Version | `0.1.0` |
+| Version | `0.2.0` |
 | Tagline | see below |
 | Minimum OBS Studio Version | `30.0` |
-| Source code URL | `https://github.com/Kanevry/tethercam/tree/v0.1.0` (the v0.1.0 tag; never the default branch) |
-| Platforms | macOS 12+ (Apple Silicon and Intel), text field, no platform checkboxes seen on this venue |
-| Download link ("Go to download") | `https://github.com/Kanevry/tethercam/releases/download/v0.1.0/TetherCam-obs-plugin.pkg` (external links to GitHub Releases are explicitly the endorsed pattern for this field) |
+| Source code URL | `https://github.com/Kanevry/tethercam/tree/v0.2.0` (the released plugin tag) |
+| Platforms | macOS 12+; tested on Apple Silicon |
+| Download link ("Go to download") | `https://github.com/Kanevry/tethercam/releases/download/v0.2.0/TetherCam-obs-plugin.pkg` |
 | Icon | `docs/images/tethercam-icon-256.png`, 256x256 |
-| Description | rich text, see below, written by hand |
+| Description | rich text, see below; prepared with AI assistance |
 | Screenshots | gallery, see list below |
 
 ## Policy notes specific to this venue
@@ -43,8 +67,9 @@ Do not resubmit or panic if it says that for a day or two.
 - **No "OBS" in the product name.** The Title field above is `TetherCam`, not
   "TetherCam OBS" or similar. "OBS" only appears in the tagline/description as a
   description of what the plugin is for, never as part of the name.
-- **No OBS logos** in the icon or screenshots. `docs/images/tethercam-icon-256.png` is
-  the TetherCam icon, not an OBS mark.
+- **No implied OBS branding.** `docs/images/tethercam-icon-256.png` is the TetherCam
+  icon, not an OBS mark. The policy permits application screenshots in third-party
+  marketing when the independent relationship is clear.
 - **No implied affiliation.** The description below does not claim endorsement by or
   partnership with the OBS Project; it says "for OBS Studio", nothing stronger.
 - **GPL compliance** is satisfied by the public source repository: `obs-plugin/` is
@@ -52,18 +77,16 @@ Do not resubmit or panic if it says that for a day or two.
   `https://github.com/Kanevry/tethercam`; the Source code URL field above points at it.
   Say so plainly in the description (see License section below).
 - **Release-ready only.** The Source code URL and Download link fields both resolve to
-  the v0.1.0 tag/release, never to `main` or a branch, so a visitor's first click
+  the v0.2.0 tag/release, never to `main` or a branch, so a visitor's first click
   always lands on something installable.
 - **English.** All text below is English.
-- **AI-generated descriptions must be disclosed.** The description below is written by
-  hand; it is not run through an AI generator or paraphraser and is not flagged as
-  AI-generated because it is not. Keep it that way when editing: hand-write changes, or
-  disclose if that ever stops being true.
-- **Repo/bundle name note:** the repository and plugin bundle are named
-  `obs-iphone-usb-cam`, which carries the "obs-" prefix the forum discourages for
-  resource *names*. That prefix lives only in the repo path and bundle id, never in the
-  Title field or in any user-facing product name; the one-line explanation for the
-  README lives in `docs/listings/README.md`.
+- **AI assistance is disclosed for code, art and copy.** See the developer attestation
+  above and the disclosure below. Checking this draft against release information
+  does not mean that the owner has personally reviewed it or that the forum permits
+  the resource.
+- **Repo/bundle name note:** the public repository is `Kanevry/tethercam`; the plugin
+  bundle retains the implementation name `obs-iphone-usb-cam.plugin`. The resource
+  Title and the user-facing product name are `TetherCam`.
 
 ---
 
@@ -84,21 +107,28 @@ cable; the plugin decodes with VideoToolbox and hands NV12 frames straight to OB
 Nothing is buffered in the plugin and nothing leaves the cable. TetherCam is not
 affiliated with or endorsed by the OBS Project.
 
-It exists because Continuity Camera stopped working for me after an iOS and macOS version
-mismatch (iOS 26.6 against macOS 26.5): the handshake succeeded, the picture stayed black.
-The third party apps that fill this gap are paid and closed source. TetherCam is neither.
+I built it because I kept losing the iPhone connection while recording videos for
+Agentic Builders. AirDrop wasn't solving the recording workflow for me either. On my
+setup, Continuity Camera's handshake succeeded but the picture stayed black after an
+iOS/macOS version mismatch. I wanted a reliable cable path straight into OBS that did
+not depend on that handshake. Continuity Camera itself supports USB; TetherCam takes a
+separate path through usbmuxd. It is free and open source.
 
-This is the first release, 0.1.0. The iPhone app is a free public TestFlight beta,
-open to anyone; the App Store listing is still in review. Expect rough edges and please
-report them as GitHub issues.
+As of September 9, 2026, the Mac plugin is at 0.2.0 and the free iPhone app is available
+on the App Store at 0.1.0. That combination delivers video. The iOS 0.2.0 update adds
+microphone audio over the same cable and is still under App Review; installing plugin
+0.2.0 alone does not add phone audio to the current App Store app. Early builds use the
+public TestFlight channel. Please report bugs and feedback as GitHub issues.
 
-Measured on one setup (iPhone 15 Pro Max, M4 Pro Mac, OBS 32.2.2): 1080p30 and 1080p60,
-about 13 Mbit/s HEVC, about 1 ms ping round trip over USB, about 90 ms to the first frame,
-about 1.3 s reconnect after a cable pull, 30.0 fps at about 6 percent CPU over a 3 minute
-run. Your numbers will differ with phone, Mac and settings.
+1080p30 and 1080p60 have been tested on an iPhone 15 Pro Max with an M4 Pro Mac and
+OBS 32.2.2. Results depend on your phone, Mac, cable and settings.
 
 The plugin installs into your own home folder under the OBS plugins directory. No
 administrator rights, no system extension, no daemon.
+
+**AI disclosure:** Developed by Bernhard Götzendorfer, with selective AI assistance for
+code and documentation. AI tools were also used for the icon and illustrative marketing
+artwork. This description was prepared with AI assistance and checked against the release.
 
 ## Features
 
@@ -128,21 +158,23 @@ administrator rights, no system extension, no daemon.
 
 **Mac plugin**
 
-1. Download `TetherCam-obs-plugin.pkg` from the v0.1.0 release
-   (https://github.com/Kanevry/tethercam/releases/latest) and open it, or run
+1. Download `TetherCam-obs-plugin.pkg` from the v0.2.0 release
+   (https://github.com/Kanevry/tethercam/releases/tag/v0.2.0) and open it, or run
    `curl -fsSL https://raw.githubusercontent.com/Kanevry/tethercam/main/scripts/install.sh | bash`.
    Read the script first; it downloads the release bundle and unpacks it into
    `~/Library/Application Support/obs-studio/plugins/`, nothing else.
 2. The `.pkg` is signed with a Developer ID Installer certificate and notarized by
-   Apple, so macOS opens it without a warning. Restart OBS.
+   Apple. Restart OBS after installation.
 
 **iPhone app**
 
-1. Join the free public TestFlight beta: https://testflight.apple.com/join/wmT74Ry8
-   (install TestFlight from the App Store first if you do not have it). Build 0.1.0 (2)
-   cleared Beta App Review on 2026-09-06 and the link is open to anyone; the App Store
-   listing is still in review.
-2. Or build it yourself with a free Apple ID and Xcode; steps in the README under
+1. Install the free App Store app: https://apps.apple.com/us/app/tethercam/id6808997521.
+   The public version is 0.1.0 and sends video; the 0.2.0 audio update is under review
+   as of September 9, 2026.
+2. For early builds, the public TestFlight channel is
+   https://testflight.apple.com/join/wmT74Ry8. Available builds can change independently
+   of the App Store release.
+3. Or build it yourself with a free Apple ID and Xcode; steps in the README under
    "Install the iPhone app".
 
 **Use it**
@@ -155,9 +187,10 @@ administrator rights, no system extension, no daemon.
 
 ## Known limitations
 
-- First release. Beta on the iPhone side.
+- Early releases; feedback from other phone and Mac setups is welcome.
 - macOS only. The shared C core builds on Linux, but no Windows or Linux receiver ships.
-- Video only. Use a separate microphone in OBS.
+- The current App Store app (0.1.0) sends video only. Use a separate microphone in OBS
+  until the iOS 0.2.0 audio update is available. Phone audio requires 0.2.0 on both sides.
 - HEVC only. The phone encodes HEVC in hardware; there is no H.264 fallback.
 - One receiver per phone. A second OBS source or the CLI receiver gets `ERROR 1 BUSY`.
 - The app must stay in the foreground on an unlocked phone.
@@ -174,7 +207,7 @@ administrator rights, no system extension, no daemon.
 ## License
 
 - `obs-plugin/`: GPL-2.0-or-later, because it links against libobs. GPL compliance is
-  the public source repository above; the full source at the v0.1.0 tag is what the
+  the public source repository above; the full source at the v0.2.0 tag is what the
   Source code URL field links to.
 - iPhone app, shared C core, tools, protocol spec, docs: MIT.
 
