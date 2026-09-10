@@ -66,6 +66,36 @@ TetherCam turns the iPhone into a **wired webcam for the Mac**, over the USB cab
   time** (the phone accepts one receiver, the second gets BUSY); the Mac app needs
   **macOS 14+** and a manual approval in System Settings.
 
+### Messaging round 2026-09-10: iPhone instead of a webcam
+
+Owner decision after the Zoom/Teams PASS (#13), filed as #31. It sharpens the positioning
+above; it does not replace it.
+
+- **Headline.** EN: *"Your iPhone, instead of a webcam."* DE: *"Dein iPhone statt Webcam."*
+  Eyebrow: *"Two apps &middot; one cable"* / *"Zwei Apps &middot; ein Kabel"*. The headline
+  is on `web/index.html`, `web/de/index.html`, the `<title>` first half, the OG and Twitter
+  titles, the JSON-LD `description` fields, the first line of `README.md` and the first
+  paragraph of `web/llms.txt`.
+- **Two apps, not "plugin plus app".** The product is **TetherCam for Mac** (free `.dmg`
+  from the GitHub release, or the Homebrew cask `tethercam`) and **TetherCam for iPhone**
+  (App Store id6808997521). Download both, plug the cable in, done. The hero buttons are
+  those two apps; the OBS plugin keeps its own section, its `#download` anchor and the full
+  install path, but it is no longer a hero button, no longer in the first half of the title
+  and no longer step 1.
+- **App-list rule, verified vs. "any app".** Only these may be called verified, with the
+  date: QuickTime Player, Photo Booth, FaceTime, Google Meet in Chrome, Safari, Chrome and
+  ffmpeg (2026-09-09), Zoom 7.1.5 and Microsoft Teams (2026-09-10). **Webex, Slack and
+  Discord are never called verified.** They are named only as examples of "any Mac app that
+  lists system cameras", and every place that names them says we have not tested them. The
+  same wording rule applies to `llms.txt` and the README. Everything else in the earlier
+  positioning section still bounds the copy: no audio on the Mac-app path, iPhone app in the
+  foreground, one receiver at a time (BUSY), macOS 14+ plus a one-time approval, no Wi-Fi,
+  no cloud, no pairing code.
+- **OBS-count sanity check, run after this round:** `web/index.html` 100 "obs" against 110
+  call-app mentions (was 101 / 113); `web/de/index.html` 107 against 114 (was 108 / 117).
+  Both pages stay inside the rule (`obs` <= call apps). "OBS" remains in both `<title>`
+  tags, last in the app list.
+
 ### Release facts
 
 - The **macOS virtual camera** (`mac-app/`) is **released since 0.2.1 (2026-09-09)**:

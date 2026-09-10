@@ -13,6 +13,14 @@ shipped in commit 581a800 and is mentioned so the reviewer does not have to hunt
 Updated 2026-09-10 for 0.3.0: the purpose paragraph now names both receivers, the Mac app
 first, and the quoted status line is the shipping 0.3.0 wording "Waiting for the Mac".
 
+Updated again 2026-09-10 for the 0.3.1 / next submission (issue #31): the purpose paragraph
+leads with the two-apps picture — TetherCam for Mac plus TetherCam for iPhone, one cable —
+states that the camera appears in every Mac app that lists system cameras, names Zoom and
+Microsoft Teams as verified on 2026-09-10, and demotes OBS to one tool among many. The
+three limits a reviewer will otherwise discover on their own are stated up front: the Mac
+app carries video only, this app stays in the foreground while it sends, and the phone
+serves one receiver at a time.
+
 The 4.2.3 App Independence defence comes first on purpose. It is the highest-probability
 rejection reason (see section 1, risk 1), and a reviewer with a stopwatch reads the first
 paragraph.
@@ -24,7 +32,7 @@ TetherCam is a camera app. On launch it opens a live preview from the rear camer
 
 Why you cannot exercise the full flow, and what it is
 
-The purpose of the app is to deliver that camera picture to a Mac over the USB cable, where one of two free receivers picks it up. The default one is the TetherCam Mac app, a menu bar app with a camera extension that makes the iPhone appear as the camera "TetherCam" in Zoom, Teams, Google Meet, FaceTime, QuickTime Player and browsers; the second is the TetherCam plugin for OBS Studio, for streaming and recording. Both are free and open source and are downloaded from https://tethercam.app. The app opens a TCP listener on port 7878 on the device. A Mac connected by cable reaches that port through the usbmux tunnel provided by Apple's usbmuxd, the same mechanism Xcode and Finder use for a wired device. There is no Wi-Fi, no Bonjour, no discovery, no server anywhere. Both receivers are Mac desktop software, not iOS apps, and reviewing them is not required in order to review this app. The phone serves one receiver at a time; a second one is turned away with a "busy" message shown on the phone.
+The purpose of the app is to replace a webcam: it delivers that camera picture to a Mac over the USB cable. TetherCam is two apps, and this is the iPhone half. The other half is the TetherCam Mac app, a free menu bar app with a camera extension that makes the iPhone appear as the camera "TetherCam" on the Mac, in the same camera picker as the built-in one, in every Mac app that lists system cameras: Zoom and Microsoft Teams (both verified on 10 September 2026), Google Meet, FaceTime, QuickTime Player, Safari and Chrome. A second, optional receiver is the TetherCam plugin for OBS Studio, for streaming and recording; OBS is one tool among many, not the point of the app. Both receivers are free and open source and are downloaded from https://tethercam.app. Three limits, stated so they are not a surprise: the Mac app carries the picture only, because a Mac camera extension has no audio stream (only the OBS plugin also carries the phone microphone); this iPhone app stays open in the foreground while it sends; and the phone serves one receiver at a time. There is no account and no pairing code. The app opens a TCP listener on port 7878 on the device. A Mac connected by cable reaches that port through the usbmux tunnel provided by Apple's usbmuxd, the same mechanism Xcode and Finder use for a wired device. There is no Wi-Fi, no Bonjour, no discovery, no server anywhere. Both receivers are Mac desktop software, not iOS apps, and reviewing them is not required in order to review this app. A second receiver that connects while one is already streaming is turned away with a "busy" message shown on the phone.
 
 Demo video
 

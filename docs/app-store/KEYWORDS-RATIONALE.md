@@ -131,3 +131,58 @@ a release; it is the one field of this change that does not have to wait for 0.3
 What to measure next cycle: impressions on `iphone webcam usb` and on `obs` before and
 after. If `mac` and `obs` in the keyword field show nothing, they are the cheapest terms to
 trade back for `podcast` (item 2 above).
+
+---
+
+## Addendum 2026-09-10 (2): "iPhone statt Webcam", and the subtitle stops selling keywords
+
+Owner decision on the evening of 2026-09-10, after the Zoom/Teams pass (issue #13) and
+issue #31: the message is **"Your iPhone, instead of a webcam." / "iPhone statt Webcam."**
+The product is two apps — TetherCam for Mac (free, tethercam.app) and TetherCam for iPhone
+— and the promise is: download both, plug in the cable, done. It works in every Mac app
+that lists system cameras; OBS is one tool among many. This addendum records the fields for
+the **0.3.1 / next submission**; the addendum above (0.3.0) stands unchanged.
+
+| Field | Before (0.3.0) | After (0.3.1) |
+|---|---|---|
+| Subtitle (en) | `iPhone webcam over USB cable` (28) | `iPhone instead of a webcam` (26) |
+| Subtitle (de) | `iPhone-Webcam per USB-Kabel` (27) | `iPhone statt Webcam` (19) |
+| Keywords (en) | `tether,wired,camcorder,streaming,capture,meeting,conference,call,video,live,studio,cam,mic,obs,mac` (98) | `usb,cable,tether,wired,mac,obs,camcorder,streaming,meeting,conference,call,video,live,cam,mic,studio` (100) |
+| Keywords (de) | `tether,camcorder,streaming,aufnahme,videoanruf,konferenz,meeting,video,live,cam,mikrofon,obs,mac` (96) | `usb,kabel,tether,mac,obs,streaming,aufnahme,videoanruf,konferenz,meeting,video,live,cam,mikrofon` (96) |
+
+**The subtitle is now a claim, not a keyword shelf.** Every earlier subtitle was written to
+smuggle head terms into the indexed field: first `USB webcam for Mac and OBS`, then
+`iPhone webcam over USB cable`. Both described the mechanism. The new one states the job to
+be done in five words and reads as a sentence a person would say. This is a deliberate ASO
+concession, and it should be named honestly: `instead`, `of` and `a` are stopwords that buy
+nothing in the index, so roughly nine of the thirty English characters are spent on tone
+rather than on ranking. The bet is that the product page converts better than it ranks, and
+that the keyword field can carry the head terms alone.
+
+**The keyword field takes the head terms back.** Because the subtitle no longer contains
+`usb`, `cable`, `mac` or `obs`, none of them is indexed any more through the visible line,
+and all four return to the keyword field. Only `iphone` and `webcam` stay out: the subtitle
+still carries both, and the never-repeat rule is unchanged. In English the four freed
+characters also bring `studio` back. In German `camcorder` was dropped to pay for `usb`,
+`kabel`, `mac` and `obs`: it is an English loan word with thin German search volume, and it
+was already the weakest term on that list once `kabelgebunden` had gone in the previous
+round. `capture` (en) left for the same reason — it overlaps `camcorder` and `streaming`
+and never carried its ten characters.
+
+**Trademark stance is unchanged.** No third-party or Apple mark in the keyword field.
+Zoom, Microsoft Teams, Google Meet and FaceTime appear in the description only, and now
+also in the promotional text, as factual compatibility statements — which is exactly what
+they are since the 2026-09-10 verification of Zoom and Teams. `obs` and `mac` remain the
+two exceptions; `mac` is still the first term to drop if App Review ever queries the field.
+
+**Promotional text was pushed immediately, to both live versions.** It is the one field
+Apple keeps editable on a version that is already READY_FOR_SALE or WAITING_FOR_REVIEW, so
+the new message reached the live 0.2.0 page and the 0.3.0 version in review on 2026-09-10,
+months before the subtitle and the description can follow with a submission. Subtitle,
+keywords, description and What's New are version-scoped and wait for 0.3.1.
+
+What to measure next cycle: whether the conversion rate on the product page moves at all,
+because that is the only thing the new subtitle can win. If impressions on `iphone webcam`
+collapse while conversion stays flat, the concession failed and the subtitle goes back to a
+descriptive form — that would be the first A/B with a real reason behind it rather than a
+positioning decision.

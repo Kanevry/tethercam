@@ -1,14 +1,25 @@
 # App Store metadata: German (de-DE), secondary localization
 
-Version 0.3.0, build 6. Same fields as `en-US.md`, translated. The app already ships `de.lproj`, so a German
-localization is cheap and consistent with the interface. Register the localization in App
-Store Connect as **German** (de-DE); Austria is served by that localization, there is no
-separate de-AT slot.
+**0.3.1 / next submission.** Gleiche Felder wie `en-US.md`, uebersetzt. Die Bloecke im
+oberen Abschnitt sind die naechste Einreichung; der Wortlaut von 0.3.0, der live ist oder
+in Pruefung liegt, steht unveraendert weiter unten unter "Live/in review: 0.3.0". Die
+Lokalisierung heisst in App Store Connect **German** (de-DE); Oesterreich wird davon
+mitbedient, einen eigenen de-AT-Slot gibt es nicht.
 
-Wording rules used here: no direct address at all, neither "du" nor "Sie". Everything is
-phrased with nouns, infinitives and impersonal constructions, which reads neutral in
-Austria and in Germany alike. No Apple feature names, no "Continuity Camera". "OBS" appears
-only as a factual compatibility statement, never in the keyword field.
+Botschaft, vom Owner am 2026-09-10 nach dem Zoom/Teams-Pass festgelegt (Issue #31):
+**"iPhone statt Webcam."** Zwei Apps — TetherCam fuer Mac (kostenlos, tethercam.app) und
+TetherCam fuer iPhone (diese App). Beide laden, Kabel einstecken, fertig. Es funktioniert
+in jeder Mac-App, die Systemkameras auflistet; OBS Studio ist ein Werkzeug von vielen, das
+Plugin bleibt der Weg fuer Profis, erwaehnt, aber nie als Ueberschrift.
+
+Fakten, die jeden Satz begrenzen: die Mac-App uebertraegt nur Bild, die iPhone-App bleibt
+im Vordergrund, das Telefon bedient immer nur einen Empfaenger, kein WLAN, keine Cloud,
+kein Kopplungscode, Zoom und Microsoft Teams am 2026-09-10 geprueft, iOS 17+, macOS 14+.
+
+Sprachregeln wie bisher: keine direkte Anrede, weder "du" noch "Sie". Alles mit Substantiven,
+Infinitiven und unpersoenlichen Konstruktionen, was in Oesterreich und in Deutschland gleich
+neutral liest. Keine Apple-Feature-Namen, keine "Continuity Camera". Markennamen stehen nur
+in der Beschreibung als sachliche Kompatibilitaetsangabe, nie im Keyword-Feld.
 
 ---
 
@@ -23,37 +34,121 @@ Same in every localization; the name field is not translated.
 ## Subtitle (limit 30)
 
 ```
-iPhone-Webcam per USB-Kabel
+iPhone statt Webcam
 ```
 
 ## Keywords (limit 100)
 
 ```
+usb,kabel,tether,mac,obs,streaming,aufnahme,videoanruf,konferenz,meeting,video,live,cam,mikrofon
+```
+
+Comma separated, no spaces after commas, 96 von 100 Zeichen. Der neue Untertitel gibt seinen
+Platz an die Botschaft statt an Suchbegriffe, deshalb kommen `usb`, `kabel`, `mac` und `obs`
+zurueck ins Keyword-Feld; draussen bleiben nur `iphone` und `webcam`, die ueber Name und
+Untertitel ohnehin indexiert werden. `camcorder` faellt dafuer weg: ein englisches Lehnwort
+mit wenig deutschem Suchvolumen, das die noetigen zehn Zeichen bezahlt. Markennamen wie
+Zoom, Microsoft Teams, Google Meet, FaceTime oder Continuity Camera stehen nur in der
+Beschreibung; `obs` und `mac` sind die zwei Ausnahmen und sachliche Kompatibilitaetsangaben.
+Begruendung: `KEYWORDS-RATIONALE.md`, Addendum 2026-09-10 (2).
+
+## Promotional text (limit 170)
+
+```
+iPhone statt Webcam. Die kostenlose TetherCam-Mac-App installieren, Kabel einstecken, und das Telefon ist Kamera in Zoom, Teams, Meet, FaceTime und jeder Mac-App.
+```
+
+Jederzeit ohne neue Version aenderbar und **nicht an eine Version gebunden**; deshalb wurde
+genau dieser Block am 2026-09-10 sowohl in die live stehende 0.2.0 als auch in die in
+Pruefung liegende 0.3.0 eingespielt. Untertitel, Keywords, Beschreibung und Neuheiten
+wirken erst mit der naechsten Einreichung.
+
+## Description (limit 4000)
+
+```
+iPhone statt Webcam.
+
+ZWEI APPS, EIN KABEL
+
+TetherCam sind zwei kostenlose Apps. TetherCam für Mac kommt von tethercam.app, TetherCam für iPhone ist diese hier. Beide installieren, das Telefon mit dem vorhandenen USB-Kabel an den Mac stecken, und das iPhone erscheint am Mac als Kamera „TetherCam“, in derselben Kameraauswahl wie die eingebaute Kamera.
+
+Das gilt für jede Mac-App, die Systemkameras auflistet: Zoom, Microsoft Teams, Google Meet, FaceTime, QuickTime Player, Safari, Chrome und alle anderen. Zoom und Microsoft Teams wurden am 10. September 2026 geprüft.
+
+Nichts läuft über WLAN, nichts läuft über einen Server, nichts wird irgendwohin hochgeladen. Es gibt kein Konto, keinen Kopplungscode und keine Suche im Netzwerk. Das Kabel ist der gesamte Weg, deshalb bleibt das Bild auch in einem vollen Raum stabil, in dem drahtlose Kameras zu stocken beginnen.
+
+WAS GEBRAUCHT WIRD
+
+Ein iPhone mit iOS 17 oder neuer, ein Mac mit macOS 14 oder neuer und das USB-Kabel, das beim Telefon dabei war. Die kostenlose TetherCam-Mac-App fragt einmalig nach der Freigabe ihrer Kameraerweiterung in den Systemeinstellungen, danach ist die Kamera einfach da.
+
+DIE EHRLICHEN GRENZEN
+
+Die Mac-App überträgt nur das Bild. Eine Kameraerweiterung am Mac hat keine Tonspur, der Ton bleibt deshalb beim Mikrofon des Mac. Ton über das Kabel gibt es, aber nur auf dem OBS-Weg weiter unten.
+
+Diese iPhone-App bleibt während der Übertragung im Vordergrund.
+
+Das Telefon bedient immer nur einen Empfänger. Mac-App und OBS-Plugin laufen also nicht gleichzeitig; wer als Zweiter verbindet, bekommt die Auskunft, dass die Leitung belegt ist.
+
+AM TELEFON
+
+Live-Vorschau ab dem Moment, in dem die App geöffnet wird, also noch bevor etwas verbunden ist. Eine Kamera- und Objektivauswahl für Weitwinkel, Ultraweitwinkel und Tele oder die Frontkamera, die den Stream sofort umschaltet.
+
+Automatische Drehung, die sich am Horizont orientiert und nicht an der Bedienoberfläche. Beim Drehen des Telefons bleibt das Bild waagrecht, weil die Ausrichtung schon auf der Aufnahmeseite aufgelöst wird. Ein manueller Winkel steht zur Verfügung, wenn die Entscheidung von Hand kommen soll.
+
+HEVC-Kodierung in Hardware, was das Telefon kühl und die Latenz niedrig hält.
+
+Ein Diagnosebereich, der zeigt, was tatsächlich passiert: Zustand des Listeners, Verbindung, Bilder pro Sekunde, Bitrate und die gemessene Restneigung der Horizontkorrektur.
+
+FÜR STREAMING UND AUFNAHME: OBS STUDIO
+
+Das TetherCam-Plugin für OBS Studio ist der Weg für Profis, ebenfalls kostenlos und ebenfalls auf tethercam.app. Es ergänzt eine Quelle namens TetherCam direkt in OBS, findet das Telefon über dasselbe Kabel und ist der einzige Weg, der auch das Mikrofon des Telefons mitbringt.
+
+DATENSCHUTZ
+
+Kein Konto, keine Analyse, keine Werbung, keine Käufe. Das Kamerabild geht an den eigenen Mac und sonst nirgendwohin. Es werden keine Daten erfasst.
+
+TetherCam für iPhone ist kostenlos und quelloffen unter der MIT-Lizenz: github.com/Kanevry/tethercam.
+```
+
+## What's New (limit 4000)
+
+Vorlage fuer 0.3.1. Die Platzhalterzeilen vor der Einreichung durch die tatsaechlichen
+Aenderungen des Builds ersetzen; die erste Zeile ist die Botschaft und bleibt stehen.
+
+```
+iPhone statt Webcam: die kostenlose TetherCam-Mac-App von tethercam.app installieren, Kabel einstecken, und das Telefon ist Kamera in Zoom, Teams, Meet, FaceTime und jeder anderen Mac-App, die Systemkameras auflistet.
+<Änderung eins>
+<Änderung zwei>
+<Änderung drei>
+```
+
+---
+
+## Live/in review: 0.3.0
+
+Unveraendert aufbewahrt. 0.2.0 (Build 4) ist live, 0.3.0 (Build 6) liegt in Pruefung; beide
+tragen diese versionsgebundenen Felder, bis die naechste Einreichung sie ersetzt. Der
+Promotional-Text beider Versionen wurde am 2026-09-10 auf den neuen Block oben gesetzt, was
+erlaubt ist, weil dieses Feld nicht an eine Version gebunden ist.
+
+### Subtitle — 0.3.0
+
+```
+iPhone-Webcam per USB-Kabel
+```
+
+### Keywords — 0.3.0
+
+```
 tether,camcorder,streaming,aufnahme,videoanruf,konferenz,meeting,video,live,cam,mikrofon,obs,mac
 ```
 
-Comma separated, no spaces after commas, 96 von 100 Zeichen. `iphone`, `usb`, `webcam` und
-`kabel` stehen im Untertitel und werden dadurch schon indexiert, deshalb stehen sie nicht
-im Keyword-Feld. Weil der neue Untertitel die beiden Empfaenger nicht mehr nennt, sind
-`obs` und `mac` zurueck im Keyword-Feld; bezahlt wird das mit `kabel` und mit
-`kabelgebunden`, dem langen Kompositum, das `KEYWORDS-RATIONALE.md` ohnehin als
-Streichkandidaten gefuehrt hat. Der Rest des Platzes geht an `mikrofon`, das Gegenstueck
-zu `mic` im englischen Feld. Markennamen wie Zoom, Google Meet, Teams, FaceTime oder
-Continuity Camera stehen nur in der Beschreibung als sachliche Kompatibilitaetsangabe;
-`obs` und `mac` sind die zwei Ausnahmen und standen vorher im Untertitel. Begruendung:
-`KEYWORDS-RATIONALE.md`.
-
-## Promotional text (limit 170)
+### Promotional text — 0.3.0, ersetzt 2026-09-10
 
 ```
 iPhone als USB-Webcam am Mac: in Zoom, Teams, Meet, FaceTime und jeder App über die kostenlose TetherCam-Mac-App, oder als eigene Quelle in OBS. Kein WLAN, keine Cloud.
 ```
 
-Jederzeit ohne neue Version aenderbar, **dieser Text kann sofort eingespielt werden**,
-also noch vor der Einreichung von 0.3.0. Untertitel, Beschreibung und Neuheiten wirken
-dagegen erst mit der Version 0.3.0.
-
-## Description (limit 4000)
+### Description — 0.3.0
 
 ```
 TetherCam macht aus dem iPhone eine kabelgebundene USB-Webcam für den Mac.
@@ -87,9 +182,7 @@ Kein Konto, keine Analyse, keine Werbung, keine Käufe. Das Kamerabild geht an d
 TetherCam für iPhone ist kostenlos und quelloffen unter der MIT-Lizenz: github.com/Kanevry/tethercam.
 ```
 
-## What's New (limit 4000)
-
-Für 0.3.0 (Build 6):
+### What's New — 0.3.0 (Build 6)
 
 ```
 Die TetherCam-Mac-App macht das iPhone zur Kamera für jede Mac-App. Die kostenlose Menüleisten-App von tethercam.app installieren, die Kameraerweiterung einmal freigeben, und das Telefon erscheint als Kamera „TetherCam“ in Zoom, Teams, Meet, FaceTime, QuickTime Player und Browsern. Es gibt sie seit 0.2.1, im Store stand sie bisher nur nirgends. Nur Bild, macOS 14 oder neuer.
@@ -100,7 +193,7 @@ Ein zweiter Empfänger, der sich verbindet, während schon einer überträgt, be
 Der deutsche Systemdialog für das Mikrofon fragt endlich auf Deutsch.
 ```
 
-Text für 0.2.0:
+### What's New — 0.2.0
 
 ```
 Ton vom iPhone. Das Mikrofon geht über dasselbe USB-Kabel und erscheint im OBS-Audiomixer neben dem Bild. Braucht das OBS-Plugin 0.2.0.
@@ -109,7 +202,7 @@ Doppeltippen auf die Vorschau wechselt zur nächsten Kamera. Ein kurzer Hinweis 
 Die Verbindung bleibt bei verweigertem Mikrofon und anderen nicht fatalen Fehlern bestehen, statt in einer Schleife neu zu verbinden.
 ```
 
-Text für 0.1.0 (erste Veröffentlichung):
+### What's New — 0.1.0 (erste Veröffentlichung)
 
 ```
 Erste öffentliche Veröffentlichung.

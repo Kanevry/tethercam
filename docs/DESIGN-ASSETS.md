@@ -26,7 +26,19 @@ Store screenshots. It is the source; the exported PNGs are derived and not commi
 | 3 | `03 Lenses` | big phone plus the CAMERA card |
 | 4 | `04 Level` | phone rotated 7 degrees plus the ADVANCED card |
 | 5 | `05 Diagnostics` | big phone plus the DIAGNOSTICS card |
+| 1 | `01 Hero v2` | 2026-09-10, v2 voice: "Your iPhone, instead of a webcam." plus the Mac camera picker card and the small phone; exports as `drafts-v2/01-hero.png` |
+| 2 | `02 Connect v2` | 2026-09-10, "Download both apps. Plug in. Done." — two app cards (Mac + iPhone) joined by a cable and the Mac menu-bar hint ("Camera: ready", "Streaming from iPhone"); the OBS Tools-menu screenshot is gone; exports as `drafts-v2/02-connect.png` |
+| 3 | `03 Lenses v2` | 2026-09-10, "Wide, ultra wide, telephoto or front." with the CAMERA card; sub says every Mac app sees the change; exports as `drafts-v2/03-lenses.png` |
+| 4 | `04 Level v2` | 2026-09-10, "Turn the phone. Picture stays level." with the ADVANCED card; sub says the picture arrives upright on the Mac; exports as `drafts-v2/04-level.png` |
+| 5 | `05 Diagnostics v2` | 2026-09-10, "See exactly what is happening." with the DIAGNOSTICS card incl. the real 0.3.0 row `Receiver = TetherCam for Mac 0.3.0`; exports as `drafts-v2/05-diagnostics.png` |
+| OG | `OG v2` | 2026-09-10, website Open-Graph card 1200x630 (export 1x): headline, eyebrow "Two apps · one cable", camera picker card and the small phone; exports as `web/img/og.png` |
 | A0 | `A0 App live` | Full-bleed app screen for the website gallery and the README: scene image, status capsule "Streaming 1080p30", gear icon, no headline. Added 2026-09-10 for #26; exports as `docs/images/app-live.png` (2796x1290) and, scaled, `web/img/app-live.png` / `.webp` (1400x646) |
+
+The `v2` set (2026-09-10, issue #31) is the Mac-app-first voice: two apps, one cable, every
+Mac app instead of OBS. It goes live with the **next iOS version** — 0.3.0 is in App Review,
+and screenshots may not be swapped under a submission that is being reviewed. Until then the
+v2 exports stay in `~/Desktop/TetherCam-AppStore/drafts-v2/` and are not uploaded. `OG v2` is
+the exception: `web/img/og.png` is a website asset and ships with the next deploy.
 
 Reusable components: `Phone` (722x352) and `Phone small` (430x210). Their `Screen` fill is
 the scene image; change it once and every frame follows.

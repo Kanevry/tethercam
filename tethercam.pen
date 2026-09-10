@@ -1931,6 +1931,389 @@
           "height": 3
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "PQCTL",
+      "x": 0,
+      "y": 765,
+      "name": "A0 App live",
+      "clip": true,
+      "width": 1398,
+      "height": 645,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/generated-1788629447997.png",
+        "mode": "fill"
+      },
+      "layout": "none",
+      "children": [
+        {
+          "type": "frame",
+          "id": "uuRjG",
+          "x": 52,
+          "y": 44,
+          "name": "Status capsule",
+          "fill": "#000000A6",
+          "cornerRadius": 999,
+          "gap": 16,
+          "padding": [
+            14,
+            24
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "ellipse",
+              "id": "EDzXt",
+              "name": "Status dot",
+              "fill": "$signal",
+              "width": 18,
+              "height": 18
+            },
+            {
+              "type": "text",
+              "id": "B7hqc",
+              "name": "Status text",
+              "fill": "#FFFFFF",
+              "content": "Streaming 1080p30",
+              "fontFamily": "Inter",
+              "fontSize": 28,
+              "fontWeight": "600"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "gLpM9",
+          "x": 1274,
+          "y": 40,
+          "name": "Gear",
+          "width": 72,
+          "height": 72,
+          "fill": "#000000A6",
+          "cornerRadius": 36,
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "icon",
+              "id": "fhwTH",
+              "name": "Gear icon",
+              "width": 40,
+              "height": 40,
+              "icon": "settings",
+              "library": "lucide",
+              "fill": "#FFFFFF"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "k9SlEc",
+      "x": 0,
+      "y": 1530,
+      "name": "01 Hero v2",
+      "clip": true,
+      "width": 1398,
+      "height": 645,
+      "fill": "$bg",
+      "layout": "none",
+      "children": [
+        {
+          "type": "ellipse",
+          "id": "LZp6U",
+          "x": 700,
+          "y": -200,
+          "name": "Glow",
+          "fill": {
+            "type": "gradient",
+            "gradientType": "radial",
+            "enabled": true,
+            "rotation": 0,
+            "size": {
+              "width": 1,
+              "height": 1
+            },
+            "colors": [
+              {
+                "color": "#8B7CF64D",
+                "position": 0
+              },
+              {
+                "color": "#8B7CF600",
+                "position": 1
+              }
+            ]
+          },
+          "width": 1000,
+          "height": 1000
+        },
+        {
+          "type": "frame",
+          "id": "NBj2w",
+          "x": 84,
+          "y": 0,
+          "name": "Copy",
+          "width": 540,
+          "height": 645,
+          "layout": "vertical",
+          "gap": 22,
+          "justifyContent": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "eujcp",
+              "name": "Eyebrow",
+              "gap": 10,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "tDoCx",
+                  "name": "Dot",
+                  "fill": "$signal",
+                  "width": 10,
+                  "height": 10
+                },
+                {
+                  "type": "text",
+                  "id": "A341Qc",
+                  "name": "Eyebrow text",
+                  "fill": "$accent",
+                  "content": "TWO APPS · ONE CABLE",
+                  "fontFamily": "$font-mono",
+                  "fontSize": 14,
+                  "fontWeight": "normal",
+                  "letterSpacing": 2
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "VSjwS",
+              "name": "Headline",
+              "fill": "$fg",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Your iPhone,\ninstead of a webcam.",
+              "lineHeight": 1.02,
+              "fontFamily": "$font-display",
+              "fontSize": 48,
+              "fontWeight": "600",
+              "letterSpacing": -1.2
+            },
+            {
+              "type": "text",
+              "id": "GPDJW",
+              "name": "Sub",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Download both apps, plug in the cable, done. Your iPhone becomes the camera “TetherCam” that every Mac app can pick — Zoom, Teams, Meet, FaceTime.",
+              "lineHeight": 1.35,
+              "fontFamily": "$font-display",
+              "fontSize": 21,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "KK32m",
+              "name": "Tag",
+              "fill": "#16181FEE",
+              "cornerRadius": 999,
+              "stroke": "$border",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                10,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "mie1g",
+                  "name": "Tag dot",
+                  "fill": "$signal",
+                  "width": 8,
+                  "height": 8
+                },
+                {
+                  "type": "text",
+                  "id": "jYheu",
+                  "name": "Tag text",
+                  "fill": "$fg",
+                  "content": "TetherCam for Mac + for iPhone · free",
+                  "fontFamily": "$font-mono",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "X5MwY",
+          "type": "ref",
+          "ref": "kJUQe",
+          "name": "Phone hero",
+          "x": 900,
+          "y": 400
+        },
+        {
+          "type": "frame",
+          "id": "lsSxk",
+          "x": 760,
+          "y": 120,
+          "name": "Camera picker card",
+          "width": 500,
+          "fill": "#16181FF2",
+          "cornerRadius": 16,
+          "stroke": "$border",
+          "strokeWidth": 1,
+          "effect": {
+            "type": "shadow",
+            "shadowType": "outer",
+            "color": "#00000099",
+            "offset": {
+              "x": 0,
+              "y": 20
+            },
+            "blur": 50
+          },
+          "layout": "vertical",
+          "gap": 6,
+          "padding": [
+            18,
+            22
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "vaAl9",
+              "name": "Card title",
+              "fill": "$muted",
+              "content": "CAMERA",
+              "fontFamily": "$font-mono",
+              "fontSize": 12,
+              "fontWeight": "normal",
+              "letterSpacing": 1.5
+            },
+            {
+              "type": "frame",
+              "id": "BOqR4",
+              "name": "Row FaceTime HD Camera",
+              "width": "fill_container",
+              "stroke": "#2A2E3A",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "padding": [
+                13,
+                0
+              ],
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "RdcAR",
+                  "name": "Label",
+                  "fill": "$muted",
+                  "content": "FaceTime HD Camera",
+                  "fontFamily": "Inter",
+                  "fontSize": 17,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "s1rmtd",
+                  "name": "Value",
+                  "fill": "$signal",
+                  "fontFamily": "Inter",
+                  "fontSize": 16,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "CfUgA",
+              "name": "Row TetherCam",
+              "width": "fill_container",
+              "stroke": "#2A2E3A",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "padding": [
+                13,
+                0
+              ],
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "GjT29",
+                  "name": "Label",
+                  "fill": "$fg",
+                  "content": "TetherCam",
+                  "fontFamily": "Inter",
+                  "fontSize": 17,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "d4sZq",
+                  "name": "Value",
+                  "fill": "$signal",
+                  "content": "✓",
+                  "fontFamily": "Inter",
+                  "fontSize": 16,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "G7qlWL",
+              "name": "Row OBS Virtual Camera",
+              "width": "fill_container",
+              "padding": [
+                13,
+                0
+              ],
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "mws6s",
+                  "name": "Label",
+                  "fill": "$muted",
+                  "content": "OBS Virtual Camera",
+                  "fontFamily": "Inter",
+                  "fontSize": 17,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "f4a60",
+                  "name": "Value",
+                  "fill": "$signal",
+                  "fontFamily": "Inter",
+                  "fontSize": 16,
+                  "fontWeight": "600"
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "variables": {
