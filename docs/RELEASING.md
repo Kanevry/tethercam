@@ -121,6 +121,17 @@ once the app record exists — its errors are far more legible than a CI log.
 
 The full runbook lives in `.claude/skills/distribute/SKILL.md`.
 
+### Stand 2026-09-10
+
+v0.3.0 ist veroeffentlicht (`.pkg`, `.dmg`, beide Casks). iOS 0.3.0 (Build 7) haengt an
+der ASC-Version 0.3.0 und steht auf **IN_REVIEW**. 0.4.0 ist in Vorbereitung: iOS-Build 8,
+kein iOS-Codeaenderung, Neuerungen in Mac-App und `shared/`.
+
+`scripts/release.sh` bumpt **nur** `obs-plugin/buildspec.json`, `ios-app/project.yml` und
+`CHANGELOG.md`. **`mac-app/project.yml` wird von Hand gebumpt** (`MARKETING_VERSION` und
+`CURRENT_PROJECT_VERSION`, fuer 0.4.0: `0.4.0` / `10`). Die Build-Nummer muss steigen,
+sonst ersetzt `sysextd` die installierte Camera Extension nicht.
+
 ### Stand 2026-09-05 abends
 
 CSR und privater Schluessel fuer das Developer ID Installer Zertifikat liegen

@@ -23,6 +23,8 @@ which works on a temp copy. Never print a `.p8` or a JWT.
 | App Store Connect **app record** | app id `6808997521`; 0.1.0 (2) live on the App Store since 2026-09-09; 0.2.0 (4) in App Review since 2026-09-09 (MANUAL release); public link https://testflight.apple.com/join/wmT74Ry8 |
 | Developer ID **Installer** certificate + `MACOS_INSTALLER_CERT_P12` | set since 2026-09-05 evening; v0.1.0 and v0.2.0 .pkg are signed and notarized |
 | Local key | `~/.appstoreconnect/private_keys/AuthKey_<KEYID>.p8`; key id and issuer id live in the git-ignored `.env.local` (`ASC_KEY_ID`, `ASC_ISSUER_ID`) |
+| **State 2026-09-10** | v0.3.0 released (pkg, dmg, casks); iOS 0.3.0 (build 7) attached to the ASC version 0.3.0, **IN_REVIEW**; 0.4.0 in preparation (iOS build 8, no iOS code change) |
+| **`mac-app/project.yml` is not bumped by `scripts/release.sh`** | manual edit per release: `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` (0.4.0 / 10). The build number **must rise**, otherwise sysextd keeps the installed camera extension |
 
 Both missing items are **owner steps** — no API key can create them. See
 `docs/RELEASING.md` §1b and §1d.

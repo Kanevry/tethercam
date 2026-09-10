@@ -20,8 +20,8 @@ settings:
     CODE_SIGN_STYLE: Automatic
     SWIFT_VERSION: "5.0"
     ENABLE_HARDENED_RUNTIME: YES
-    MARKETING_VERSION: "0.3.0"
-    CURRENT_PROJECT_VERSION: "9"   # sysextd replaces the extension only on a HIGHER build number
+    MARKETING_VERSION: "0.4.0"
+    CURRENT_PROJECT_VERSION: "10"   # sysextd replaces the extension only on a HIGHER build number
     GENERATE_INFOPLIST_FILE: YES
 
 targets:

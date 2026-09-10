@@ -38,7 +38,7 @@
     },
     "name": "obs-iphone-usb-cam",
     "displayName": "TetherCam for OBS",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "author": "Bernhard Goetzendorfer",
     "website": "https://tethercam.app",
     "email": "venturestudio@ai-at.eu",

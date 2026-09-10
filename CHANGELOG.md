@@ -11,6 +11,52 @@ OBS plugin (`obs-plugin/`, GPL-2.0-or-later). A tag `vX.Y.Z` releases them toget
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-10
+
+### Added
+
+- **Mac app: the camera extension can be restarted from the menu.** After an install
+  or an update of the camera extension the app now waits up to 10 seconds for the
+  camera device to appear. If macOS started no device — the known launchd race on an
+  in-place extension replacement, where the new job is rejected with `EALREADY` while
+  the old one is still being torn down — the menu and the setup guide say so instead
+  of showing a camera that does not exist, and offer "Restart camera extension"
+  (deactivate, then activate again). The presence of the device is re-checked every
+  time the menu opens, and the new transient state "Checking the camera device…"
+  makes the wait visible. (#32)
+- **Mac app: update check.** Once a day at launch the app asks
+  `api.github.com/repos/.../releases/latest` whether a newer version exists; the menu
+  then shows "Update available: x.y.z" with a link to the release. Settings gain
+  "Check for updates now" and a switch "Check for updates automatically", the check
+  is off in headless runs, and only `https://github.com` release URLs are ever
+  opened. The privacy page names the request. (#27)
+
+### Changed
+
+- **Mac app: the menu is structured.** Status block, Setup guide, the submenus
+  "Camera extension" and "Settings", the version, Quit — instead of one flat list.
+- **Mac app: the sink authorization stays open, on purpose.** Measured with a
+  Developer ID build that `CMIOExtensionClient.signingID` is unusable (it reads
+  "unknown" for a real client), so a whitelist would lock every app out of the
+  camera. The open policy is kept and documented in the CMIO spec; the extension
+  logs the sink client once per pid so the decision stays checkable. (#28)
+- Website (EN/DE), README, install guide, `llms.txt` and the App Store metadata got a
+  second messaging round: "Your iPhone, instead of a webcam", two apps, one cable.
+  (#31)
+- Community listings round 2 for the Mac app, store copy at 0.4.0. The iPhone app has
+  no code change in this release. (#30)
+
+### Fixed
+
+- **Receiver names longer than 63 bytes no longer break the `CLIENT_INFO` parse.**
+  The parser stores 63 bytes plus a terminator; a longer name is now cut at a UTF-8
+  character boundary instead of in the middle of a multi-byte character, so the
+  phone never shows a mangled receiver name. The fuzz test covers `CLIENT_INFO`.
+  (#25)
+- **Mac app: cancelling the macOS confirmation dialog is not an error.** Dismissing
+  the system prompt for the camera extension reported a failure with code 11; the
+  cancel is now recognised and the previous state restored. (#25)
+
 ## [0.3.0] - 2026-09-10
 
 ### Added

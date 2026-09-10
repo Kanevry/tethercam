@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Changelog, TetherCam</title>
-<meta name="description" content="What changed in TetherCam, release by release: the Mac app, the iPhone app and the OBS plugin, one shared version number. Full history and release assets on GitHub.">
+<meta name="description" content="What changed in TetherCam, release by release: the Mac app, the iPhone app and the OBS plugin. Full history and release assets on GitHub.">
 <link rel="canonical" href="https://tethercam.app/changelog">
 <link rel="alternate" hreflang="en" href="https://tethercam.app/changelog">
 <meta name="author" content="Bernhard Goetzendorfer">
@@ -15,12 +15,12 @@
 <meta property="og:site_name" content="TetherCam">
 <meta property="og:url" content="https://tethercam.app/changelog">
 <meta property="og:title" content="Changelog, TetherCam">
-<meta property="og:description" content="What changed in TetherCam, release by release: the Mac app, the iPhone app and the OBS plugin, one shared version number.">
+<meta property="og:description" content="What changed in TetherCam, release by release: the Mac app, the iPhone app and the OBS plugin.">
 <meta property="og:image" content="https://tethercam.app/img/og.png">
 <meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Changelog, TetherCam">
-<meta name="twitter:description" content="What changed in TetherCam, release by release: the Mac app, the iPhone app and the OBS plugin, one shared version number.">
+<meta name="twitter:description" content="What changed in TetherCam, release by release: the Mac app, the iPhone app and the OBS plugin.">
 <meta name="twitter:image" content="https://tethercam.app/img/og.png">
 
 <link rel="icon" href="/favicon.ico" sizes="32x32">
@@ -57,6 +57,28 @@
     <p class="meta">Full history, diffs and release assets: <a href="https://github.com/Kanevry/tethercam/releases">GitHub Releases</a>. This page mirrors <a href="https://github.com/Kanevry/tethercam/blob/main/CHANGELOG.md">CHANGELOG.md</a> in the repository.</p>
 
     <div class="legal">
+      <h2 id="v0-4-0">0.4.0 &mdash; 2026-09-10</h2>
+      <p class="meta"><a href="https://github.com/Kanevry/tethercam/releases/tag/v0.4.0">v0.4.0 on GitHub</a></p>
+
+      <h3>Added</h3>
+      <ul class="prose">
+        <li><b>Mac app: the camera extension can be restarted from the menu.</b> After an install or an update of the extension the app waits up to 10 seconds for the camera device. If macOS started no device &mdash; the known race on an in-place extension replacement, where the new job is rejected while the old one is still being torn down &mdash; the menu and the setup guide say so instead of showing a camera that does not exist, and offer &ldquo;Restart camera extension&rdquo;. The device is re-checked every time the menu opens. (<a href="https://github.com/Kanevry/tethercam/issues/32">#32</a>)</li>
+        <li><b>Mac app: update check.</b> Once a day at launch the app asks GitHub whether a newer release exists; the menu then shows &ldquo;Update available: x.y.z&rdquo; with a link. Settings gain &ldquo;Check for updates now&rdquo; and a switch &ldquo;Check for updates automatically&rdquo;, the check is off in headless runs, and only <code>https://github.com</code> release URLs are opened. The <a href="/privacy">privacy policy</a> names the request. (<a href="https://github.com/Kanevry/tethercam/issues/27">#27</a>)</li>
+      </ul>
+
+      <h3>Changed</h3>
+      <ul class="prose">
+        <li><b>Mac app: the menu is structured</b> &mdash; status block, Setup guide, the submenus &ldquo;Camera extension&rdquo; and &ldquo;Settings&rdquo;, the version, Quit &mdash; instead of one flat list.</li>
+        <li><b>The camera extension keeps its open authorization, on purpose.</b> Measured with a Developer ID build that the client&rsquo;s signing identity reads &ldquo;unknown&rdquo;, so a whitelist would lock every app out of the camera. The extension logs the reading app once per process instead. (<a href="https://github.com/Kanevry/tethercam/issues/28">#28</a>)</li>
+        <li>Website, README, install guide, <code>llms.txt</code> and the App Store copy got a second messaging round: your iPhone, instead of a webcam &mdash; two apps, one cable. (<a href="https://github.com/Kanevry/tethercam/issues/31">#31</a>, <a href="https://github.com/Kanevry/tethercam/issues/30">#30</a>)</li>
+      </ul>
+
+      <h3>Fixed</h3>
+      <ul class="prose">
+        <li>A receiver name longer than 63 bytes is now cut at a UTF-8 character boundary instead of in the middle of a character, so the phone never shows a mangled receiver name. (<a href="https://github.com/Kanevry/tethercam/issues/25">#25</a>)</li>
+        <li>Mac app: cancelling the macOS confirmation dialog for the camera extension is no longer reported as an error. (<a href="https://github.com/Kanevry/tethercam/issues/25">#25</a>)</li>
+      </ul>
+
       <h2 id="v0-3-0">0.3.0 &mdash; 2026-09-10</h2>
       <p class="meta"><a href="https://github.com/Kanevry/tethercam/releases/tag/v0.3.0">v0.3.0 on GitHub</a></p>
 
@@ -186,7 +208,7 @@
         <li><a href="https://github.com/Kanevry/tethercam">GitHub</a></li>
       </ul>
     </div>
-    <p class="foot-mark">&mdash; TetherCam 0.3.0</p>
+    <p class="foot-mark">&mdash; TetherCam 0.4.0</p>
   </div>
 </footer>
 
@@ -209,7 +231,7 @@
   "url": "https://tethercam.app/changelog",
   "name": "Changelog, TetherCam",
   "inLanguage": "en",
-  "description": "What changed in TetherCam, release by release: the Mac app, the iPhone app and the OBS plugin, one shared version number.",
+  "description": "What changed in TetherCam, release by release: the Mac app, the iPhone app and the OBS plugin.",
   "dateModified": "2026-09-10",
   "isPartOf": {"@id": "https://tethercam.app/#website"},
   "publisher": {"@id": "https://tethercam.app/#organization"}
