@@ -107,6 +107,11 @@ PayPal (paypal.me/Kanevry), nur Website/README/FUNDING.yml, nie in der App (3.1.
 - Conventional Commits.
 
 ## Session Config
+- **typecheck-command:** swift build --package-path tools
+- **lint-command:** shellcheck -S warning tools/integration.sh tools/vcam-test.sh scripts/*.sh
+- **waves:** 5
+- **persistence:** true
+- **enforcement:** warn
 - **session-types:** [housekeeping, feature, deep]
 - **agents-per-wave:** 3
 - **vcs:** gitlab
