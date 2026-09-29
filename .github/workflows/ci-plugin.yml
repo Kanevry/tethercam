@@ -27,16 +27,21 @@ jobs:
       - name: Configure, build, test
         run: |
           set -euo pipefail
-          cmake -S shared -B shared/build -DCMAKE_BUILD_TYPE=RelWithDebInfo
-          cmake --build shared/build
-          ctest --test-dir shared/build --output-on-failure
+          bash ci_scripts/shared-ctest.sh shared/build -DCMAKE_BUILD_TYPE=RelWithDebInfo
 
       - name: Test with sanitizers
         run: |
           set -euo pipefail
-          cmake -S shared -B shared/build-asan -DIUCM_SANITIZE=ON
-          cmake --build shared/build-asan
-          ctest --test-dir shared/build-asan --output-on-failure
+          bash ci_scripts/shared-ctest.sh shared/build-asan -DIUCM_SANITIZE=ON
+
+  ci-scripts:
+    # The ci_scripts/ contract tests need bash, git and python3 only: no Apple tools.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: ci_scripts contract tests
+        run: bash ci_scripts/tests/run.sh
 
   macos:
     runs-on: macos-15
@@ -100,7 +105,7 @@ jobs:
         run: |
           set -euo pipefail
           brew list shellcheck >/dev/null 2>&1 || brew install shellcheck
-          shellcheck scripts/install.sh scripts/release.sh packaging/build-pkg.sh tools/integration.sh
+          shellcheck scripts/install.sh scripts/release.sh packaging/build-pkg.sh tools/integration.sh ci_scripts/*.sh ci_scripts/tests/*.sh
 
       - name: ffmpeg for the integration run
         run: brew install ffmpeg
@@ -142,11 +147,10 @@ jobs:
           xcodebuild -version
           xcrun --show-sdk-version
 
-      - name: Install xcodegen
-        run: brew install xcodegen
       - name: Generate the Xcode project
-        working-directory: ios-app
-        run: xcodegen generate
+        env:
+          CI_PRODUCT_PLATFORM: iOS
+        run: bash ci_scripts/ci_post_clone.sh
       - name: Unit tests on the simulator
         working-directory: ios-app
         # Simulator tests need no signing; CODE_SIGNING_ALLOWED=NO keeps the job free

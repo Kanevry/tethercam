@@ -1,6 +1,7 @@
 name: testflight-ios
 
-# Archives the iOS app and uploads it to App Store Connect / TestFlight.
+# Archives the iOS app and uploads it to App Store Connect / TestFlight. On a tag,
+# the what-to-test job then sets the build's "What to Test" text.
 #
 # Preconditions the workflow cannot create for you (see docs/RELEASING.md):
 #   1. An App Store Connect app record must already exist for IOS_BUNDLE_ID.
@@ -26,6 +27,12 @@ on:
 
 permissions:
   contents: read
+
+# A running upload is dearer to abort than to wait for. A run queued behind it is
+# replaced by any newer queued run (GitHub keeps one pending run per group).
+concurrency:
+  group: testflight-ios-${{ github.ref }}
+  cancel-in-progress: false
 
 env:
   # Changing the bundle id requires a NEW App Store Connect app record and a new
@@ -104,14 +111,15 @@ jobs:
           echo "id=$bundle_id" >>"$GITHUB_OUTPUT"
           echo "Bundle id: $bundle_id"
 
-      - name: Install xcodegen
-        run: brew install xcodegen
-
       - name: Generate the Xcode project
+        env:
+          CI_PRODUCT_PLATFORM: iOS
+        run: bash ci_scripts/ci_post_clone.sh
+
+      - name: Show the project versions
         working-directory: ios-app
         run: |
           set -euo pipefail
-          xcodegen generate
           # project.yml is the source of truth for the bundle id; this only overrides
           # it when the workflow was dispatched with an explicit value.
           grep -n 'PRODUCT_BUNDLE_IDENTIFIER\|MARKETING_VERSION\|CURRENT_PROJECT_VERSION' project.yml
@@ -122,15 +130,8 @@ jobs:
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
         run: |
           set -euo pipefail
-          if [ -z "${ASC_KEY_P8:-}" ]; then
-            echo "::error::ASC_KEY_P8 is not set. A TestFlight upload cannot run without it."
-            exit 1
-          fi
           KEY="$RUNNER_TEMP/AuthKey.p8"
-          printf %s "$ASC_KEY_P8" | base64 --decode >"$KEY"
-          chmod 600 "$KEY"
-          # Presence check only, never print the key or its length-derived content.
-          test -s "$KEY" || { echo "::error::decoded API key is empty"; exit 1; }
+          bash ci_scripts/write-asc-key.sh "$KEY"
           echo "path=$KEY" >>"$GITHUB_OUTPUT"
 
       - name: Archive
@@ -190,3 +191,54 @@ jobs:
           echo "Internal testers see it as soon as processing finishes."
           echo "For the PUBLIC link: TestFlight > External group > submit for Beta App Review once,"
           echo "then enable the public link and share it."
+
+  # Sets the TestFlight "What to Test" text on the build just uploaded (#33). A
+  # separate job, so a failure here never marks the already-successful upload as
+  # failed. Safe to re-run: set-what-to-test.sh lists the build's localizations
+  # first, then PATCHes an existing locale and POSTs only a missing one. The text
+  # is the tag annotation first (the CHANGELOG section scripts/release.sh writes),
+  # feat/fix/perf commit subjects since the previous v* tag only as a fallback;
+  # the same English text goes to en-US and de-DE.
+  what-to-test:
+    needs: [check-secrets, testflight]
+    if: needs.check-secrets.outputs.has_asc == 'true' && github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    # The script waits up to 45 min (WHAT_TO_TEST_TIMEOUT_S) for processing.
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Precaution, unverified: annotated tags can arrive peeled from the checkout
+      # action, which would hide the annotation and force the commit fallback.
+      - name: Fetch the tags
+        run: git fetch --force --tags origin
+
+      - name: Generate the What to Test text
+        env:
+          CI_TAG: ${{ github.ref_name }}
+        run: bash ci_scripts/what-to-test.sh --out-dir "$RUNNER_TEMP/TestFlight"
+
+      - name: Write the App Store Connect API key
+        id: asc
+        env:
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          set -euo pipefail
+          KEY="$RUNNER_TEMP/AuthKey-what-to-test.p8"
+          bash ci_scripts/write-asc-key.sh "$KEY"
+          echo "path=$KEY" >>"$GITHUB_OUTPUT"
+
+      - name: Set What to Test on the build
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_PATH: ${{ steps.asc.outputs.path }}
+          CI_BUNDLE_ID: ${{ inputs.bundle_id || env.IOS_BUNDLE_ID }}
+        run: bash ci_scripts/set-what-to-test.sh --apply --text-dir "$RUNNER_TEMP/TestFlight"
+
+      - name: Remove the API key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/AuthKey-what-to-test.p8"

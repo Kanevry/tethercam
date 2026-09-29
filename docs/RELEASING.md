@@ -392,6 +392,47 @@ user-facing steps and the App Translocation gotcha.
 
 ---
 
+## CI scripts and the What to Test step
+
+`ci_scripts/` holds the shell steps shared by the GitHub workflows and `.gitlab-ci.yml`.
+The names follow Apple's `ci_scripts` convention; Xcode Cloud is not used. The Xcode
+selection (`xcode-select`) and version resolution stay inline in the workflows.
+
+- `shared-ctest.sh <build-dir> [cmake args]`: configure, build and ctest `shared/`.
+- `ci_post_clone.sh`: `brew install xcodegen` and `xcodegen generate`; reads `CI_PRODUCT_PLATFORM` (`iOS` selects `ios-app`, `macOS` selects `mac-app`).
+- `what-to-test.sh`: writes the What to Test text; reads `CI_TAG`.
+- `set-what-to-test.sh`: sets that text on the uploaded build via App Store Connect; reads `CI_BUNDLE_ID`.
+- `write-asc-key.sh <path>`: decodes `ASC_KEY_P8` (base64) into a mode 600 file.
+
+Job `what-to-test` in `testflight-ios.yml` runs after `testflight` on a tag. It is a
+separate job: the `testflight` job stays green if this one fails, though the workflow run
+turns red. Fix the cause and use "Re-run failed jobs". Text source, first
+hit wins: the tag annotation body, else `feat`/`fix`/`perf` commit subjects since the
+previous `v*` tag, excluding the scopes `web`, `ci`, `scripts` and `release`. The same
+English text goes to en-US and de-DE. The script waits up to 45 min
+(`WHAT_TO_TEST_TIMEOUT_S`, default 2700 s) for the build to reach `processingState`
+`VALID`. It is safe to re-run: it lists the build's localizations first, PATCHes an
+existing locale and POSTs only a missing one.
+
+Local dry run (the default; the workflow passes `--apply`):
+
+```bash
+CI_TAG=vX.Y.Z bash ci_scripts/what-to-test.sh --out-dir /tmp/wtt
+CI_BUNDLE_ID=at.gotzendorfer.tethercam bash ci_scripts/set-what-to-test.sh --text-dir /tmp/wtt
+```
+
+Adding `--apply` to the second command calls the real App Store Connect API. The
+contract tests need no network (stubs): `bash ci_scripts/tests/run.sh`.
+
+This step has never run on GitHub. It runs for the first time at the first `v*` tag
+after this change; afterwards check the job log and the What to Test field of the
+TestFlight build. Assumptions not documented by Apple: a maximum length for the text
+(the script caps it at 4000 characters), that `processingState` `VALID` means processing
+has finished, that Apple accepts a de-DE localization built this way, and that `limit=200`
+is valid on the build's localization list.
+
+---
+
 ## Rolling back
 
 There is no unpublish. If a release is broken:

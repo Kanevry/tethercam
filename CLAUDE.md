@@ -108,7 +108,7 @@ PayPal (paypal.me/Kanevry), nur Website/README/FUNDING.yml, nie in der App (3.1.
 
 ## Session Config
 - **typecheck-command:** swift build --package-path tools
-- **lint-command:** shellcheck -S warning tools/integration.sh tools/vcam-test.sh scripts/*.sh
+- **lint-command:** shellcheck -S warning tools/integration.sh tools/vcam-test.sh scripts/*.sh ci_scripts/*.sh ci_scripts/tests/*.sh
 - **waves:** 5
 - **persistence:** true
 - **enforcement:** warn

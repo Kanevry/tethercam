@@ -6,7 +6,8 @@
 # public repositories, whereas this GitLab instance has Linux runners only.
 #
 # What runs here: the shared/ C core, which is intentionally free of Apple frameworks.
-# If this job goes red, the portability promise in shared/CMakeLists.txt is broken.
+# Also the ci_scripts/ contract tests (ci-scripts: shellcheck + ci_scripts/tests/run.sh).
+# If shared-ctest goes red, the portability promise in shared/CMakeLists.txt is broken.
 #
 # What runs on GitHub (.github/workflows/):
 #   ci-plugin.yml       plugin build, packaging smoke test, swift test, integration.sh
@@ -23,9 +24,20 @@ shared-ctest:
     - apt-get update -qq && apt-get install -y -qq cmake >/dev/null
     - cmake --version
   script:
-    - cmake -S shared -B shared/build -DCMAKE_BUILD_TYPE=RelWithDebInfo
-    - cmake --build shared/build
-    - ctest --test-dir shared/build --output-on-failure
+    - bash ci_scripts/shared-ctest.sh shared/build -DCMAKE_BUILD_TYPE=RelWithDebInfo
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
+
+ci-scripts:
+  stage: test
+  image: gcc:14
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq git python3 shellcheck >/dev/null
+  script:
+    - shellcheck -S warning ci_scripts/*.sh ci_scripts/tests/*.sh
+    - bash ci_scripts/tests/run.sh
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
