@@ -181,7 +181,11 @@ asc() {
     else
         rc=$?
     fi
-    die "$rc" "step '$step' failed: $method $path (exit $rc, see above)"
+    # asc-api.sh prints the response body to stdout, which is in $out: without this
+    # Apple's error text never reaches the log. It carries no secret (the JWT only
+    # travels in the request header).
+    [ ! -s "$out" ] || { echo "response body:" >&2; head -c 2000 "$out" >&2; echo >&2; }
+    die "$rc" "step '$step' failed: $method $path (exit $rc)"
 }
 
 q() { python3 -c "$QUERY_PY" "$@"; }

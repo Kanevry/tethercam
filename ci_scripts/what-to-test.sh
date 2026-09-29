@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 # what-to-test.sh: write the TestFlight "What to Test" text for a release tag.
 #
-#   ci_scripts/what-to-test.sh --out-dir <dir> [--tag <tag>]
+#   ci_scripts/what-to-test.sh --out-dir <dir>
 #
-# Contract variable read: CI_TAG (the tag when --tag is absent).
-# Env: WHAT_TO_TEST_MAX (default 4000 characters).
+# Contract variable read: CI_TAG (the release tag, required).
 #
 # Works on the git repository of the current directory and never touches the
 # network. Writes <dir>/WhatToTest.en-US.txt and <dir>/WhatToTest.de-DE.txt with
@@ -26,7 +25,7 @@ die() {
 }
 
 usage() {
-    die 2 "usage: ci_scripts/what-to-test.sh --out-dir <dir> [--tag <tag>]   (tag defaults to \$CI_TAG)"
+    die 2 "usage: CI_TAG=<tag> ci_scripts/what-to-test.sh --out-dir <dir>"
 }
 
 # argv[1]: annotation | commits. Reads raw text on stdin, writes the cleaned lines.
@@ -70,9 +69,10 @@ if len(text) > limit:
     cut = text[:limit]
     if text[limit] != "\n":
         nl = cut.rfind("\n")
-        cut = cut[:nl] if nl >= 0 else ""
+        # A single line longer than the cap is cut mid-line rather than to nothing.
+        cut = cut[:nl] if nl > 0 else cut
     text = cut.rstrip()
-    sys.stderr.write("what-to-test.sh: text cut to %d characters at a line boundary (WHAT_TO_TEST_MAX)\n" % len(text))
+    sys.stderr.write("what-to-test.sh: text cut to %d characters at a line boundary\n" % len(text))
 sys.stdout.write(text)
 '
 
@@ -81,7 +81,6 @@ tag="${CI_TAG:-}"
 while [ "$#" -gt 0 ]; do
     case "$1" in
         --out-dir) [ "$#" -ge 2 ] || usage; out_dir="$2"; shift 2 ;;
-        --tag)     [ "$#" -ge 2 ] || usage; tag="$2"; shift 2 ;;
         *)         usage ;;
     esac
 done
@@ -89,10 +88,7 @@ done
 
 # Apple's documentation states no maximum length for whatsNew; 4000 is a
 # conservative cap of our own, not a documented limit.
-max="${WHAT_TO_TEST_MAX:-4000}"
-case "$max" in
-    '' | *[!0-9]* | 0) die 2 "WHAT_TO_TEST_MAX must be a positive integer, got '$max'" ;;
-esac
+max=4000
 
 for tool in git python3; do
     command -v "$tool" >/dev/null 2>&1 || die 2 "$tool not found"

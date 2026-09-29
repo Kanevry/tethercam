@@ -405,7 +405,8 @@ selection (`xcode-select`) and version resolution stay inline in the workflows.
 - `write-asc-key.sh <path>`: decodes `ASC_KEY_P8` (base64) into a mode 600 file.
 
 Job `what-to-test` in `testflight-ios.yml` runs after `testflight` on a tag. It is a
-separate job so a failure there does not mark the upload as failed. Text source, first
+separate job: the `testflight` job stays green if this one fails, though the workflow run
+turns red. Fix the cause and use "Re-run failed jobs". Text source, first
 hit wins: the tag annotation body, else `feat`/`fix`/`perf` commit subjects since the
 previous `v*` tag, excluding the scopes `web`, `ci`, `scripts` and `release`. The same
 English text goes to en-US and de-DE. The script waits up to 45 min
@@ -426,8 +427,9 @@ contract tests need no network (stubs): `bash ci_scripts/tests/run.sh`.
 This step has never run on GitHub. It runs for the first time at the first `v*` tag
 after this change; afterwards check the job log and the What to Test field of the
 TestFlight build. Assumptions not documented by Apple: a maximum length for the text
-(the script caps it at 4000 characters, `WHAT_TO_TEST_MAX`) and that `processingState`
-`VALID` means processing has finished.
+(the script caps it at 4000 characters), that `processingState` `VALID` means processing
+has finished, that Apple accepts a de-DE localization built this way, and that `limit=200`
+is valid on the build's localization list.
 
 ---
 

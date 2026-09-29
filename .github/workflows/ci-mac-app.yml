@@ -12,7 +12,7 @@ on:
       - 'mac-app/**'
       - 'tools/**'
       - 'shared/**'
-      - 'ci_scripts/**'
+      - 'ci_scripts/ci_post_clone.sh'
       - '.github/workflows/ci-mac-app.yml'
   push:
     branches: [main]
@@ -20,7 +20,7 @@ on:
       - 'mac-app/**'
       - 'tools/**'
       - 'shared/**'
-      - 'ci_scripts/**'
+      - 'ci_scripts/ci_post_clone.sh'
       - '.github/workflows/ci-mac-app.yml'
   workflow_dispatch:
 

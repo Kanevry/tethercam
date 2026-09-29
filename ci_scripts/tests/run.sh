@@ -23,10 +23,12 @@ done
 
 # Nothing from the caller's environment may reach App Store Connect or steer a case.
 unset ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_PATH ASC_KEY_P8 ASC_API CI_TAG CI_BUNDLE_ID \
-    PROJECT_YML WHAT_TO_TEST_MAX WHAT_TO_TEST_TIMEOUT_S WHAT_TO_TEST_POLL_S \
+    PROJECT_YML WHAT_TO_TEST_TIMEOUT_S WHAT_TO_TEST_POLL_S \
     GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 
-WORK="$(mktemp -d "${TMPDIR:-/tmp}/ci-scripts-tests.XXXXXX")"
+WORK="$(mktemp -d "${TMPDIR:-/tmp}/ci-scripts-tests.XXXXXX")" || exit 2
+# Without this a failed mktemp leaves WORK empty and every path below resolves to /.
+[ -d "$WORK" ] || exit 2
 trap 'rm -rf "$WORK"' EXIT
 RESULTS="$WORK/results"
 MARKER="$WORK/network-marker"
@@ -44,6 +46,8 @@ for name in curl asc; do
 done
 PATH="$WORK/bin:$PATH"
 export PATH
+# A case that forgets its own ASC_API meets the refusing stub, not scripts/asc-api.sh.
+export ASC_API="$WORK/bin/asc"
 
 # App Store Connect stand-in, used as ASC_API. Logs its argv as one JSON line and
 # answers by path. STUB_BUILDS: valid | processing-then-valid | processing | failed.
@@ -60,12 +64,17 @@ case "$2 $3" in
         n=$(( $(cat "$STUB_STATE/builds" 2>/dev/null || echo 0) + 1 ))
         echo "$n" >"$STUB_STATE/builds"
         case "${STUB_BUILDS:-valid}" in
-            processing-then-valid) if [ "$n" -ge 2 ]; then st=VALID; else st=PROCESSING; fi ;;
+            processing-then-valid) if [ "$n" -ge 3 ]; then st=VALID; else st=PROCESSING; fi ;;
             processing) st=PROCESSING ;;
             failed) st=FAILED ;;
             *) st=VALID ;;
         esac
-        printf '{"data":[{"type":"builds","id":"build-1","attributes":{"version":"42","processingState":"%s"}}]}\n' "$st" ;;
+        # Right after an upload the build is not listed yet: the first poll sees nothing.
+        if [ "${STUB_BUILDS:-valid}" = processing-then-valid ] && [ "$n" -eq 1 ]; then
+            echo '{"data":[]}'
+        else
+            printf '{"data":[{"type":"builds","id":"build-1","attributes":{"version":"42","processingState":"%s"}}]}\n' "$st"
+        fi ;;
     "GET /v1/builds/build-1/betaBuildLocalizations"*)
         echo '{"data":[{"type":"betaBuildLocalizations","id":"loc-en","attributes":{"locale":"en-US","whatsNew":"old"}}]}' ;;
     "PATCH /v1/betaBuildLocalizations/"* | "POST /v1/betaBuildLocalizations")
@@ -138,7 +147,7 @@ commit() {  # commit <repo> <subject>: empty commit with a fixed, increasing dat
         git -C "$1" commit -q --allow-empty -m "$2"
 }
 
-wtt() { run_script "$1" "$BASH_BIN" "$CI_SCRIPTS_DIR/what-to-test.sh" "${@:2}"; }
+wtt() { run_script "$1" env CI_TAG="$2" "$BASH_BIN" "$CI_SCRIPTS_DIR/what-to-test.sh" "${@:3}"; }
 swt() { run_script "$1" env CI_BUNDLE_ID=at.example.app PROJECT_YML="$FIX/project.yml" \
     ASC_API="$STUB" STUB_LOG="$1/stub.log" STUB_STATE="$1" "${@:2}"; }
 
@@ -200,7 +209,7 @@ T2() {
     cd "$r" || return 1
     for sub in v1.0.0 v1.0.0-lw; do
         mkdir -p "$d/$sub"
-        wtt "$d/$sub" --tag "$sub" --out-dir "$d/$sub/text"
+        wtt "$d/$sub" "$sub" --out-dir "$d/$sub/text"
         [ "$RC" -eq 0 ] || { bad "$sub: exit $RC: $(snip "$d/$sub/stderr")"; return 1; }
         LC_ALL=C sort "$d/$sub/text/WhatToTest.en-US.txt" >"$d/$sub/sorted"
         cmp -s "$d/$sub/sorted" "$d/expected" \
@@ -217,8 +226,8 @@ T3() {
             git -C "$r" tag -a -m "TetherCam v2.0.0" v2.0.0
     } >/dev/null 2>&1 || { bad "fixture"; return 1; }
     cd "$r" || return 1
-    wtt "$d" --tag v2.0.0 --out-dir "$d/text"
-    [ "$RC" -ne 0 ] || { bad "exit 0 without usable text"; return 1; }
+    wtt "$d" v2.0.0 --out-dir "$d/text"
+    [ "$RC" -eq 1 ] || { bad "exit $RC, want 1: $(snip "$d/stderr")"; return 1; }
     no_output_files "$d/text" || { bad "files written despite the failure"; return 1; }
 }
 
@@ -237,7 +246,7 @@ T4() {
         return 1
     fi
     cd "$c" || return 1
-    wtt "$d" --tag v1.0.0 --out-dir "$d/text"
+    wtt "$d" v1.0.0 --out-dir "$d/text"
     [ "$RC" -eq 3 ] || { bad "exit $RC, want 3: $(snip "$d/stderr")"; return 1; }
     grep -q 'fetch-depth' "$d/stderr" || { bad "message does not name fetch-depth"; return 1; }
     no_output_files "$d/text" || { bad "files written despite the failure"; return 1; }
@@ -289,8 +298,8 @@ apps, builds = pick("GET", "/v1/apps?"), pick("GET", "/v1/builds?")
 lists = pick("GET", "/v1/builds/build-1/betaBuildLocalizations")
 patches, posts = pick("PATCH", "/"), pick("POST", "/")
 counts = (len(calls), len(apps), len(builds), len(lists), len(patches), len(posts))
-if counts != (6, 1, 2, 1, 1, 1):
-    fail("calls (total, apps, builds, list, patch, post) = %r, want (6, 1, 2, 1, 1, 1)" % (counts,))
+if counts != (7, 1, 3, 1, 1, 1):
+    fail("calls (total, apps, builds, list, patch, post) = %r, want (7, 1, 3, 1, 1, 1)" % (counts,))
 if "filter[bundleId]=at.example.app" not in calls[apps[0]][2]:
     fail("app lookup path: " + calls[apps[0]][2])
 for part in ("filter[app]=app-1", "filter[version]=42", "filter[preReleaseVersion.version]=1.2.3"):
@@ -338,7 +347,8 @@ T7() {
     grep -qi 're-run' "$d/stuck/stderr" || { bad "stuck: message does not mention re-running: $(snip "$d/stuck/stderr")"; return 1; }
 }
 
-file_mode() { stat -f %Lp "$1" 2>/dev/null || stat -c %a "$1"; }
+# GNU first: on GNU stat "-f" means file-system mode and prints to stdout before failing.
+file_mode() { stat -c %a "$1" 2>/dev/null || stat -f %Lp "$1"; }
 
 # T8: the key lands decoded, mode 600 even over an existing file, and silent.
 T8() {

@@ -34,6 +34,12 @@ jobs:
           set -euo pipefail
           bash ci_scripts/shared-ctest.sh shared/build-asan -DIUCM_SANITIZE=ON
 
+  ci-scripts:
+    # The ci_scripts/ contract tests need bash, git and python3 only: no Apple tools.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
       - name: ci_scripts contract tests
         run: bash ci_scripts/tests/run.sh
 
