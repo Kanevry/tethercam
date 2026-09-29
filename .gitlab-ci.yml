@@ -34,9 +34,9 @@ ci-scripts:
   stage: test
   image: gcc:14
   before_script:
-    - apt-get update -qq && apt-get install -y -qq git python3 shellcheck >/dev/null
+    - apt-get update -qq && apt-get install -y -qq git python3 shellcheck openssl procps >/dev/null
   script:
-    - shellcheck -S warning ci_scripts/*.sh ci_scripts/tests/*.sh
+    - shellcheck -S warning ci_scripts/*.sh ci_scripts/tests/*.sh scripts/asc-api.sh
     - bash ci_scripts/tests/run.sh
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"

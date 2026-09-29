@@ -1,23 +1,27 @@
 #!/usr/bin/env bash
 # run.sh: contract tests for ci_scripts/what-to-test.sh, set-what-to-test.sh and
-# write-asc-key.sh. Self-contained: throw-away git repos and an App Store Connect
-# stub under one temp dir. Nothing reaches the network: stub `curl` and `asc`
-# commands come first on PATH and only leave a marker file, whose existence after
-# the run is a failure of its own (MARKER).
+# write-asc-key.sh, and for scripts/asc-api.sh (T9). Self-contained: throw-away git
+# repos, an App Store Connect stub and a throw-away EC key under one temp dir.
+# Nothing reaches the network: refusing `curl` and `asc` stubs come first on PATH
+# and only leave a marker file, whose existence after the run is a failure of its
+# own (MARKER). T9 puts its own logging `curl` stub in front of them; it answers
+# locally and never forwards to a real curl.
 #
 #   bash ci_scripts/tests/run.sh
 #
-# CI_SCRIPTS_DIR (default: the parent of this dir) selects the scripts under test,
-# so a mutated copy can be checked. The scripts run under the same bash as this
-# file. Exit 0 only if every case passed.
+# CI_SCRIPTS_DIR (default: the parent of this dir) selects the scripts under test
+# and ASC_API_SH (default: <repo>/scripts/asc-api.sh) the API client, so a mutated
+# copy can be checked. The scripts run under the same bash as this file. Exit 0
+# only if every case passed.
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CI_SCRIPTS_DIR="${CI_SCRIPTS_DIR:-$(cd "$HERE/.." && pwd)}"
+ASC_API_SH="${ASC_API_SH:-$(cd "$HERE/../.." && pwd)/scripts/asc-api.sh}"
 BASH_BIN="${BASH:-bash}"
-CASES="T1 T2 T3 T4 T5 T6 T7 T8 MARKER"
+CASES="T1 T2 T3 T4 T5 T6 T7 T8 T9 MARKER"
 
-for tool in git python3 base64 stat cmp; do
+for tool in git python3 base64 stat cmp openssl ps; do
     command -v "$tool" >/dev/null 2>&1 || { echo "run.sh: $tool not found" >&2; exit 2; }
 done
 
@@ -370,6 +374,90 @@ T8() {
     run_script "$d/empty" env ASC_KEY_P8= "$BASH_BIN" "$CI_SCRIPTS_DIR/write-asc-key.sh" "$d/empty/AuthKey.p8"
     [ "$RC" -ne 0 ] || { bad "empty ASC_KEY_P8: exit 0"; return 1; }
     [ ! -e "$d/empty/AuthKey.p8" ] || { bad "empty ASC_KEY_P8: file written"; return 1; }
+}
+
+# T9: the App Store Connect JWT reaches curl on stdin, never in its argv (#36).
+# Both request() branches run (GET without a body, POST with one); every broken
+# check is reported. Messages carry only counts, call numbers and file names:
+# the logs hold the test JWT.
+T9() {
+    local d="$WORK/t9" root="$WORK/t9/root" n f sub calls fail=0 jwt='eyJ[A-Za-z0-9_-]{10,}\.'
+    local -a api
+    mkdir -p "$d/bin" "$d/log" "$d/tmp" "$d/get" "$d/post" "$root/scripts"
+    # A copy in a temp root: run in place, the script would source the checkout's .env.local.
+    cp "$ASC_API_SH" "$root/scripts/asc-api.sh" || { bad "fixture: copy $ASC_API_SH"; return 1; }
+    [ ! -e "$root/.env.local" ] || { bad "fixture: $root/.env.local exists"; return 1; }
+    openssl ecparam -genkey -name prime256v1 -noout -out "$d/key.pem" 2>/dev/null \
+        || { bad "fixture: openssl ecparam"; return 1; }
+    # Logs argv, its own ps line and stdin per call, then answers 200 with {}. POSIX sh.
+    cat >"$d/bin/curl" <<'EOF'
+#!/bin/sh
+n=$(( $(cat "$T9_LOG/count" 2>/dev/null || echo 0) + 1 ))
+echo "$n" >"$T9_LOG/count"
+printf '%s\n' "$@" >"$T9_LOG/argv.$n"
+ps -ww -o command= -p $$ >"$T9_LOG/ps.$n" 2>&1
+cat >"$T9_LOG/stdin.$n"
+out=''
+prev=''
+for a in "$@"; do
+    [ "$prev" = -o ] && out=$a
+    prev=$a
+done
+[ -z "$out" ] || printf '{}' >"$out"
+printf 200
+EOF
+    chmod +x "$d/bin/curl"
+    api=(env -i PATH="$d/bin:$PATH" HOME="$HOME" TMPDIR="$d/tmp" T9_LOG="$d/log"
+        ASC_KEY_ID=TESTKEY123 ASC_ISSUER_ID=00000000-0000-0000-0000-000000000000
+        ASC_KEY_PATH="$d/key.pem" "$BASH_BIN" "$root/scripts/asc-api.sh" raw)
+    # </dev/null: where curl inherits stdin, the stub's cat would otherwise block until run_to.
+    run_script "$d/get" "${api[@]}" GET /v1/x </dev/null
+    [ "$RC" -eq 0 ] || { bad "call 1 (GET): exit $RC"; fail=1; }
+    run_script "$d/post" "${api[@]}" POST /v1/x '{"a":1}' </dev/null
+    [ "$RC" -eq 0 ] || { bad "call 2 (POST): exit $RC"; fail=1; }
+
+    calls=0
+    [ -f "$d/log/count" ] && calls="$(tr -cd 0-9 <"$d/log/count")"
+    [ "$calls" = 2 ] || { bad "stub curl called ${calls:-0} times, want 2"; fail=1; }
+    printf '{}' >"$d/want-stdout"
+    for sub in get post; do
+        cmp -s "$d/$sub/stdout" "$d/want-stdout" || { bad "$sub: stdout is not the stub's {}"; fail=1; }
+        for f in stdout stderr; do
+            if grep -Eq "$jwt" "$d/$sub/$f"; then bad "$sub: a JWT appears on its $f"; fail=1; fi
+        done
+    done
+    for n in 1 2; do
+        for f in argv ps stdin; do
+            [ -f "$d/log/$f.$n" ] || { bad "call $n: $f.$n missing"; fail=1; }
+        done
+        for f in argv ps; do
+            [ -f "$d/log/$f.$n" ] || continue
+            grep -qF /v1/x "$d/log/$f.$n" || { bad "call $n: $f.$n lacks the request path"; fail=1; }
+            if grep -qF Bearer "$d/log/$f.$n" || grep -Eq "$jwt" "$d/log/$f.$n"; then
+                bad "call $n: Authorization header or JWT in curl's $f"
+                fail=1
+            fi
+        done
+        [ -f "$d/log/stdin.$n" ] || continue
+        if ! grep -Eq 'Authorization: Bearer eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+' "$d/log/stdin.$n"; then
+            bad "call $n: no Authorization: Bearer <JWT> on curl's stdin"
+            fail=1
+        fi
+    done
+    # Branch controls: the body is curl's last argument, so ps.2 also proves no truncation.
+    if [ -f "$d/log/argv.2" ] && ! grep -qxF '{"a":1}' "$d/log/argv.2"; then
+        bad "call 2: argv.2 lacks the JSON body"
+        fail=1
+    fi
+    if [ -f "$d/log/ps.2" ] && ! grep -qF '{"a":1}' "$d/log/ps.2"; then
+        bad "call 2: ps.2 lacks the JSON body (truncated?)"
+        fail=1
+    fi
+    if [ -f "$d/log/argv.1" ] && grep -qx -- --data "$d/log/argv.1"; then
+        bad "call 1: argv.1 carries --data, GET did not take the no-body branch"
+        fail=1
+    fi
+    [ "$fail" -eq 0 ]
 }
 
 for c in $CASES; do
