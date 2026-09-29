@@ -34,6 +34,9 @@ jobs:
           set -euo pipefail
           bash ci_scripts/shared-ctest.sh shared/build-asan -DIUCM_SANITIZE=ON
 
+      - name: ci_scripts contract tests
+        run: bash ci_scripts/tests/run.sh
+
   macos:
     runs-on: macos-15
     timeout-minutes: 45
@@ -96,7 +99,7 @@ jobs:
         run: |
           set -euo pipefail
           brew list shellcheck >/dev/null 2>&1 || brew install shellcheck
-          shellcheck scripts/install.sh scripts/release.sh packaging/build-pkg.sh tools/integration.sh ci_scripts/*.sh
+          shellcheck scripts/install.sh scripts/release.sh packaging/build-pkg.sh tools/integration.sh ci_scripts/*.sh ci_scripts/tests/*.sh
 
       - name: ffmpeg for the integration run
         run: brew install ffmpeg
