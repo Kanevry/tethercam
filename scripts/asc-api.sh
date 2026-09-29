@@ -13,8 +13,10 @@
 #
 #   ASC_KEY_PATH, ASC_KEY_ID, ASC_ISSUER_ID
 #
-# The token is NEVER printed and never written to disk; it lives in a shell
-# variable for the duration of one curl call. Output is raw JSON — pipe to jq.
+# The token is NEVER printed, never written to disk and never in a process's
+# argument list (other local users can read that with ps): it lives in a shell
+# variable and reaches curl on stdin (-H @-). A request body goes through --data
+# and is visible in ps; it carries no secret. Output is raw JSON — pipe to jq.
 set -euo pipefail
 
 die() { printf '\033[31merror:\033[0m %s\n' "$*" >&2; exit 1; }
@@ -83,14 +85,17 @@ request() {
     token="$(mint_token)"
     out="$(mktemp)"
     # -g: do not glob [] in query strings such as filter[bundleId].
+    # printf is a builtin: the token reaches curl on stdin, never in any argv.
     if [ -n "$body" ]; then
-        status="$(curl -sg -o "$out" -w '%{http_code}' -X "$method" "$API$path" \
-            -H "Authorization: Bearer $token" \
+        status="$(printf 'Authorization: Bearer %s\n' "$token" \
+            | curl -sg -o "$out" -w '%{http_code}' -X "$method" "$API$path" \
+            -H @- \
             -H 'Content-Type: application/json' \
             --data "$body")"
     else
-        status="$(curl -sg -o "$out" -w '%{http_code}' -X "$method" "$API$path" \
-            -H "Authorization: Bearer $token")"
+        status="$(printf 'Authorization: Bearer %s\n' "$token" \
+            | curl -sg -o "$out" -w '%{http_code}' -X "$method" "$API$path" \
+            -H @-)"
     fi
     unset token
     cat "$out"
