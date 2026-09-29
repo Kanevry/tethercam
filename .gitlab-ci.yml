@@ -23,9 +23,7 @@ shared-ctest:
     - apt-get update -qq && apt-get install -y -qq cmake >/dev/null
     - cmake --version
   script:
-    - cmake -S shared -B shared/build -DCMAKE_BUILD_TYPE=RelWithDebInfo
-    - cmake --build shared/build
-    - ctest --test-dir shared/build --output-on-failure
+    - bash ci_scripts/shared-ctest.sh shared/build -DCMAKE_BUILD_TYPE=RelWithDebInfo
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

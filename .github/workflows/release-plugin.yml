@@ -20,6 +20,13 @@ on:
 permissions:
   contents: write
 
+# A running notarization or draft release is dearer to abort than to wait for. A
+# run queued behind it is replaced by any newer queued run (GitHub keeps one
+# pending run per group).
+concurrency:
+  group: release-plugin-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   PLUGIN_NAME: obs-iphone-usb-cam
   ASSET_BASENAME: TetherCam-obs-plugin

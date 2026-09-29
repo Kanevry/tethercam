@@ -27,6 +27,12 @@ on:
 permissions:
   contents: read
 
+# A running upload is dearer to abort than to wait for. A run queued behind it is
+# replaced by any newer queued run (GitHub keeps one pending run per group).
+concurrency:
+  group: testflight-ios-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   # Changing the bundle id requires a NEW App Store Connect app record and a new
   # TestFlight beta review; a bundle id cannot be renamed in place once a build has
@@ -104,14 +110,15 @@ jobs:
           echo "id=$bundle_id" >>"$GITHUB_OUTPUT"
           echo "Bundle id: $bundle_id"
 
-      - name: Install xcodegen
-        run: brew install xcodegen
-
       - name: Generate the Xcode project
+        env:
+          CI_PRODUCT_PLATFORM: iOS
+        run: bash ci_scripts/ci_post_clone.sh
+
+      - name: Show the project versions
         working-directory: ios-app
         run: |
           set -euo pipefail
-          xcodegen generate
           # project.yml is the source of truth for the bundle id; this only overrides
           # it when the workflow was dispatched with an explicit value.
           grep -n 'PRODUCT_BUNDLE_IDENTIFIER\|MARKETING_VERSION\|CURRENT_PROJECT_VERSION' project.yml
