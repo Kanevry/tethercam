@@ -5,8 +5,8 @@
 > No Wi-Fi, cloud, account or shared Apple Account. The OBS plugin is a separate
 > receiver for streaming and recording with video and microphone audio.
 
-Verified release facts, 2026-09-10:
-- iPhone App Store app: 0.2.0, free, iOS 17 or later.
+Verified release facts, 2026-10-01:
+- iPhone App Store app: 0.4.0, free, iOS 17 or later.
 - Mac app: 0.4.0, free, macOS 14 or later, Apple silicon and Intel.
 - OBS plugin: 0.4.0, free, macOS 12 or later and OBS Studio 30 or later.
 The three components have separate distribution states. A GitHub release does not
@@ -83,7 +83,7 @@ illustrations, not recordings that prove image quality or connection speed.
 ## Source and links
 
 - Website: https://tethercam.app/
-- German landing page: https://tethercam.app/de/
+- German landing page: https://tethercam.app/de
 - Install guide: https://tethercam.app/install
 - Changelog: https://tethercam.app/changelog
 - Privacy: https://tethercam.app/privacy

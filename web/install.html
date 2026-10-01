@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Install TetherCam: two apps, one cable, your iPhone instead of a webcam</title>
-<meta name="description" content="Step by step: install TetherCam for iPhone and TetherCam for Mac, then pick the camera &quot;TetherCam&quot; in Zoom, Teams, Meet or FaceTime. The OBS plugin path included.">
+<title>Install TetherCam: your iPhone instead of a webcam</title>
+<meta name="description" content="Step by step: install TetherCam for iPhone and TetherCam for Mac, then pick the camera &quot;TetherCam&quot; in Zoom, Teams, Meet or FaceTime. OBS plugin path included.">
 <link rel="canonical" href="https://tethercam.app/install">
 <link rel="alternate" hreflang="en" href="https://tethercam.app/install">
 <meta name="author" content="Bernhard Götzendorfer">
@@ -281,95 +281,123 @@ brew install --cask tethercam-obs</code></pre>
         <li><a href="https://github.com/Kanevry/tethercam">GitHub</a></li>
       </ul>
     </div>
-    <p class="foot-mark">Mac &amp; OBS 0.4.0 &middot; iPhone 0.2.0</p>
+    <p class="foot-mark">Mac &amp; OBS 0.4.0 &middot; iPhone 0.4.0</p>
   </div>
 </footer>
 
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {"@type": "ListItem", "position": 1, "name": "TetherCam", "item": "https://tethercam.app/"},
-    {"@type": "ListItem", "position": 2, "name": "Install", "item": "https://tethercam.app/install"}
-  ]
-}
-</script>
-
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "WebPage",
-  "@id": "https://tethercam.app/install",
-  "url": "https://tethercam.app/install",
-  "name": "Install TetherCam: iPhone as a wired webcam for the Mac",
-  "inLanguage": "en",
-  "description": "Step-by-step guide: the iPhone app, then the TetherCam Mac app so the phone shows up as the camera \"TetherCam\" in Zoom, Teams, Meet and FaceTime, or the plugin for a source of its own in OBS Studio.",
-  "dateModified": "2026-09-10",
-  "isPartOf": {"@id": "https://tethercam.app/#website"},
-  "publisher": {"@id": "https://tethercam.app/#organization"}
-}
-</script>
-
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  "mainEntity": [
+  "@graph": [
     {
-      "@type": "Question",
-      "name": "The status line says “No iPhone attached over USB”",
-      "acceptedAnswer": {"@type": "Answer", "text": "Plug the phone into the Mac with a cable and unlock it. A charge-only cable will not show up in the device list, and the Mac cannot see a locked phone as a USB device it can trust."}
+      "@type": "Organization",
+      "@id": "https://tethercam.app/#organization",
+      "name": "TetherCam",
+      "url": "https://tethercam.app/",
+      "logo": "https://tethercam.app/favicon.png",
+      "founder": {"@id": "https://tethercam.app/#person"},
+      "sameAs": [
+        "https://github.com/Kanevry/tethercam",
+        "https://apps.apple.com/us/app/tethercam/id6808997521",
+        "https://gotzendorfer.at"
+      ]
     },
     {
-      "@type": "Question",
-      "name": "The status line says “Waiting for iPhone”",
-      "acceptedAnswer": {"@type": "Answer", "text": "Open TetherCam on the phone and keep it in the foreground. If it is already open, check the OBS log for a version or connection error, since this status also shows when the app and the plugin disagree on the protocol."}
+      "@type": "Person",
+      "@id": "https://tethercam.app/#person",
+      "name": "Bernhard Götzendorfer",
+      "url": "https://gotzendorfer.at"
     },
     {
-      "@type": "Question",
-      "name": "It is stuck on “iPhone reached, waiting for the first frame”",
-      "acceptedAnswer": {"@type": "Answer", "text": "The Mac has found the phone and connected, but no video has arrived yet. If this does not change within a few seconds, unplug and replug the cable. That resets the USB connection without needing to reopen either app."}
+      "@type": "WebSite",
+      "@id": "https://tethercam.app/#website",
+      "url": "https://tethercam.app/",
+      "name": "TetherCam",
+      "alternateName": "tethercam.app",
+      "inLanguage": ["en", "de"],
+      "publisher": {"@id": "https://tethercam.app/#organization"}
     },
     {
-      "@type": "Question",
-      "name": "macOS says the .pkg is from an unidentified developer",
-      "acceptedAnswer": {"@type": "Answer", "text": "Since v0.1.0 the .pkg is signed with a Developer ID Installer certificate and notarized by Apple, so this should not happen; the same is true for TetherCam-mac.dmg. If you see it anyway, you are most likely opening an older or a partial download. Fetch the file again from the latest release. As a fallback, right-click (or Control-click) the file, choose Open, and confirm Open again."}
+      "@type": "WebPage",
+      "@id": "https://tethercam.app/install#webpage",
+      "url": "https://tethercam.app/install",
+      "name": "Install TetherCam: iPhone as a wired webcam for the Mac",
+      "inLanguage": "en",
+      "description": "Step-by-step guide: the iPhone app, then the TetherCam Mac app so the phone shows up as the camera \"TetherCam\" in Zoom, Teams, Meet and FaceTime, or the plugin for a source of its own in OBS Studio.",
+      "dateModified": "2026-09-10",
+      "isPartOf": {"@id": "https://tethercam.app/#website"},
+      "publisher": {"@id": "https://tethercam.app/#organization"},
+      "breadcrumb": {"@id": "https://tethercam.app/install#breadcrumb"}
     },
     {
-      "@type": "Question",
-      "name": "The source is black although the phone says it is streaming",
-      "acceptedAnswer": {"@type": "Answer", "text": "If the Mac runs plugin 0.2.0 and the phone still runs the 0.1.0 App Store app, the source stays black: 0.2.0 asked for audio in a way the older app dropped silently. Plugin 0.2.1 fixes it. Update with brew upgrade --cask tethercam-obs or the new .pkg, restart OBS, and update the phone app from the App Store (0.2.0 or newer)."}
+      "@type": "BreadcrumbList",
+      "@id": "https://tethercam.app/install#breadcrumb",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "TetherCam", "item": "https://tethercam.app/"},
+        {"@type": "ListItem", "position": 2, "name": "Install", "item": "https://tethercam.app/install"}
+      ]
     },
     {
-      "@type": "Question",
-      "name": "The Mac app says “Error: TetherCam.app must be in /Applications”, but it is",
-      "acceptedAnswer": {"@type": "Answer", "text": "Something other than Finder copied the app while it still carried the quarantine flag, so macOS App Translocation runs it from a random read-only path. Drag the app into /Applications with Finder, or run xattr -dr com.apple.quarantine /Applications/TetherCam.app and open it again."}
-    },
-    {
-      "@type": "Question",
-      "name": "No camera called “TetherCam” shows up",
-      "acceptedAnswer": {"@type": "Answer", "text": "The camera extension is not enabled yet: System Settings, General, Login Items & Extensions, Camera Extensions, switch TetherCam on. Apps read the camera list when they launch, so quit the app completely (Cmd-Q) and reopen it. Still missing? Restart the Mac: macOS finishes registering a newly installed or updated camera extension only at the next boot. Zoom and Teams listed TetherCam right after that restart."}
-    },
-    {
-      "@type": "Question",
-      "name": "The picture stays black, or the Mac app menu says BUSY",
-      "acceptedAnswer": {"@type": "Answer", "text": "Another receiver already holds the phone. Close the TetherCam source in OBS, or whatever else is connected, then reconnect. And make sure TetherCam is open and in the foreground on the phone; iOS suspends the listener as soon as the app goes to the background."}
-    },
-    {
-      "@type": "Question",
-      "name": "OBS still shows the old plugin after I installed an update",
-      "acceptedAnswer": {"@type": "Answer", "text": "OBS reads plugins only at launch. After installing a new .pkg or copying in a new build, fully quit OBS and reopen it; a running instance keeps the plugin binary it already loaded."}
-    },
-    {
-      "@type": "Question",
-      "name": "Continuity Camera keeps grabbing the phone instead of TetherCam",
-      "acceptedAnswer": {"@type": "Answer", "text": "On the iPhone, open Settings, General, AirPlay & Continuity, and turn off Continuity Camera. That stops the phone from also offering itself to macOS as a Continuity Camera device, which otherwise competes with TetherCam for the same camera hardware."}
-    },
-    {
-      "@type": "Question",
-      "name": "The phone never shows up at all, even with a good cable",
-      "acceptedAnswer": {"@type": "Answer", "text": "usbmuxd is the system service that TetherCam relies on to reach the phone; it normally starts on its own the first time a phone is connected. If the plugin never gets past “No iPhone attached”, open Finder once with the phone plugged in and unlocked. That is usually enough to make macOS start the service and show the “Trust This Computer?” prompt, after which the plugin can see the phone too."}
+      "@type": "FAQPage",
+      "@id": "https://tethercam.app/install#faq",
+      "isPartOf": {"@id": "https://tethercam.app/install#webpage"},
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "The status line says “No iPhone attached over USB”",
+          "acceptedAnswer": {"@type": "Answer", "text": "Plug the phone into the Mac with a cable and unlock it. A charge-only cable will not show up in the device list, and the Mac cannot see a locked phone as a USB device it can trust."}
+        },
+        {
+          "@type": "Question",
+          "name": "The status line says “Waiting for iPhone”",
+          "acceptedAnswer": {"@type": "Answer", "text": "Open TetherCam on the phone and keep it in the foreground. If it is already open, check the OBS log for a version or connection error, since this status also shows when the app and the plugin disagree on the protocol."}
+        },
+        {
+          "@type": "Question",
+          "name": "It is stuck on “iPhone reached, waiting for the first frame”",
+          "acceptedAnswer": {"@type": "Answer", "text": "The Mac has found the phone and connected, but no video has arrived yet. If this does not change within a few seconds, unplug and replug the cable. That resets the USB connection without needing to reopen either app."}
+        },
+        {
+          "@type": "Question",
+          "name": "macOS says the .pkg is from an unidentified developer",
+          "acceptedAnswer": {"@type": "Answer", "text": "Since v0.1.0 the .pkg is signed with a Developer ID Installer certificate and notarized by Apple, so this should not happen; the same is true for TetherCam-mac.dmg. If you see it anyway, you are most likely opening an older or a partial download. Fetch the file again from the latest release. As a fallback, right-click (or Control-click) the file, choose Open, and confirm Open again."}
+        },
+        {
+          "@type": "Question",
+          "name": "The source is black although the phone says it is streaming",
+          "acceptedAnswer": {"@type": "Answer", "text": "If the Mac runs plugin 0.2.0 and the phone still runs the 0.1.0 App Store app, the source stays black: 0.2.0 asked for audio in a way the older app dropped silently. Plugin 0.2.1 fixes it. Update with brew upgrade --cask tethercam-obs or the new .pkg, restart OBS, and update the phone app from the App Store (0.2.0 or newer)."}
+        },
+        {
+          "@type": "Question",
+          "name": "The menu says “Error: TetherCam.app must be in /Applications”, but it is",
+          "acceptedAnswer": {"@type": "Answer", "text": "Something other than Finder copied the app while it still carried the quarantine flag, so macOS App Translocation runs it from a random read-only path. Drag the app into /Applications with Finder, or run xattr -dr com.apple.quarantine /Applications/TetherCam.app and open it again."}
+        },
+        {
+          "@type": "Question",
+          "name": "No camera called “TetherCam” shows up",
+          "acceptedAnswer": {"@type": "Answer", "text": "The camera extension is not enabled yet: System Settings, General, Login Items & Extensions, Camera Extensions, switch TetherCam on. Apps read the camera list when they launch, so quit the app completely (Cmd-Q) and reopen it. Still missing? Restart the Mac: macOS finishes registering a newly installed or updated camera extension only at the next boot. Zoom and Teams listed TetherCam right after that restart."}
+        },
+        {
+          "@type": "Question",
+          "name": "The picture stays black, or the menu says BUSY",
+          "acceptedAnswer": {"@type": "Answer", "text": "Another receiver already holds the phone. Close the TetherCam source in OBS, or whatever else is connected, then reconnect. And make sure TetherCam is open and in the foreground on the phone; iOS suspends the listener as soon as the app goes to the background."}
+        },
+        {
+          "@type": "Question",
+          "name": "OBS still shows the old plugin after I installed an update",
+          "acceptedAnswer": {"@type": "Answer", "text": "OBS reads plugins only at launch. After installing a new .pkg or copying in a new build, fully quit OBS and reopen it; a running instance keeps the plugin binary it already loaded."}
+        },
+        {
+          "@type": "Question",
+          "name": "Continuity Camera keeps grabbing the phone instead of TetherCam",
+          "acceptedAnswer": {"@type": "Answer", "text": "On the iPhone, open Settings, General, AirPlay & Continuity, and turn off Continuity Camera. That stops the phone from also offering itself to macOS as a Continuity Camera device, which otherwise competes with TetherCam for the same camera hardware."}
+        },
+        {
+          "@type": "Question",
+          "name": "The phone never shows up at all, even with a good cable",
+          "acceptedAnswer": {"@type": "Answer", "text": "usbmuxd is the system service that TetherCam relies on to reach the phone; it normally starts on its own the first time a phone is connected. If the plugin never gets past “No iPhone attached”, open Finder once with the phone plugged in and unlocked. That is usually enough to make macOS start the service and show the “Trust This Computer?” prompt, after which the plugin can see the phone too."}
+        }
+      ]
     }
   ]
 }

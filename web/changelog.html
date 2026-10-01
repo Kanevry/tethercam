@@ -215,26 +215,56 @@
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {"@type": "ListItem", "position": 1, "name": "TetherCam", "item": "https://tethercam.app/"},
-    {"@type": "ListItem", "position": 2, "name": "Changelog", "item": "https://tethercam.app/changelog"}
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://tethercam.app/#organization",
+      "name": "TetherCam",
+      "url": "https://tethercam.app/",
+      "logo": "https://tethercam.app/favicon.png",
+      "founder": {"@id": "https://tethercam.app/#person"},
+      "sameAs": [
+        "https://github.com/Kanevry/tethercam",
+        "https://apps.apple.com/us/app/tethercam/id6808997521",
+        "https://gotzendorfer.at"
+      ]
+    },
+    {
+      "@type": "Person",
+      "@id": "https://tethercam.app/#person",
+      "name": "Bernhard Götzendorfer",
+      "url": "https://gotzendorfer.at"
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://tethercam.app/#website",
+      "url": "https://tethercam.app/",
+      "name": "TetherCam",
+      "alternateName": "tethercam.app",
+      "inLanguage": ["en", "de"],
+      "publisher": {"@id": "https://tethercam.app/#organization"}
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://tethercam.app/changelog#webpage",
+      "url": "https://tethercam.app/changelog",
+      "name": "Changelog, TetherCam",
+      "inLanguage": "en",
+      "description": "What changed in TetherCam, release by release: the Mac app, the iPhone app and the OBS plugin.",
+      "dateModified": "2026-09-10",
+      "isPartOf": {"@id": "https://tethercam.app/#website"},
+      "publisher": {"@id": "https://tethercam.app/#organization"},
+      "breadcrumb": {"@id": "https://tethercam.app/changelog#breadcrumb"}
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://tethercam.app/changelog#breadcrumb",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "TetherCam", "item": "https://tethercam.app/"},
+        {"@type": "ListItem", "position": 2, "name": "Changelog", "item": "https://tethercam.app/changelog"}
+      ]
+    }
   ]
-}
-</script>
-
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "WebPage",
-  "@id": "https://tethercam.app/changelog",
-  "url": "https://tethercam.app/changelog",
-  "name": "Changelog, TetherCam",
-  "inLanguage": "en",
-  "description": "What changed in TetherCam, release by release: the Mac app, the iPhone app and the OBS plugin.",
-  "dateModified": "2026-09-10",
-  "isPartOf": {"@id": "https://tethercam.app/#website"},
-  "publisher": {"@id": "https://tethercam.app/#organization"}
 }
 </script>
 
